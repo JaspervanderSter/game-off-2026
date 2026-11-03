@@ -352,3 +352,15 @@ form-return routes. They selected one starting charge, capacity three and a
 three-second recharge, and delegated the simplest choices for remaining rules.
 The concrete defaults and the eight-stage network above are assistant choices
 under that delegation. No Godot implementation is made by these design updates.
+
+### 3 November 2026 — implementation scoping
+
+Before the first implementation in `prototypes/prototype_02`, the user selected:
+procedural shapes and icons with as little on-screen text as possible (stated as
+a rule for every prototype), a top-down board, synthesized sound effects and
+English for the rare interface text; all 24 candidate abilities; short combats of
+about 20-30 seconds; visible homing projectiles; outcomes and chances on hover;
+three thematic starting packs; a simple casting heuristic and role-balanced
+purchases for the AI; a no-spell comparison mode, x2 combat speed and automated
+tests. Numerical statistics, ability parameters and pack contents are assistant
+values documented in the prototype's README; they are not approved balance.
