@@ -15,9 +15,15 @@ func _ready() -> void:
 	_test_economy()
 	_test_shop_and_merges()
 	_test_preparation_input()
+	_test_loss_gold()
+	_test_shop_drag_and_enemy_preparation()
+	_test_phase_music()
+	_test_result_recordings()
 	_test_round_reset_and_damage()
 	_test_abilities()
 	_test_animal_roles()
+	_test_blizzard_and_recharge_upgrade()
+	_test_ai_strategy()
 	_simulate_duels()
 	print("\n%d checks, %d failures" % [_checks, _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
@@ -82,7 +88,7 @@ func _test_network() -> void:
 		var r := CreatureDB.roll_outcome("peasant", rng)
 		counts[r] = counts.get(r, 0) + 1
 	for o in CreatureDB.outcomes("peasant"):
-		check(absf(counts.get(o.id, 0) / 3000.0 - 1.0 / 3.0) < 0.04, "roll distribution " + o.id)
+		check(absf(counts.get(o.id, 0) / 3000.0 - o.chance) < 0.04, "roll distribution " + o.id)
 
 
 # --- Spell ----------------------------------------------------------------------------
@@ -155,7 +161,7 @@ func _test_transformation_rules() -> void:
 	fresh.ability_timer = 0.0
 	b.spells[0].charges = 3
 	b.cast(0, fresh)
-	check(fresh.ability_timer == float(fresh.data.get("cd", 0.0)), "no instant ability on entry")
+	check(fresh.ability_timer == (0.0 if fresh.data.ability == "hop" else float(fresh.data.get("cd", 0.0))), "rabbit leap is immediate; other ability cooldowns carry over")
 	b.queue_free()
 
 
@@ -214,6 +220,7 @@ func _test_economy() -> void:
 				empty_cell = Vector2i(x, y)
 	check(not s.move_to_cell(benched, empty_cell), "field cap blocks a 7th creature")
 	var fielded: OwnedCreature = s.fielded()[0]
+	fielded.form_id = "guardian" # unlike forms still swap instead of combining
 	var cell := fielded.cell
 	check(s.move_to_cell(benched, cell) and benched.cell == cell and not fielded.is_fielded(), "swap bench and field")
 	check(not s.move_to_cell(fielded, Vector2i(0, 0)), "cannot place in the enemy half")
@@ -247,49 +254,87 @@ func _test_shop_and_merges() -> void:
 	check(not s.reroll(rng) and s.offers == offers, "no gold means no reroll")
 	check(not s.toggle_lock(1), "empty offer cannot be locked")
 
-	# Nine purchased copies chain into one three-star unit, keeping its board cell.
+	# Buying never combines copies, even if a matching pair is already owned.
 	var m := WizardState.new(0)
 	m.gold = 100
-	m.offers = ["peasant", "", ""]
+	m.offers = ["cleric", "cleric", "cleric"]
 	var first := m.buy(0)
+	var second := m.buy(1)
+	var third := m.buy(2)
+	check(m.creatures.size() == 3 and first.stars == 0, "three purchases stay separate until manual merge")
 	m.move_to_cell(first, Vector2i(3, 3))
-	for i in 8:
-		m.offers[0] = "peasant"
-		var result := m.buy(0)
-		check(result != null and result in m.creatures, "purchase returns surviving merge result")
-		if i == 1:
-			check(first.stars == 2 and m.creatures.size() == 1, "three one-star copies merge")
-	check(m.creatures.size() == 1 and first.stars == 3, "nine copies merge to three stars")
-	check(first.cell == Vector2i(3, 3), "merge preserves fielded survivor and position")
-	check(first.price() == 9, "merged sale preserves invested gold")
+	check(m.move_to_cell(second, first.cell), "drop on matching board creature combines copies")
+	check(first.merge_copies == 2 and first.stars == 0 and second not in m.creatures,
+		"two copies fill two circles without earning a star")
+	check(first.price() == CreatureDB.get_form("cleric").price * 2, "partial group preserves resale value")
+	var partial := _new_battle()
+	var normal_unit := partial.spawn(0, "cleric", Vector2(50, 300))
+	var teams_partial: Array[WizardState] = [m, WizardState.new(1)]
+	partial.setup(teams_partial, 1)
+	var grouped: Unit = partial.living(0)[1]
+	check(grouped.merge_copies == 2 and grouped.max_hp == normal_unit.max_hp and grouped.attack_damage() == normal_unit.attack_damage(),
+		"partial grouping persists into combat but gives no health or damage bonus")
+	partial.free()
+	check(m.move_to_cell(third, first.cell) and first.stars == 1 and first.merge_copies == 1,
+		"third manually dropped copy earns one star and resets circles")
+	check(first.cell == Vector2i(3, 3) and m.creatures.size() == 1, "manual merge preserves chosen recipient cell")
+	var next := m.add_creature("cleric")
+	next.stars = 1
+	var last := m.add_creature("cleric")
+	last.stars = 1
+	m.merge(next, first)
+	check(first.stars == 1 and first.merge_copies == 2, "two one-star copies stay at one star")
+	m.merge(last, first)
+	check(first.stars == 2 and first.merge_copies == 1 and first.price() == 18, "three one-star copies earn second star with conserved value")
 	for i in 2:
-		var capped := m.add_creature("peasant")
-		capped.stars = 3
-	m._merge(first)
-	check(m.creatures.size() == 3 and first.stars == 3, "three-star rank never merges further")
+		var copy := m.add_creature("cleric")
+		copy.stars = 2
+		m.merge(copy, first)
+	check(first.stars == 3 and first.price() == 54, "27 base copies earn third star")
+	var capped := m.add_creature("cleric")
+	capped.stars = 3
+	check(not m.merge(capped, first) and first.stars == 3, "three-star creatures cannot combine")
+	check(not m.merge(first, first), "self-drop cannot duplicate merge material")
 
-	# Full-bench third-copy exception, and rejection without an available merge.
+	var overflow := WizardState.new(0)
+	var recipient := overflow.add_creature("guardian")
+	var source := overflow.add_creature("guardian")
+	recipient.merge_copies = 2
+	source.merge_copies = 2
+	var source_cell := source.cell
+	var target_cell := recipient.cell
+	var invested := source.price() + recipient.price()
+	check(overflow.move_to_cell(source, target_cell), "two partial groups can combine")
+	check(recipient.stars == 1 and recipient.merge_copies == 1 and source.stars == 0 and source.merge_copies == 1,
+		"overflow leaves unconsumed material at its original rank")
+	check(source.cell == source_cell and recipient.cell == target_cell and source.price() + recipient.price() == invested,
+		"overflow keeps source location and all invested value")
+	var other_form := overflow.add_creature("cleric")
+	check(not overflow.merge(other_form, recipient) and not overflow.merge(source, recipient), "different forms and different ranks cannot combine")
+	var outsider := OwnedCreature.new("guardian")
+	check(not overflow.merge(outsider, source), "unowned copies cannot be merged")
+
+	var bench := WizardState.new(0)
+	bench.gold = 20
+	bench.offers = ["cleric", "cleric", "cleric"]
+	var bench_target := bench.buy(0)
+	var bench_source := bench.buy(1)
+	check(bench.move_to_slot(bench_source, bench_target.slot) and bench_target.merge_copies == 2,
+		"manual merge works from bench to bench")
+	var field_source := bench.add_creature("cleric")
+	check(bench.move_to_slot(field_source, bench_target.slot) and bench_target.stars == 1 and not bench_target.is_fielded(),
+		"board to bench merge preserves bench recipient")
 	var full := WizardState.new(0)
 	full.gold = 100
 	for i in Rules.RESERVE_CAP:
-		var c := OwnedCreature.new("peasant" if i < 2 else "archer")
+		var c := OwnedCreature.new("peasant")
 		c.slot = i
 		full.creatures.append(c)
-	full.offers = ["guardian", "peasant", ""]
-	gold = full.gold
-	check(full.buy(0) == null and full.gold == gold and full.offers[0] == "guardian",
-		"full bench rejects purchase even when the board has room")
-	var merged := full.buy(1)
-	check(merged != null and merged.stars == 2 and merged.slot >= 0 and full.benched().size() == 5,
-		"full bench accepts a third copy and frees a slot by merging")
-	var mixed := WizardState.new(0)
-	var rank_two := mixed.add_creature("archer")
-	rank_two.stars = 2
-	mixed.add_creature("archer")
-	mixed.offers = ["archer", "", ""]
-	mixed.gold = 10
-	mixed.buy(0)
-	check(mixed.creatures.size() == 3 and rank_two.stars == 2, "different ranks do not merge")
+	full.offers = ["peasant", "", ""]
+	check(not full.can_buy(0) and full.buy(0) == null and full.gold == 100,
+		"full bench requires manual space before buying even with matching copies")
+	full.move_to_slot(full.at_slot(1), 0)
+	check(full.buy(0) != null, "manual grouping frees a slot for purchases")
 
 	var foe := WizardState.new(1)
 	foe.add_creature("guardian")
@@ -298,16 +343,21 @@ func _test_shop_and_merges() -> void:
 	b.setup(teams, 12)
 	var u: Unit = b.living(0)[0]
 	check(u.stars == 3 and u.level == 1, "combat copies permanent stars separately from levels")
-	check(u.max_hp > CreatureDB.get_form("peasant").hp * 3, "stars improve combat health")
+	check(is_equal_approx(u.visual_scale(), 1.0), "merge stars do not enlarge the base combat image")
+	check(u.max_hp > CreatureDB.get_form("cleric").hp * 3, "stars improve combat health")
 	u.transform_to("rabbit", true)
+	check(is_equal_approx(u.visual_scale(), 1.15), "temporary level enlarges image by 15 percent")
 	check(u.stars == 3 and u.level == 2 and first.stars == 3, "transformation keeps stars and grants temporary level")
 	check(absf(u.attack_damage() - u.data.dmg * Rules.star_mult(3) * Rules.level_mult(2)) < 0.001,
 		"star and temporary level bonuses combine")
+	u.level = 100
+	check(is_equal_approx(u.visual_scale(), Rules.MAX_LEVEL_VISUAL_SCALE), "visual growth is capped without capping combat levels")
 	b.free()
 	b = _new_battle()
 	b.setup(teams, 12)
 	u = b.living(0)[0]
-	check(u.stars == 3 and u.level == 1 and u.form_id == "peasant", "next combat resets form and level but keeps stars")
+	check(u.stars == 3 and u.level == 1 and u.form_id == "cleric", "next combat resets form and level but keeps stars")
+	check(is_equal_approx(u.visual_scale(), 1.0), "next combat restores normal image size")
 	b.free()
 
 
@@ -325,6 +375,7 @@ func _test_preparation_input() -> void:
 	check(game.player.gold == 19 and game.player.offers[1] == "archer", "reroll button refreshes through game input")
 	var field_count: int = game.player.field_count()
 	game._left_press(offer_pos)
+	game._left_release(offer_pos)
 	check(game.player.field_count() == field_count and game.player.benched().size() == 1,
 		"shop click purchases onto bench")
 	var bought: OwnedCreature = game.player.benched()[0]
@@ -336,6 +387,288 @@ func _test_preparation_input() -> void:
 	game._right_press(Hud.offer_rect(0).get_center())
 	game._right_press(Hud.offer_rect(0).get_center())
 	check(not game.player.locked[0], "second right-click unlocks an offer")
+	state.gold = 20
+	state.offers = ["guardian", "guardian", "guardian"]
+	for i in 3:
+		game._left_press(Hud.offer_rect(i).get_center())
+		game._left_release(Hud.offer_rect(i).get_center())
+	check(state.benched().size() == 3, "three UI purchases do not auto-merge")
+	var recipient: OwnedCreature = state.benched()[0]
+	var source: OwnedCreature = state.benched()[1]
+	game._left_press(Rules.reserve_slot_rect(source.slot).get_center())
+	game._left_release(Rules.reserve_slot_rect(recipient.slot).get_center())
+	check(recipient.stars == 0 and recipient.merge_copies == 2 and game.drag == null,
+		"drag-and-drop UI creates a two-circle group without a star")
+	source = state.benched()[1]
+	game._left_press(Rules.reserve_slot_rect(source.slot).get_center())
+	game._left_release(Rules.reserve_slot_rect(recipient.slot).get_center())
+	check(recipient.stars == 1 and recipient.merge_copies == 1 and state.benched().size() == 1,
+		"third UI drop promotes the chosen recipient")
+	game.free()
+
+
+func _finish_enemy_preparation(game) -> void:
+	for i in 64:
+		if not game.enemy_preparing:
+			break
+		game._advance_enemy_preparation(1.0)
+	check(not game.enemy_preparing, "enemy preparation finishes within a bounded number of actions")
+
+
+func _test_shop_drag_and_enemy_preparation() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.choose_pack(0)
+	var state: WizardState = game.player
+	var foe: WizardState = game.enemy
+	# A deterministic affordable purchase, with no same-form merge on this team.
+	foe.creatures.clear()
+	foe.add_creature("guardian")
+	foe.gold = 3
+	foe.offers = ["archer", "", ""]
+	check(game.enemy_preparing and foe.gold == 3 and foe.creatures.size() == 1,
+		"round starts without instantly completing enemy purchases")
+	game.start_combat()
+	check(game.phase == game.Phase.PREP, "combat waits for visible enemy preparation")
+	game._advance_enemy_preparation(0.1)
+	check(foe.gold == 3, "enemy purchase has an initial readable delay")
+	game._advance_enemy_preparation(0.25)
+	check(foe.gold == 2 and foe.creatures.size() == 2 and game.enemy_action.kind == "buy",
+		"enemy spends on one visible purchase at a time")
+	var traveller: OwnedCreature = foe.creatures[-1]
+	var origin: Vector2 = game.enemy_display_position(traveller)
+	check(game.enemy_is_moving(traveller) and origin.distance_to(Rules.cell_center(traveller.cell)) > 20,
+		"purchased enemy starts a movement rather than teleporting")
+	game._advance_enemy_preparation(0.2)
+	var middle: Vector2 = game.enemy_display_position(traveller)
+	check(middle != origin and game.enemy_is_moving(traveller), "enemy placement has an intermediate position")
+	_finish_enemy_preparation(game)
+	check(not game.enemy_is_moving(traveller) and game.enemy_display_position(traveller).is_equal_approx(Rules.cell_center(traveller.cell)),
+		"enemy arrives before combat becomes available")
+
+	state.creatures.clear()
+	state.gold = 20
+	state.offers = ["guardian", "cleric", "archer"]
+	var pos := Hud.offer_rect(0).get_center()
+	game._left_press(pos)
+	check(state.creatures.is_empty() and state.gold == 20 and state.offers[0] == "guardian",
+		"shop mouse-down reserves a gesture without purchasing")
+	game._left_release(Rules.BOARD_POS + Rules.cell_center(Vector2i(3, 3)))
+	var target := state.at_cell(Vector2i(3, 3))
+	check(target != null and state.gold == 18 and state.benched().is_empty(),
+		"shop drag buys directly onto board without a bench detour")
+	check(not game.show_merge_progress(target), "merge circles hidden when idle")
+	game.hover_info = {"owned": target}
+	check(game.show_merge_progress(target), "merge circles visible on hover")
+	game.hover_info = {}
+	state.offers[0] = "guardian"
+	game._left_press(pos)
+	var motion := InputEventMouseMotion.new()
+	motion.position = pos + Vector2(-20, 0)
+	game._unhandled_input(motion)
+	check(game.show_merge_progress(target), "shop drag reveals compatible target progress")
+	game._left_release(Rules.BOARD_POS + Rules.cell_center(target.cell))
+	check(target.merge_copies == 2 and state.creatures.size() == 1 and state.gold == 16,
+		"shop drag can buy and manually combine with a matching target")
+	game._left_press(Hud.offer_rect(1).get_center())
+	game._left_release(Vector2(10, 10))
+	check(state.offers[1] == "cleric" and state.gold == 16 and game.drag == null,
+		"invalid shop drop cancels without spending or consuming offer")
+	game._left_press(Hud.offer_rect(1).get_center())
+	game._left_release(Rules.BOARD_POS + Rules.cell_center(target.cell))
+	check(state.offers[1] == "cleric" and state.gold == 16, "incompatible occupied drop does not charge")
+	game._left_press(Hud.offer_rect(1).get_center())
+	game._left_release(Hud.offer_rect(1).get_center())
+	check(state.benched().size() == 1 and state.gold == 14, "ordinary shop click buys onto bench on release")
+	var unrelated: OwnedCreature = state.benched()[0]
+	game.drag = unrelated
+	check(not game.show_merge_progress(target), "unrelated creatures hide progress during drag")
+	game.drag = null
+	# Fill the bench, then explicitly buy onto an empty board cell.
+	for i in Rules.RESERVE_CAP:
+		if state.at_slot(i) == null:
+			var c := OwnedCreature.new("peasant")
+			c.slot = i
+			state.creatures.append(c)
+	check(state.free_slot() == -1, "direct-purchase test has a full bench")
+	game._left_press(Hud.offer_rect(2).get_center())
+	game._left_release(Rules.BOARD_POS + Rules.cell_center(Vector2i(4, 4)))
+	check(state.at_cell(Vector2i(4, 4)) != null and state.gold == 13, "direct placement works with a full bench")
+	state.offers[0] = "guardian"
+	game._left_press(pos)
+	game._left_release(Rules.BOARD_POS + Rules.cell_center(target.cell))
+	check(target.stars == 1 and state.gold == 11 and state.free_slot() == -1,
+		"explicit shop merge works with a full bench and conserves its slots")
+	state.offers[0] = "peasant"
+	for i in 4:
+		state.add_creature("peasant")
+	var gold := state.gold
+	game._left_press(pos)
+	game._left_release(Rules.BOARD_POS + Rules.cell_center(Vector2i(7, 5)))
+	check(state.gold == gold and state.offers[0] == "peasant", "field cap blocks direct purchase without charging")
+	game.new_duel()
+	check(not game.enemy_preparing and game.enemy_moves.is_empty() and game.shop_drag_index == -1,
+		"restart clears enemy animations and pending shop gestures")
+	game.free()
+
+
+func _test_loss_gold() -> void:
+	var state := WizardState.new(0)
+	state.hp = 2
+	state.gold = 7
+	check(state.take_round_damage(6) == 2 and state.hp == 0 and state.gold == 7,
+		"lethal overkill grants no compensation")
+	check(state.take_round_damage(1) == 0 and state.gold == 7, "no reward after zero hearts")
+	var carry := WizardState.new(0)
+	check(carry.take_round_damage(1) == 0.5 and carry.hp == 9.5 and carry.gold == 0,
+		"one survivor deals half a heart with no fractional gold")
+	carry.take_round_damage(1)
+	check(carry.hp == 9 and carry.gold == 1 and carry.loss_gold_progress == 0,
+		"half-heart compensation carries across rounds to one whole gold")
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.player.gold = 8
+	game.enemy.gold = 11
+	game._on_battle_ended({"winner": 1, "survivors": 3})
+	check(game.player.hp == 8.5 and game.player.gold == 9, "three survivors cost 1.5 hearts and grant one gold")
+	check(game.enemy.hp == 10 and game.enemy.gold == 11, "winner gains no loss reward")
+	var hud: Hud = game.hud
+	check(hud.loss_rewards.size() == 3 and hud.displayed_hp(game.player) == 10 and hud.displayed_gold(game.player) == 8,
+		"presentation begins before three half-heart hits")
+	hud.advance_loss_rewards(0.23)
+	check(hud.displayed_hp(game.player) == 9.5 and hud.displayed_gold(game.player) == 8,
+		"first half-heart breaks without granting gold")
+	hud.advance_loss_rewards(0.26)
+	check(hud.displayed_hp(game.player) == 9, "second half-heart completes a whole heart")
+	hud.advance_loss_rewards(0.83)
+	check(hud.displayed_gold(game.player) == 9, "whole-heart coin arrives at counter")
+	hud.advance_loss_rewards(hud.loss_reward_duration())
+	check(hud.displayed_gold(game.player) == 9 and hud.displayed_hp(game.player) == 8.5,
+		"HUD finishes at exact fractional health and integer gold")
+	game.enemy.hp = 0.5
+	game._on_battle_ended({"winner": 0, "survivors": 6})
+	check(game.enemy.hp == 0 and game.enemy.gold == 11 and hud.loss_rewards.size() == 1,
+		"last half-heart breaks with no overkill reward")
+	check(not hud.loss_rewards[0].coin, "lethal half-heart has no coin effect")
+	game._on_battle_ended({"winner": -1, "survivors": 0})
+	check(hud.loss_rewards.is_empty() and game.player.gold == 9, "draw clears presentation and grants no gold")
+	game.player.hp = 10
+	game._on_battle_ended({"winner": 1, "survivors": 20})
+	check(game.player.gold == 9 and hud.loss_rewards.all(func(reward): return not reward.coin),
+		"lethal combat grants no compensation for any lost heart")
+	check(game._resolve_t >= hud.loss_reward_duration(), "resolution waits for all half-heart effects")
+	game.new_duel()
+	check(hud.loss_rewards.is_empty() and game.player.gold == 0, "new duel clears rewards")
+	game.free()
+
+
+func _test_phase_music() -> void:
+	var music := PhaseMusic.new()
+	add_child(music)
+	music.set_process(false)
+	var prep: AudioStreamPlayer = music.players.prep
+	var combat: AudioStreamPlayer = music.players.battle
+	check(prep.stream.loop and combat.stream.loop and prep.stream.get_length() > 5 and combat.stream.get_length() > 5,
+		"both supplied OGG tracks load as loops")
+	music.transition_to("prep")
+	check(prep.playing and is_zero_approx(prep.volume_linear), "preparation playback begins in complete silence")
+	music.advance_fades(PhaseMusic.FADE_SECONDS * 0.5)
+	var halfway := prep.volume_linear
+	check(halfway > 0.0 and halfway < db_to_linear(PhaseMusic.MUSIC_DB), "preparation fades in gradually")
+	prep.seek(10.0)
+	music.transition_to("prep")
+	check(is_equal_approx(prep.volume_linear, halfway) and prep.get_playback_position() >= 9.9,
+		"same track keeps playback position and current volume")
+	music.advance_fades(PhaseMusic.FADE_SECONDS * 0.5)
+	check(is_equal_approx(prep.volume_linear, db_to_linear(PhaseMusic.MUSIC_DB)), "fade reaches configured music volume")
+	music.transition_to("battle")
+	check(prep.playing and combat.playing and is_zero_approx(combat.volume_linear), "crossfade starts battle silently without cutting preparation")
+	music.advance_fades(PhaseMusic.FADE_SECONDS * 0.5)
+	check(prep.volume_linear > 0.0 and combat.volume_linear > 0.0 and combat.volume_linear < db_to_linear(PhaseMusic.MUSIC_DB),
+		"both music voices overlap during crossfade")
+	var prep_before := prep.volume_linear
+	var battle_before := combat.volume_linear
+	music.transition_to("prep")
+	check(is_equal_approx(prep.volume_linear, prep_before) and is_equal_approx(combat.volume_linear, battle_before),
+		"rapid phase reversal preserves current gains without jumps")
+	music.advance_fades(PhaseMusic.FADE_SECONDS)
+	check(prep.playing and not combat.playing and is_zero_approx(combat.volume_linear), "outgoing voice stops only at silence")
+	music.transition_to("")
+	check(prep.playing and prep.volume_linear > 0.0, "music stop request starts a fade instead of cutting playback")
+	music.advance_fades(PhaseMusic.FADE_SECONDS * 0.5)
+	check(prep.playing and prep.volume_linear > 0.0 and prep.volume_linear < prep_before * 2,
+		"stop fade has an audible intermediate level")
+	music.advance_fades(PhaseMusic.FADE_SECONDS)
+	check(not prep.playing and not combat.playing and is_zero_approx(prep.volume_linear), "stop fade ends in silence")
+	music.free()
+
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	check(game.music.current == "prep", "pack choice uses preparation music")
+	game.choose_pack(0)
+	check(game.music.current == "prep", "preparation keeps its music")
+	_finish_enemy_preparation(game)
+	game.start_combat()
+	check(game.music.current == "battle", "combat selects battle music")
+	game._on_battle_ended({"winner": 1, "survivors": 1})
+	check(game.music.current == "", "resolution fades out battle music for heart and gold effects")
+	game._finish_round()
+	check(game.music.current == "prep", "next round fades preparation music back in")
+	_finish_enemy_preparation(game)
+	game.start_combat()
+	game.player.hp = 0.5
+	game._on_battle_ended({"winner": 1, "survivors": 1})
+	game._finish_round()
+	check(game.phase == game.Phase.OVER and game.music.current == "", "game over keeps music faded out")
+	game.new_duel()
+	check(game.music.current == "prep", "restart fades preparation music in")
+	game.free()
+
+
+func _test_result_recordings() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	var voice: AudioStreamPlayer = Sfx._result_player
+	voice.stop()
+	Sfx._last_played.erase("win")
+	Sfx._last_played.erase("lose")
+	game._on_battle_ended({"winner": 0, "survivors": 1})
+	check(not voice.playing and not Sfx._last_played.has("win"), "intermediate victory has no result recording")
+	game._on_battle_ended({"winner": 1, "survivors": 1})
+	check(not voice.playing and not Sfx._last_played.has("lose"), "intermediate defeat has no result recording")
+	game._on_battle_ended({"winner": -1, "survivors": 0})
+	check(not voice.playing, "draw has no result recording")
+	game.enemy.hp = 0.5
+	game._on_battle_ended({"winner": 0, "survivors": 1})
+	check(not voice.playing, "final victory waits for the heart sequence")
+	game.battle = Battle.new()
+	game.add_child(game.battle)
+	game._finish_round()
+	check(game.phase == game.Phase.OVER and voice.stream.resource_path == "res://sfx/victory.wav" and voice.playing,
+		"final duel victory plays supplied victory recording on game over")
+	check(voice.pitch_scale == 1.0 and voice.stream.loop_mode == AudioStreamWAV.LOOP_DISABLED,
+		"result recording plays once at its original pitch")
+	game.new_duel()
+	voice.stop()
+	Sfx._last_played.erase("lose")
+	game.music.transition_to("battle")
+	game.music.advance_fades(PhaseMusic.FADE_SECONDS)
+	game.player.hp = 0.5
+	game._on_battle_ended({"winner": 1, "survivors": 1})
+	check(not voice.playing and game.music.current == "", "final defeat fades music and waits for the heart sequence")
+	game.music.advance_fades(PhaseMusic.FADE_SECONDS)
+	check(not game.music.players.battle.playing and not game.music.players.prep.playing,
+		"music is stopped after defeat fade")
+	game.battle = Battle.new()
+	game.add_child(game.battle)
+	game._finish_round()
+	check(game.phase == game.Phase.OVER and voice.stream.resource_path == "res://sfx/defeat.wav" and voice.playing,
+		"final duel defeat plays supplied defeat recording on game over")
+	for i in Sfx.VOICES + 2:
+		Sfx._last_played.erase("heart_break")
+		Sfx.play("heart_break")
+	check(voice.stream.resource_path == "res://sfx/defeat.wav" and voice.playing,
+		"heart effects cannot steal or interrupt the result voice")
 	game.free()
 
 
@@ -416,10 +749,11 @@ func _test_animal_roles() -> void:
 	var guardian := b.spawn(1, "guardian", Vector2(240, 200))
 	check(rabbit.attack_damage() / rabbit.attack_interval() > guardian.attack_damage() / guardian.attack_interval() * 2.0,
 		"rabbit trades guardian durability for substantially higher basic DPS")
+	var rear := b.spawn(1, "archer", Vector2(240, 50))
 	rabbit.tick(0.01)
-	check(rabbit.dash_t > 0.0, "rabbit hops away from melee pressure")
-	check(rabbit.dash_vel.length() * 0.25 <= Rules.CELL,
-		"rabbit hop stays short enough to re-engage quickly")
+	check(rabbit.jump_t > 0.0 and rabbit.jump_target == rear, "rabbit leaps to deepest enemy rather than nearby frontline")
+	rabbit._tick_jump(0.5)
+	check(rabbit.target == rear and rabbit.position.y < rear.position.y, "rabbit lands behind and engages its backline target")
 	var deer := b.spawn(0, "deer", Vector2(200, 230))
 	guardian.hp = guardian.max_hp * 0.5
 	rabbit.hp = rabbit.max_hp * 0.5
@@ -446,6 +780,115 @@ func _test_animal_roles() -> void:
 # --- Simulations ------------------------------------------------------------------------
 
 ## Plays AI-vs-AI duels to check the loop terminates and to report pacing.
+func _test_blizzard_and_recharge_upgrade() -> void:
+	var b := _new_battle()
+	var mage := b.spawn(0, "frost_mage", Vector2(200, 300))
+	var victim := b.spawn(1, "archer", Vector2(200, 170))
+	var neighbour := b.spawn(1, "cleric", Vector2(270, 160))
+	var outside := b.spawn(1, "archer", Vector2(500, 150))
+	var friend := b.spawn(0, "archer", Vector2(200, 170))
+	mage.ability_timer = 0
+	mage._tick_ability()
+	check(b.blizzards.size() == 1 and b.blizzards[0].rect.size == Vector2.ONE * Rules.CELL * 3,
+		"frost mage casts an exact 3x3 square blizzard")
+	check(mage.ability_timer >= 8, "blizzard has a long cooldown")
+	var speed := victim.move_speed()
+	var interval := victim.attack_interval()
+	b._tick_blizzards(1.0)
+	check(victim.hp < victim.max_hp and neighbour.hp < neighbour.max_hp,
+		"blizzard damages multiple enemies inside square")
+	check(outside.hp == outside.max_hp and friend.hp == friend.max_hp,
+		"blizzard spares allies and enemies outside square")
+	check(victim.move_speed() < speed and victim.attack_interval() > interval,
+		"blizzard slows movement and attacks")
+	mage.transform_to("peacock", false)
+	b._tick_blizzards(10.0)
+	check(b.blizzards.is_empty() and absf(victim.max_hp - victim.hp - 18.0) < 0.01,
+		"cast blizzard persists after form change and damage stops at duration")
+	b.free()
+
+	var p := WizardState.new(0)
+	var e := WizardState.new(1)
+	p.gold = Rules.SHIFT_RECHARGE_COST - 1
+	check(not p.upgrade_shift_recharge(), "recharge upgrade requires its gold cost")
+	p.gold = Rules.SHIFT_RECHARGE_COST
+	check(p.upgrade_shift_recharge() and p.gold == 0, "recharge upgrade consumes exactly its cost")
+	p.gold = 100
+	check(not p.upgrade_shift_recharge() and p.gold == 100, "single recharge upgrade cannot be bought twice")
+	p.add_creature("guardian")
+	e.add_creature("guardian")
+	b = _new_battle()
+	var teams: Array[WizardState] = [p, e]
+	b.setup(teams, 3)
+	check(b.spells[0].recharge_time == 2.4 and b.spells[1].recharge_time == 3.0,
+		"recharge upgrade applies only to owning wizard")
+	b.spells[0].tick(2.39)
+	check(b.spells[0].charges == 1, "upgraded charge is not granted early")
+	b.spells[0].tick(0.02)
+	check(b.spells[0].charges == 2 and b.spells[1].charges == 1,
+		"upgraded charge recharges at 2.4 seconds")
+	b.free()
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.choose_pack(0)
+	game.player.gold = Rules.SHIFT_RECHARGE_COST
+	game._left_press(Hud.SHIFT_UPGRADE_RECT.get_center())
+	check(game.player.shift_recharge_upgraded and game.player.gold == 0, "recharge upgrade shop button works")
+	game.new_duel()
+	check(not game.player.shift_recharge_upgraded, "new duel resets permanent duel upgrade")
+	game.free()
+	check(CreatureDB.get_form("assassin").price == 2, "assassin costs two gold")
+	var guardian_outcomes := CreatureDB.outcomes("guardian")
+	check(guardian_outcomes[0].id == "turtle" and guardian_outcomes[0].chance == 0.55,
+		"dominant transformation follows guardian defensive identity")
+	for id in CreatureDB.all_ids():
+		var outcomes := CreatureDB.outcomes(id)
+		check(outcomes[0].chance == 0.55 and outcomes[1].chance == 0.30 and outcomes[2].chance == 0.15,
+			"ordered decreasing probabilities for " + id)
+
+
+func _test_ai_strategy() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 123
+	var state := WizardState.new(1)
+	state.add_creature("guardian")
+	state.add_creature("guardian")
+	state.offers = ["", "", ""]
+	EnemyAI.shop_step(state, rng)
+	check(state.field_count() == 2 and state.creatures[0].merge_copies == 1,
+		"AI keeps two fielded bodies instead of merging for no star")
+	state = WizardState.new(1)
+	for id in ["guardian", "berserker", "spearman", "archer", "cleric", "frost_mage"]:
+		state.add_creature(id)
+	var guard: OwnedCreature = state.creatures[0]
+	guard.merge_copies = 2
+	state.gold = 2
+	state.offers = ["guardian", "", ""]
+	var action := EnemyAI.shop_step(state, rng)
+	check(action.get("kind") == "buy" and state.gold == 0 and state.creatures.size() == 7,
+		"AI buys a completing duplicate with a full field instead of stopping")
+	action = EnemyAI.shop_step(state, rng)
+	check(action.get("kind") == "merge" and guard.stars == 1 and state.field_count() == 6,
+		"AI upgrades a full team without removing a fielded body")
+	state.shift_recharge_upgraded = true
+	state.gold = 4
+	state.offers = ["peasant", "", ""]
+	action = EnemyAI.shop_step(state, rng)
+	check(action.get("kind") == "reroll" and state.gold == 3, "AI spends gold rerolling unhelpful offers")
+	state.shift_recharge_upgraded = false
+	state.gold = 4
+	state.offers = ["", "", ""]
+	action = EnemyAI.shop_step(state, rng)
+	check(action.get("kind") == "upgrade" and state.shift_recharge_upgraded and state.gold == 0,
+		"AI buys recharge upgrade from its own gold")
+	var b := _new_battle()
+	var weak_enemy := b.spawn(0, "peasant", Vector2(100, 350))
+	b.spawn(1, "guardian", Vector2(100, 100))
+	b.spells[1].charges = 3
+	check(EnemyAI.choose_cast(b, 1) != weak_enemy, "AI avoids transforming a weak enemy into stronger expected forms")
+	b.free()
+
+
 func _simulate_duels() -> void:
 	for casting in [true, false]:
 		var durations := []
@@ -476,7 +919,7 @@ func _simulate_duels() -> void:
 				combats += 1
 				durations.append(b.result.time)
 				if b.result.winner >= 0:
-					states[1 - b.result.winner].hp -= b.result.survivors
+					states[1 - b.result.winner].take_round_damage(b.result.survivors)
 				else:
 					draws += 1
 				b.free()

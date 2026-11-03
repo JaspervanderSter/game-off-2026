@@ -21,9 +21,34 @@ const STAGES := [
 	["rhino", "leopard", "skunk"],
 ]
 
-# Optional per-link weights ("from>to": weight). Missing links weigh 1.0, giving
-# the draft's equal 1/3 chances.
-const LINK_WEIGHTS := {}
+# Fixed, visible priorities favour each form's tactical identity.
+const OUTCOME_CHANCES := [0.55, 0.30, 0.15]
+const OUTCOME_ORDER := {
+	"peasant": ["rabbit", "turtle", "deer"],
+	"guardian": ["turtle", "deer", "rabbit"],
+	"cleric": ["deer", "turtle", "rabbit"],
+	"rabbit": ["duelist", "berserker", "bard"],
+	"turtle": ["berserker", "bard", "duelist"],
+	"deer": ["bard", "duelist", "berserker"],
+	"berserker": ["gorilla", "wolf", "hedgehog"],
+	"duelist": ["wolf", "gorilla", "hedgehog"],
+	"bard": ["hedgehog", "wolf", "gorilla"],
+	"gorilla": ["assassin", "frost_mage", "archer"],
+	"hedgehog": ["frost_mage", "archer", "assassin"],
+	"wolf": ["archer", "assassin", "frost_mage"],
+	"assassin": ["eagle", "snake", "peacock"],
+	"archer": ["snake", "eagle", "peacock"],
+	"frost_mage": ["peacock", "snake", "eagle"],
+	"eagle": ["spearman", "crossbowman", "pyromancer"],
+	"snake": ["crossbowman", "pyromancer", "spearman"],
+	"peacock": ["pyromancer", "spearman", "crossbowman"],
+	"spearman": ["rhino", "leopard", "skunk"],
+	"crossbowman": ["leopard", "rhino", "skunk"],
+	"pyromancer": ["skunk", "leopard", "rhino"],
+	"rhino": ["guardian", "peasant", "cleric"],
+	"leopard": ["peasant", "guardian", "cleric"],
+	"skunk": ["cleric", "guardian", "peasant"],
+}
 
 # role: front / mid / back / support (used by AI purchases and auto-placement).
 # attack: melee, or the projectile drawn for ranged attacks.
@@ -33,24 +58,24 @@ const FORMS := {
 	"guardian": {"family": "fantasy", "hp": 220, "dmg": 7, "interval": 1.3, "range": 0.3, "speed": 1.1, "armour": 40, "price": 2, "role": "front", "attack": "melee", "ability": ""},
 	"berserker": {"family": "fantasy", "hp": 155, "dmg": 10, "interval": 1.1, "range": 0.3, "speed": 1.7, "armour": 10, "price": 2, "role": "front", "attack": "melee", "ability": "berserk", "power": 0.55},
 	"duelist": {"family": "fantasy", "hp": 135, "dmg": 12, "interval": 0.9, "range": 0.3, "speed": 1.8, "armour": 10, "price": 2, "role": "front", "attack": "melee", "ability": "parry", "cd": 4.0, "cd_start": 0.0},
-	"assassin": {"family": "fantasy", "hp": 105, "dmg": 20, "interval": 1.1, "range": 0.3, "speed": 2.6, "armour": 0, "price": 3, "role": "front", "attack": "melee", "ability": "backline"},
+	"assassin": {"family": "fantasy", "hp": 105, "dmg": 20, "interval": 1.1, "range": 0.3, "speed": 2.6, "armour": 0, "price": 2, "role": "front", "attack": "melee", "ability": "backline"},
 	"spearman": {"family": "fantasy", "hp": 110, "dmg": 9, "interval": 1.1, "range": 1.3, "speed": 1.5, "armour": 10, "price": 1, "role": "mid", "attack": "melee", "ability": ""},
 	"archer": {"family": "fantasy", "hp": 85, "dmg": 7, "interval": 0.8, "range": 4.5, "speed": 1.8, "armour": 0, "price": 1, "role": "back", "attack": "arrow", "ability": "kite"},
 	"crossbowman": {"family": "fantasy", "hp": 105, "dmg": 26, "interval": 2.2, "range": 5.0, "speed": 1.2, "armour": 0, "price": 3, "role": "back", "attack": "bolt", "ability": "pierce"},
 	"pyromancer": {"family": "fantasy", "hp": 90, "dmg": 12, "interval": 1.7, "range": 4.0, "speed": 1.3, "armour": 0, "price": 3, "role": "back", "attack": "fire", "ability": "splash", "radius": 1.0},
-	"frost_mage": {"family": "fantasy", "hp": 100, "dmg": 6, "interval": 1.3, "range": 4.0, "speed": 1.3, "armour": 0, "price": 2, "role": "back", "attack": "frost", "ability": "chill", "duration": 2.5, "power": 0.5},
+	"frost_mage": {"family": "fantasy", "hp": 115, "dmg": 7, "interval": 1.3, "range": 4.0, "speed": 1.3, "armour": 0, "price": 2, "role": "back", "attack": "frost", "ability": "blizzard", "cd": 9.0, "cd_start": 2.0, "duration": 3.0, "power": 0.45, "storm_dps": 6.0},
 	"cleric": {"family": "fantasy", "hp": 110, "dmg": 5, "interval": 1.4, "range": 3.0, "speed": 1.4, "armour": 10, "price": 2, "role": "support", "attack": "holy", "ability": "heal", "cd": 3.5, "cd_start": 2.0, "radius": 3.5, "power": 22.0},
 	"bard": {"family": "fantasy", "hp": 105, "dmg": 5, "interval": 1.2, "range": 3.0, "speed": 1.4, "armour": 0, "price": 2, "role": "support", "attack": "note", "ability": "inspire", "radius": 2.2, "power": 0.35},
 	# --- Animals (transformation outcomes only; price = rough value for AI) ---
 	# Sidegrades with distinct combat niches, not a weaker roster. Rabbit trades
-	# durability for high DPS; its short hops limit time lost returning to melee.
+	# durability for high DPS and a leap directly onto the enemy backline.
 	# Deer/peacock/skunk trade damage for sustained healing or area disruption.
 	"turtle": {"family": "animal", "hp": 245, "dmg": 6, "interval": 1.4, "range": 0.3, "speed": 0.8, "armour": 30, "price": 2, "role": "front", "attack": "melee", "ability": "shell", "cd": 6.0, "cd_start": 0.0, "duration": 2.0, "power": 50.0},
 	"rhino": {"family": "animal", "hp": 215, "dmg": 14, "interval": 1.8, "range": 0.3, "speed": 1.4, "armour": 25, "price": 3, "role": "front", "attack": "melee", "ability": "charge", "cd": 8.0, "cd_start": 0.0, "power": 2.0, "knock": 1.2},
 	"gorilla": {"family": "animal", "hp": 200, "dmg": 15, "interval": 1.7, "range": 0.4, "speed": 1.3, "armour": 10, "price": 3, "role": "front", "attack": "melee", "ability": "cleave", "radius": 0.9},
 	"wolf": {"family": "animal", "hp": 150, "dmg": 11, "interval": 1.0, "range": 0.3, "speed": 2.2, "armour": 5, "price": 2, "role": "front", "attack": "melee", "ability": "pack", "radius": 2.0, "power": 0.4},
 	"leopard": {"family": "animal", "hp": 120, "dmg": 15, "interval": 0.8, "range": 0.3, "speed": 2.8, "armour": 0, "price": 3, "role": "front", "attack": "melee", "ability": "hunt", "radius": 4.0},
-	"rabbit": {"family": "animal", "hp": 120, "dmg": 10, "interval": 0.65, "range": 0.3, "speed": 3.0, "armour": 0, "price": 1, "role": "front", "attack": "melee", "ability": "hop", "cd": 4.0, "cd_start": 0.0, "power": 0.8},
+	"rabbit": {"family": "animal", "hp": 135, "dmg": 10, "interval": 0.65, "range": 0.3, "speed": 3.0, "armour": 0, "price": 1, "role": "front", "attack": "melee", "ability": "hop", "cd": 8.0, "cd_start": 0.0},
 	"snake": {"family": "animal", "hp": 125, "dmg": 6, "interval": 1.0, "range": 0.3, "speed": 1.8, "armour": 0, "price": 2, "role": "front", "attack": "melee", "ability": "poison", "duration": 4.0, "power": 7.0},
 	"skunk": {"family": "animal", "hp": 145, "dmg": 7, "interval": 1.2, "range": 0.3, "speed": 1.6, "armour": 5, "price": 2, "role": "front", "attack": "melee", "ability": "spray", "cd": 5.0, "cd_start": 2.0, "radius": 2.0, "duration": 4.0, "power": 30.0},
 	"eagle": {"family": "animal", "hp": 135, "dmg": 13, "interval": 1.0, "range": 0.3, "speed": 2.0, "armour": 0, "price": 2, "role": "front", "attack": "melee", "ability": "dive", "cd": 7.0, "cd_start": 1.5, "power": 30.0},
@@ -99,13 +124,10 @@ static func stage_of(id: String) -> int:
 
 ## Outgoing links as [{"id": String, "chance": float}], chances summing to 1.
 static func outcomes(id: String) -> Array:
-	var next: Array = STAGES[(stage_of(id) + 1) % STAGES.size()]
-	var total := 0.0
-	for to in next:
-		total += float(LINK_WEIGHTS.get(id + ">" + to, 1.0))
+	var next: Array = OUTCOME_ORDER[id]
 	var result := []
-	for to in next:
-		result.append({"id": to, "chance": float(LINK_WEIGHTS.get(id + ">" + to, 1.0)) / total})
+	for i in next.size():
+		result.append({"id": next[i], "chance": OUTCOME_CHANCES[i]})
 	return result
 
 

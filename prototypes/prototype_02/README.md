@@ -15,10 +15,12 @@ Open `prototypes/prototype_02/project.godot` in Godot 4.7 and press F5.
 | Action | Control |
 | --- | --- |
 | Pick a starting pack | Left-click one of the three cards |
-| Buy a creature | Left-click a shop card (coins = price) |
+| Buy a creature | Click and release a shop card for the bench, or drag it directly to a board cell / reserve slot |
 | Reroll shop | Click the circular-arrow button below the offers (1 gold) |
+| Upgrade shapeshift recharge | Click the wand / circular-arrow panel below the combat button (4 gold, once per duel) |
 | Lock / unlock an offer | Right-click its shop card; a gold padlock marks a lock |
 | Place / move / swap | Drag between your half of the board (bottom) and the reserve slots |
+| Combine / merge | Drag onto an identical creature of the same star rank; gold highlights show compatible targets |
 | Sell | Drag a creature onto the shop panel (refund = price) |
 | Start combat | Crossed-swords button (or Space) |
 | Shapeshift | Right-click any living creature during combat, friend or foe |
@@ -26,10 +28,17 @@ Open `prototypes/prototype_02/project.godot` in Godot 4.7 and press F5.
 | Experiment toggles | Wand: no-spell mode for both wizards (outside combat). Double chevron: combat speed x2 |
 
 Reading the board: blue ring = yours, red ring = the AI's. Purple orbs = spell
-charges (the arc shows recharge). Gold stars = permanent merge rank (1–3).
-A purple +number = temporary levels from allied transformations.
+charges (the arc shows recharge). Base creatures have no stars. Gold stars (1–3) show permanent merge upgrades.
+Three small circles show progress towards the next star: a single copy fills one,
+a manually combined pair fills two. A pair has no combat-stat bonus.
+These circles are hidden at rest. Hover reveals a creature's progress; dragging
+reveals progress only on compatible merge recipients, including shop drags.
+Temporary combat levels enlarge the creature image by 15% per level (additive,
+capped at +60%); no number or extra star is shown. Team bases, health bars,
+collision sizes and combat stats are unaffected by this visual scale.
 A white dashed ring = shapeshift immunity. Small pips beside a creature = status
 effects (green rim positive, red rim negative). Hearts = wizard health.
+A half-filled heart represents 0.5 health; the starting total remains 10 hearts.
 
 ## Rules implemented
 
@@ -39,32 +48,88 @@ All confirmed rules and delegated defaults of the design note, notably:
   combat, resolution; until a wizard has 0 of 10 health.
 - Gold income 3, 4, 5... per round, unspent gold kept. Three random fantasy offers
   per round, each bought once; prices 1-3; selling refunds the price.
-- Purchases go to the bench for manual placement. A full bench blocks purchases
-  unless the incoming copy immediately merges. Starting packs remain fielded.
+- A shop click buys onto the bench on mouse release. Dragging an offer instead
+  buys directly onto a free board cell, free bench slot, or compatible merge
+  recipient. Mouse-down only previews the offer. Invalid drops consume no gold
+  or offer. Direct board placement and explicit merge drops work with a full
+  bench; field capacity still applies. Purchases never combine unless dropped
+  onto a compatible recipient. Starting packs remain fielded.
+- Enemy preparation performs one action about every 0.55 s. Gold spending is
+  shown with flying coins and a counter pulse; purchased/repositioned creatures
+  slide into their cells over 0.42 s. The player can prepare simultaneously, but
+  combat waits for the enemy's sequence to finish. Simulations use the same
+  individual actions without presentation delays.
 - Reroll costs 1 gold and replaces all unlocked offers, including sold slots.
   Right-click toggles an offer lock, retained across rerolls and round refreshes;
   buying clears that slot's lock. All-locked rerolls consume nothing.
-- Three copies of the same purchased form and star rank merge automatically on
-  purchase. Three 1-star copies yield one 2-star; three 2-star copies yield one
-  3-star (nine base copies). Rank is capped at three. Merges use both board and
-  bench, preserve a fielded survivor's cell when possible, and free consumed slots.
-  Permanent ranks multiply HP and basic damage by 1 / 1.8 / 3.24, stacking with
+- Manually drop a creature onto an identical form of the same star rank, on the
+  board or bench. Two copies form a group with two of three circles filled,
+  without any health or damage bonus. The third copy completes the group and
+  grants one star with a gold burst and a distinct sound; progress resets to 1/3.
+  Three unstarred copies yield one 1-star; three 1-star copies yield
+  one 2-star; three 2-star copies yield one 3-star (3 / 9 / 27 base copies).
+  Rank is capped at three merge stars. Merges use both board and
+  bench, preserve the chosen recipient's position, and free consumed slots.
+  Combining two 2/3 groups consumes only the one copy needed for promotion;
+  the remaining source copy stays at its original location and rank. Maximum
+  rank creatures cannot combine. Unlike forms/ranks still swap normally.
+  The opposing wizard explicitly combines its copies during preparation.
+  Permanent ranks multiply HP and basic damage by 1 / 1.8 / 3.24 / 5.832 for 0 / 1 / 2 / 3 stars, stacking with
   temporary levels and persisting through transformations and between rounds.
   Ability magnitudes remain fixed. Selling refunds the combined base-copy value.
 - 8 x 6 board, 8 x 3 half per team; up to 6 fielded creatures and 6 in reserve.
 - Continuous movement, nearest-target default, soft separation, board bounds.
-- Loser loses 1 health per surviving enemy creature; mutual elimination or
+- Loser loses 0.5 health per surviving enemy creature; mutual elimination or
   60-second timeout is a draw with no damage.
-- Shapeshift: one starting charge, max three, one recharged every 3 s; 3 s target
+- A surviving loser gains 1 gold per heart lost. A lethal combat grants no gold
+  for any of its lost hearts, with no flying coins, gold sparkle or coin sound;
+  only the heart-loss effects remain. Both sides follow this rule; draws grant
+  no loss gold. This is in addition to normal round income.
+  Half-hearts accumulate across rounds: losing 0.5 grants no coin yet, and
+  losing the next 0.5 completes one gold. The HUD animates each half separately,
+  with coins only for completed whole hearts.
+  Resolution plays each heart loss in sequence: anticipation, heart burst,
+  wizard jolt, red fragments, a spinning coin arcing into the gold counter,
+  impact sparkles and a counter bounce, with separate break and coin sounds.
+  Health and gold settle once in the rules; the HUD reveals them in sync with
+  each burst and arrival. Long sequences finish before the next round/game over.
+- Shapeshift: one starting charge, max three, one recharged every 3 s; a one-time
+  4-gold upgrade reduces recharge to 2.4 s for the rest of this duel. The upgrade
+  resets in a new duel, applies to future combats, and is available to both sides.
+  3 s target
   immunity for both wizards; invalid casts consume nothing. Result drawn from the
-  eight-stage network (equal 1/3 chances). Keeps health %, heals 10% of new max HP,
+  eight-stage network, with fixed 55% / 30% / 15% outcome priorities per source
+  form (dominant outcome follows its tactical identity). Keeps health %, heals 10% of new max HP,
   readies the basic attack, keeps positive / removes negative statuses, ally casts
   give +1 level (+20% base HP and damage per level), enemy casts preserve level.
   Combat forms, temporary levels and statuses reset at the end of combat;
   permanent merge stars remain.
 - Ability cooldowns carry over across forms; a form never gets an instant ability
-  just by being entered.
+  just by being entered, except the rabbit's defining immediate backline leap.
 - Death: the entity is removed; a visual-only copy is rocketed off the board.
+
+## Music
+
+`scripts/audio/phase_music.gd` plays the supplied looping OGG tracks in `music/`:
+
+- Pack choice and preparation: `menu_super_auto_pets_loop.ogg`.
+- Combat: `battle_super_auto_pets_loop.ogg`.
+- Resolution fades battle music to silence so heart-loss and coin sounds remain
+  clear; the next preparation fades its track in. Game over remains silent.
+
+Every playback begins at zero volume and every stop happens only after reaching
+zero. Phase changes use a 1.2-second crossfade with a smooth amplitude curve.
+Rapid reversals continue from the current volumes; selecting the same track
+preserves its playback position. Both streams loop in Godot, and combat x2 does
+not change music speed. Music volume is initially -16 dB to leave room for effects.
+Fade duration and volume can be tuned with `PhaseMusic.FADE_SECONDS` and `MUSIC_DB`.
+
+The final duel result uses `sfx/victory.wav` when the opponent has no hearts left
+and `sfx/defeat.wav` when the player has no hearts left. These recordings start
+only on entering the game-over screen, after the final heart-loss sequence.
+Intermediate rounds and draws play neither recording; heart and coin effects
+provide round feedback. Each recording plays once at its original pitch on a
+dedicated voice. Music has faded out during resolution and stays silent at game over.
 
 ## Choices made for this prototype (3 November 2026)
 
@@ -74,8 +139,8 @@ Answers given by the user while scoping the implementation:
 - Top-down camera, synthesized sound effects, English as the (rare) UI language.
 - All 24 abilities implemented; short combats (~20-30 s); visible homing projectiles.
 - Hover shows the three outcomes with chances (no outcome-stat comparison).
-- Three thematic starting packs drawn from six; AI casts with a simple heuristic;
-  AI buys to balance roles and places frontline in front.
+- Three thematic starting packs drawn from six; the current AI evaluates a
+  three-pack sample, purchases and transformations using combat value (see below).
 - Tools: no-spell toggle, x2 combat speed, headless tests.
 
 Assistant-authored values (all adjustable in `scripts/data/creature_db.gd` and
@@ -84,8 +149,8 @@ Assistant-authored values (all adjustable in `scripts/data/creature_db.gd` and
 - Creature statistics and ability parameters for all 24 forms. HP was scaled by
   1.3 after simulation to reach the requested combat length.
 - Packs: vanguard, volley, arcane, skirmish, militia, sanctuary.
-- Enemy cast heuristic: favours wounded or debuffed allies (heal, cleanse, level);
-  casts on healthy, valuable enemies only occasionally; never sits on three charges.
+- Enemy casting evaluates expected outcome value, health, cleanse, levels and
+  the published probabilities; it avoids gifting stronger forms to weak enemies.
 - Reroll price and star multipliers are initial tuning values in `Rules`.
 
 ## Animal balance pass (3 November 2026)
@@ -94,8 +159,9 @@ Animals are intended as useful alternative combat roles. They are not a weaker
 roster or guaranteed upgrades in every situation. The shared transformation,
 health-percentage and level rules remain the same.
 
-- Rabbit: 120 base HP and 10 damage every 0.65 s; shorter, less frequent hops
-  preserve its mobility while reducing time lost returning to melee.
+- Rabbit: now 135 base HP and 10 damage every 0.65 s; immediately leaps behind
+  the deepest enemy in 0.5 s, then attacks that target. It can leap again after
+  an 8-second cooldown when the enemy backline is out of reach.
 - Deer: 155 HP, a larger healing aura and 5 HP/s regeneration for nearby allies.
 - Peacock: 140 HP, a larger area and a stronger, longer attack-speed debuff.
 - Snake: 125 HP, stronger basic attacks and poison at 7 HP/s.
@@ -107,6 +173,35 @@ health-percentage and level rules remain the same.
 These are first-pass tuning values. Simulations check pacing and rule behavior;
 playtesting is still needed to judge each form's situational value.
 
+## Combat and AI rebalance (3 November 2026)
+
+- Frost mage: 115 HP, 7 basic damage; every 9 s, casts a stationary 3x3-cell
+  blizzard for 3 s on an enemy cluster within range. First cast starts at 2 s.
+  The area deals 6 damage/s before armour, reduces movement by 45%, and increases
+  attack intervals by 45%. Allies and enemies outside the square are unaffected.
+  Storms persist after caster death or transformation, then expire normally.
+- Assassin purchase price is now 2 gold.
+- AI no longer stops improving once six creatures are fielded. It buys useful
+  duplicates, completes stars, replaces weaker units based on combat value,
+  protects frontline/ranged coverage, and spends on at most two rerolls per
+  preparation. Valuable unaffordable duplicates can be locked for the next round.
+  It can buy the recharge upgrade from its own gold. It avoids sacrificing a
+  fielded body just to create an unfinished 2/3 group.
+- Placement ranks actual combat power, not resale value (partial groups give no
+  extra strength). Supports stay near the frontline; ranged units spread out to
+  reduce blizzard exposure. Casting uses expected weighted form value and avoids
+  interrupting an airborne attack or a ready blizzard.
+
+An optional comparison against the frozen previous policy won 20/20 duels over
+10 seeds with both board orientations. Both policies used the current roster,
+health/economy rules and equal spell decision intervals; neither received free
+gold or advance knowledge of random outcomes. This measures improvement against
+the old policy, not expected win rate against a human player.
+
+```bash
+godot --headless --path prototypes/prototype_02 res://tests/ai_benchmark.tscn
+```
+
 ## Tests
 
 ```bash
@@ -116,7 +211,13 @@ godot --headless --path prototypes/prototype_02 res://tests/run_tests.tscn
 Checks the network (24 forms, 3 cross-roster links each, no direct reverse,
 everything reachable, shortest return of 8), charges and recharge timing, the
 transformation rules, immunity, economy and capacities, shop locks and rerolls,
-bench-only purchases, chained merges and star persistence, preparation controls,
+click and drag purchases, invalid-drop cancellation, animated enemy preparation,
+conditional merge-progress visibility, manual partial groups and star persistence, overflow and
+resale-value conservation, preparation controls,
+half-heart damage, whole-heart compensation carried across rounds, lethal loss
+without gold, reward presentation, blizzard area/duration, recharge upgrades,
+weighted outcome distributions and AI purchasing/merging/casting decisions,
+looping music, fades, crossfade reversals and phase-to-track transitions,
 round reset, several
 abilities, then simulates 20 AI-vs-AI duels with and without casting and prints
 the average combat and duel lengths.
@@ -124,7 +225,7 @@ the average combat and duel lengths.
 `res://tests/capture.tscn` (not headless) plays a scripted sequence of the real game
 and saves screenshots to `user://captures/`.
 
-Latest simulation (AI vs AI, after shop and merge changes): combats average about 25 s with casting and 22 s
-without; duels last about 3-4 rounds. Short duels mean income rarely exceeds
-6 gold; wizard health or damage per survivor are the first knobs to try if the
-economy needs more rounds to matter.
+Latest simulation (20 AI-vs-AI duels per mode, after the combat/AI rebalance):
+combats average about 25 s with casting and 19 s without; duels average 11.7 and
+9.2 rounds respectively. The half-heart rule gives purchases, merges and the
+permanent recharge upgrade more rounds to matter.

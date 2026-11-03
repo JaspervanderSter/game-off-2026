@@ -3,7 +3,10 @@ extends RefCounted
 ## Persistent state of one wizard across the duel: health, gold, roster, shop.
 
 var team: int
-var hp := Rules.WIZARD_HP
+var hp := float(Rules.WIZARD_HP)
+var loss_gold_progress := 0.0 # half-heart compensation carries across rounds
+var shift_recharge_upgraded := false
+var ai_rerolls := 0
 var gold := 0
 var creatures: Array[OwnedCreature] = []
 var offers: Array[String] = [] # "" once bought
@@ -12,6 +15,34 @@ var locked: Array[bool] = [false, false, false]
 
 func _init(team_id: int) -> void:
 	team = team_id
+
+
+## A surviving loser receives one gold per heart lost. Lethal losses grant none.
+func take_round_damage(survivors: int) -> float:
+	var lost := minf(maxi(survivors, 0) * Rules.DAMAGE_PER_SURVIVOR, hp)
+	hp -= lost
+	if hp > 0:
+		loss_gold_progress += lost
+		var reward := floori(loss_gold_progress)
+		gold += reward
+		loss_gold_progress -= reward
+	return lost
+
+
+func can_upgrade_shift_recharge() -> bool:
+	return not shift_recharge_upgraded and gold >= Rules.SHIFT_RECHARGE_COST
+
+
+func upgrade_shift_recharge() -> bool:
+	if not can_upgrade_shift_recharge():
+		return false
+	gold -= Rules.SHIFT_RECHARGE_COST
+	shift_recharge_upgraded = true
+	return true
+
+
+func shift_recharge_time() -> float:
+	return Rules.UPGRADED_RECHARGE_TIME if shift_recharge_upgraded else Rules.RECHARGE_TIME
 
 
 func fielded() -> Array[OwnedCreature]:
@@ -141,58 +172,95 @@ func reroll(rng: RandomNumberGenerator) -> bool:
 	return true
 
 
-func _merge_candidates(id: String, rank: int) -> Array[OwnedCreature]:
-	var result: Array[OwnedCreature] = []
-	for c in creatures:
-		if c.form_id == id and c.stars == rank:
-			result.append(c)
-	return result
-
-
 func can_buy(index: int) -> bool:
+	return _offer_affordable(index) and free_slot() >= 0
+
+
+func _offer_affordable(index: int) -> bool:
 	if index < 0 or index >= offers.size() or offers[index] == "":
 		return false
-	# A third copy may be bought even with a full bench: it merges immediately.
-	return gold >= CreatureDB.get_form(offers[index]).price and (free_slot() >= 0 or _merge_candidates(offers[index], 1).size() >= 2)
+	return gold >= CreatureDB.get_form(offers[index]).price
 
 
 func buy(index: int) -> OwnedCreature:
 	if not can_buy(index):
 		return null
+	var slot := free_slot()
+	var c := _purchase(index)
+	c.slot = slot
+	return c
+
+
+## Direct shop drops are validated before charging; they need no spare bench
+## slot when placing on an empty board cell or explicitly combining a copy.
+func buy_to_cell(index: int, cell: Vector2i) -> OwnedCreature:
+	if not _offer_affordable(index) or not owns_cell(cell):
+		return null
+	var target := at_cell(cell)
+	if target == null:
+		if field_count() >= Rules.FIELD_CAP:
+			return null
+	elif not can_merge_offer(index, target):
+		return null
+	var c := _purchase(index)
+	if target != null:
+		merge(c, target)
+		return target
+	c.cell = cell
+	return c
+
+
+func buy_to_slot(index: int, slot: int) -> OwnedCreature:
+	if not _offer_affordable(index) or slot < 0 or slot >= Rules.RESERVE_CAP:
+		return null
+	var target := at_slot(slot)
+	if target != null and not can_merge_offer(index, target):
+		return null
+	var c := _purchase(index)
+	if target != null:
+		merge(c, target)
+		return target
+	c.slot = slot
+	return c
+
+
+func can_merge_offer(index: int, target: OwnedCreature) -> bool:
+	return _offer_affordable(index) and target != null and target in creatures \
+		and target.form_id == offers[index] and target.stars == 0
+
+
+func _purchase(index: int) -> OwnedCreature:
 	var id := offers[index]
 	gold -= CreatureDB.get_form(id).price
 	offers[index] = ""
 	locked[index] = false
 	var c := OwnedCreature.new(id)
-	c.slot = free_slot()
 	creatures.append(c)
-	return _merge(c)
-
-
-## Merge chains keep a fielded copy and its cell whenever possible. Otherwise
-## the result stays on the bench; consumed copies immediately free their slots.
-func _merge(c: OwnedCreature) -> OwnedCreature:
-	while c.stars < Rules.MAX_STARS:
-		var matches := _merge_candidates(c.form_id, c.stars)
-		if matches.size() < 3:
-			break
-		matches.sort_custom(func(a, b):
-			if a.is_fielded() != b.is_fielded():
-				return a.is_fielded()
-			return a.uid < b.uid)
-		var keep: OwnedCreature = matches[0]
-		# Include the incoming copy so the caller always receives a live result.
-		var consumed: Array[OwnedCreature] = []
-		if c != keep:
-			consumed.append(c)
-		for other in matches:
-			if other != keep and other not in consumed and consumed.size() < 2:
-				consumed.append(other)
-		for other in consumed:
-			creatures.erase(other)
-		keep.stars += 1
-		c = keep
 	return c
+
+
+## A manual drop combines only identical forms at the same permanent rank.
+func can_merge(source: OwnedCreature, target: OwnedCreature) -> bool:
+	return source != null and target != null and source != target \
+		and source in creatures and target in creatures \
+		and source.form_id == target.form_id and source.stars == target.stars \
+		and target.stars < Rules.MAX_STARS
+
+
+## Partial groups grant no stats. Consume only what completes the target;
+## overflow stays in the source at its original board cell or bench slot.
+func merge(source: OwnedCreature, target: OwnedCreature) -> bool:
+	if not can_merge(source, target):
+		return false
+	var used := mini(source.merge_copies, 3 - target.merge_copies)
+	target.merge_copies += used
+	source.merge_copies -= used
+	if source.merge_copies == 0:
+		creatures.erase(source)
+	if target.merge_copies == 3:
+		target.stars += 1
+		target.merge_copies = 1
+	return true
 
 
 ## Sells for the purchase price (delegated default).
@@ -210,6 +278,8 @@ func move_to_cell(c: OwnedCreature, cell: Vector2i) -> bool:
 	var other := at_cell(cell)
 	if other == c:
 		return true
+	if can_merge(c, other):
+		return merge(c, other)
 	if other == null:
 		if not c.is_fielded() and field_count() >= Rules.FIELD_CAP:
 			return false
@@ -227,6 +297,8 @@ func move_to_slot(c: OwnedCreature, slot: int) -> bool:
 	var other := at_slot(slot)
 	if other == c:
 		return true
+	if can_merge(c, other):
+		return merge(c, other)
 	if other != null:
 		other.cell = c.cell
 		other.slot = c.slot

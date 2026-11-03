@@ -16,6 +16,7 @@ const RESERVE_CAP := 6
 
 # Duel.
 const WIZARD_HP := 10
+const DAMAGE_PER_SURVIVOR := 0.5
 const FIRST_INCOME := 3 # +1 gold each subsequent round
 const SHOP_SIZE := 3
 const REROLL_COST := 1
@@ -26,8 +27,12 @@ const COMBAT_TIMEOUT := 60.0
 const START_CHARGES := 1
 const MAX_CHARGES := 3
 const RECHARGE_TIME := 3.0
+const SHIFT_RECHARGE_COST := 4
+const UPGRADED_RECHARGE_TIME := 2.4
 const TARGET_IMMUNITY := 3.0
 const SHIFT_HEAL := 0.10 # fraction of the new max HP
+const LEVEL_VISUAL_GROWTH := 0.15 # additive image scale per temporary level
+const MAX_LEVEL_VISUAL_SCALE := 1.6 # keep crowded fights readable
 const LEVEL_SCALE := 0.20 # max HP and basic damage per level above 1
 
 # Screen layout (1280 x 720).
@@ -43,7 +48,7 @@ static func income(round_num: int) -> int:
 
 
 static func star_mult(stars: int) -> float:
-	return pow(1.8, clampi(stars, 1, MAX_STARS) - 1)
+	return pow(1.8, clampi(stars, 0, MAX_STARS))
 
 
 static func level_mult(level: int) -> float:

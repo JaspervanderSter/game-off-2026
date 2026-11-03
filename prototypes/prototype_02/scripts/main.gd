@@ -5,6 +5,9 @@ extends Node2D
 enum Phase { PACK, PREP, COMBAT, RESOLVE, OVER }
 
 const RESOLVE_TIME := 2.4
+const ENEMY_ACTION_TIME := 0.55
+const ENEMY_MOVE_TIME := 0.42
+const SHOP_DRAG_DISTANCE := 8.0
 
 var phase := Phase.PACK
 var player: WizardState
@@ -17,19 +20,30 @@ var rng := RandomNumberGenerator.new()
 var no_spells := false # experiment toggle: disables casting for both wizards
 var fast := false # combat speed x2
 var drag: OwnedCreature = null
+var shop_drag_index := -1
+var shop_drag_origin := Vector2.ZERO
+var shop_drag_position := Vector2.ZERO
+var shop_drag_active := false
+var enemy_preparing := false
+var enemy_action := {}
+var enemy_moves := {}
+var _enemy_wait := 0.0
 var hover_info := {}
 var last_result := {}
-var last_damage := 0
+var last_damage := 0.0
 var last_damage_team := -1
 var _resolve_t := 0.0
 
 var board_view: BoardView
 var fx: FxLayer
 var hud: Hud
+var music: PhaseMusic
 
 
 func _ready() -> void:
 	rng.randomize()
+	music = PhaseMusic.new()
+	add_child(music)
 	board_view = BoardView.new()
 	board_view.game = self
 	board_view.position = Rules.BOARD_POS
@@ -54,11 +68,20 @@ func new_duel() -> void:
 	states = [player, enemy]
 	round_num = 0
 	drag = null
+	shop_drag_index = -1
+	shop_drag_active = false
+	enemy_preparing = false
+	enemy_action.clear()
+	enemy_moves.clear()
 	last_result = {}
+	last_damage = 0
+	last_damage_team = -1
+	hud.clear_loss_rewards()
 	var packs := CreatureDB.PACKS.duplicate()
 	packs.shuffle()
 	pack_choices = packs.slice(0, 3)
 	phase = Phase.PACK
+	music.transition_to("prep")
 
 
 func choose_pack(index: int) -> void:
@@ -73,16 +96,22 @@ func choose_pack(index: int) -> void:
 func start_round() -> void:
 	round_num += 1
 	for s in states:
+		s.ai_rerolls = 0
 		s.gold += Rules.income(round_num)
 		s.refresh_offers(rng)
-	EnemyAI.shop(enemy, rng)
+	enemy_preparing = true
+	_enemy_wait = 0.3
+	enemy_action.clear()
+	enemy_moves.clear()
 	phase = Phase.PREP
+	music.transition_to("prep")
 
 
 func start_combat() -> void:
-	if player.field_count() == 0:
+	if phase != Phase.PREP or enemy_preparing or drag != null or player.field_count() == 0:
 		Sfx.play("fail")
 		return
+	hud.clear_loss_rewards()
 	battle = Battle.new()
 	battle.position = Rules.BOARD_POS
 	add_child(battle)
@@ -95,11 +124,14 @@ func start_combat() -> void:
 	battle.ended.connect(_on_battle_ended)
 	drag = null
 	phase = Phase.COMBAT
+	music.transition_to("battle")
 	Sfx.play("click")
 
 
 func _physics_process(dt: float) -> void:
 	match phase:
+		Phase.PREP:
+			_advance_enemy_preparation(dt)
 		Phase.COMBAT:
 			battle.step(dt)
 			if fast and phase == Phase.COMBAT:
@@ -111,19 +143,23 @@ func _physics_process(dt: float) -> void:
 
 
 func _on_battle_ended(result: Dictionary) -> void:
+	hud.clear_loss_rewards()
 	last_result = result
 	last_damage = 0
 	last_damage_team = -1
 	var winner: int = result.winner
 	if winner >= 0:
 		var loser := states[1 - winner]
-		last_damage = mini(result.survivors, loser.hp)
+		var hp_before := loser.hp
+		var gold_before := loser.gold
+		var compensation_before := loser.loss_gold_progress
+		last_damage = loser.take_round_damage(result.survivors)
 		last_damage_team = loser.team
-		loser.hp -= result.survivors
-	Sfx.play("win" if winner == 0 else "lose" if winner == 1 else "click")
-	if last_damage > 0:
-		Sfx.play("damage")
-	_resolve_t = RESOLVE_TIME
+		hud.begin_loss_rewards(loser.team, hp_before, last_damage, loser.gold - gold_before, compensation_before)
+	# Intermediate rounds use only heart/coin feedback. Result recordings are
+	# reserved for the final game-over transition, after the last hearts break.
+	music.transition_to("")
+	_resolve_t = maxf(RESOLVE_TIME, hud.loss_reward_duration())
 	phase = Phase.RESOLVE
 
 
@@ -131,9 +167,11 @@ func _finish_round() -> void:
 	battle.queue_free()
 	battle = null
 	if player.hp <= 0 or enemy.hp <= 0:
-		player.hp = maxi(0, player.hp)
-		enemy.hp = maxi(0, enemy.hp)
+		player.hp = maxf(0, player.hp)
+		enemy.hp = maxf(0, enemy.hp)
 		phase = Phase.OVER
+		music.transition_to("")
+		Sfx.play("lose" if player.hp == 0 else "win")
 	else:
 		start_round()
 
@@ -149,6 +187,71 @@ func _on_unit_transformed(u: Unit, _caster: int, _from: String) -> void:
 
 
 # --- Input ---------------------------------------------------------------------------
+
+func _advance_enemy_preparation(dt: float) -> void:
+	for move in enemy_moves.values():
+		move.t = minf(move.t + dt, ENEMY_MOVE_TIME)
+	if not enemy_action.is_empty():
+		enemy_action.t += dt
+	if not enemy_preparing:
+		return
+	_enemy_wait -= dt
+	if _enemy_wait > 0.0:
+		return
+	var before := {}
+	for c in enemy.fielded():
+		before[c.uid] = enemy_display_position(c)
+	var action := EnemyAI.shop_step(enemy, rng)
+	if action.is_empty():
+		enemy_preparing = false
+		return
+	action.t = 0.0
+	enemy_action = action
+	_enemy_wait = ENEMY_ACTION_TIME
+	enemy_moves.clear()
+	var entrance := Hud.ENEMY_BLOCK.position + Vector2(42, 48) - Rules.BOARD_POS
+	for c in enemy.fielded():
+		var dest := Rules.cell_center(c.cell)
+		var origin: Vector2 = before.get(c.uid, entrance)
+		if origin.distance_to(dest) > 0.1:
+			enemy_moves[c.uid] = {"from": origin, "to": dest, "t": 0.0}
+	if action.kind == "buy":
+		Sfx.play("buy")
+	elif action.kind == "merge":
+		for c in enemy.fielded():
+			if c.uid == action.uid:
+				fx.add("merge" if action.promoted else "combine", Rules.cell_center(c.cell))
+		Sfx.play("merge" if action.promoted else "combine")
+	elif action.kind == "sell":
+		Sfx.play("coin_gain")
+	else:
+		Sfx.play("buy" if action.kind == "upgrade" else "click")
+
+
+func enemy_display_position(c: OwnedCreature) -> Vector2:
+	if not enemy_moves.has(c.uid):
+		return Rules.cell_center(c.cell)
+	var move: Dictionary = enemy_moves[c.uid]
+	var k := clampf(float(move.t) / ENEMY_MOVE_TIME, 0.0, 1.0)
+	return Vector2(move.from).lerp(move.to, k * k * (3.0 - 2.0 * k))
+
+
+func enemy_is_moving(c: OwnedCreature) -> bool:
+	return enemy_moves.has(c.uid) and float(enemy_moves[c.uid].t) < ENEMY_MOVE_TIME
+
+
+func drag_visual_active() -> bool:
+	return drag != null and (shop_drag_index < 0 or shop_drag_active)
+
+
+func can_drop_merge(c: OwnedCreature) -> bool:
+	if not drag_visual_active():
+		return false
+	return player.can_merge_offer(shop_drag_index, c) if shop_drag_index >= 0 else player.can_merge(drag, c)
+
+
+func show_merge_progress(c: OwnedCreature) -> bool:
+	return hover_info.get("owned") == c or can_drop_merge(c)
 
 func board_cell(screen_pos: Vector2) -> Vector2i:
 	var local := (screen_pos - Rules.BOARD_POS) / Rules.CELL
@@ -173,7 +276,11 @@ func _owned_at(pos: Vector2) -> OwnedCreature:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
+	if event is InputEventMouseMotion and shop_drag_index >= 0:
+		shop_drag_position = event.position
+		if event.position.distance_to(shop_drag_origin) >= SHOP_DRAG_DISTANCE:
+			shop_drag_active = true
+	elif event is InputEventMouseButton:
 		var pos: Vector2 = event.position
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			_left_press(pos)
@@ -205,6 +312,9 @@ func _left_press(pos: Vector2) -> void:
 					choose_pack(i)
 					return
 		Phase.PREP:
+			if Hud.SHIFT_UPGRADE_RECT.has_point(pos):
+				Sfx.play("buy" if player.upgrade_shift_recharge() else "fail")
+				return
 			if Hud.REROLL_RECT.has_point(pos):
 				Sfx.play("click" if player.reroll(rng) else "fail")
 				return
@@ -213,8 +323,12 @@ func _left_press(pos: Vector2) -> void:
 				return
 			for i in Rules.SHOP_SIZE:
 				if Hud.offer_rect(i).has_point(pos):
-					if player.buy(i) != null:
-						Sfx.play("buy")
+					if player.offers[i] != "" and player.gold >= CreatureDB.get_form(player.offers[i]).price:
+						shop_drag_index = i
+						shop_drag_origin = pos
+						shop_drag_position = pos
+						shop_drag_active = false
+						drag = OwnedCreature.new(player.offers[i])
 					else:
 						Sfx.play("fail")
 					return
@@ -228,6 +342,9 @@ func _left_press(pos: Vector2) -> void:
 
 
 func _left_release(pos: Vector2) -> void:
+	if shop_drag_index >= 0:
+		_release_shop_offer(pos)
+		return
 	if drag == null:
 		return
 	var c := drag
@@ -238,13 +355,54 @@ func _left_release(pos: Vector2) -> void:
 		player.sell(c)
 		Sfx.play("buy")
 		return
+	var recipient := _owned_at(pos)
+	var combining := player.can_merge(c, recipient)
+	var previous_stars := recipient.stars if combining else -1
 	var slot := _reserve_slot_at(pos)
 	var ok := false
 	if slot >= 0:
 		ok = player.move_to_slot(c, slot)
 	elif player.owns_cell(board_cell(pos)):
 		ok = player.move_to_cell(c, board_cell(pos))
-	Sfx.play("click" if ok else "fail")
+	if ok and combining:
+		_merge_feedback(recipient, previous_stars)
+	else:
+		Sfx.play("click" if ok else "fail")
+
+
+func _release_shop_offer(pos: Vector2) -> void:
+	var index := shop_drag_index
+	var moved := shop_drag_active or pos.distance_to(shop_drag_origin) >= SHOP_DRAG_DISTANCE
+	shop_drag_index = -1
+	shop_drag_active = false
+	drag = null
+	if phase != Phase.PREP:
+		return
+	var recipient := _owned_at(pos)
+	var combining := player.can_merge_offer(index, recipient)
+	var previous_stars := recipient.stars if combining else -1
+	var bought: OwnedCreature = null
+	if not moved and Hud.offer_rect(index).has_point(pos):
+		bought = player.buy(index)
+	elif player.owns_cell(board_cell(pos)):
+		bought = player.buy_to_cell(index, board_cell(pos))
+	else:
+		var slot := _reserve_slot_at(pos)
+		if slot >= 0:
+			bought = player.buy_to_slot(index, slot)
+	if bought == null:
+		Sfx.play("fail")
+	elif combining:
+		_merge_feedback(bought, previous_stars)
+	else:
+		Sfx.play("buy")
+
+
+func _merge_feedback(recipient: OwnedCreature, previous_stars: int) -> void:
+	var ranked_up := recipient.stars > previous_stars
+	var centre := Rules.BOARD_POS + Rules.cell_center(recipient.cell) if recipient.is_fielded() else Rules.reserve_slot_rect(recipient.slot).get_center()
+	fx.add("merge" if ranked_up else "combine", centre - Rules.BOARD_POS)
+	Sfx.play("merge" if ranked_up else "combine")
 
 
 func _right_press(pos: Vector2) -> void:
@@ -279,8 +437,11 @@ func _process(_dt: float) -> void:
 			if c != null:
 				hover_info = {"form": c.form_id, "team": 0, "owned": c, "pos": mouse}
 			else:
-				var cell := board_cell(mouse)
-				var e: OwnedCreature = enemy.at_cell(cell) if enemy.owns_cell(cell) else null
+				var e: OwnedCreature = null
+				for candidate in enemy.fielded():
+					if enemy_display_position(candidate).distance_to(mouse - Rules.BOARD_POS) < Rules.BODY_RADIUS * Rules.CELL:
+						e = candidate
+						break
 				if e != null:
 					hover_info = {"form": e.form_id, "team": 1, "owned": e, "pos": mouse}
 				else:

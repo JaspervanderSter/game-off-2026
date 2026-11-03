@@ -1,11 +1,12 @@
 class_name ShiftSpell
 extends RefCounted
 ## Charges of one wizard's shapeshift spell during a combat.
-## One charge at start, three at most, one charge recharged every three
-## seconds sequentially. Casting never resets a running recharge timer.
+## One charge at start, three at most. Default recharge is three seconds;
+## the purchased upgrade reduces it to 2.4. Casting never resets the timer.
 
 var charges := Rules.START_CHARGES
 var recharge := 0.0 # seconds accumulated toward the next charge
+var recharge_time := Rules.RECHARGE_TIME
 
 
 func tick(dt: float) -> void:
@@ -13,8 +14,8 @@ func tick(dt: float) -> void:
 		recharge = 0.0
 		return
 	recharge += dt
-	while recharge >= Rules.RECHARGE_TIME and charges < Rules.MAX_CHARGES:
-		recharge -= Rules.RECHARGE_TIME
+	while recharge >= recharge_time and charges < Rules.MAX_CHARGES:
+		recharge -= recharge_time
 		charges += 1
 	if charges >= Rules.MAX_CHARGES:
 		recharge = 0.0
@@ -29,4 +30,4 @@ func consume() -> void:
 
 
 func progress() -> float:
-	return recharge / Rules.RECHARGE_TIME
+	return recharge / recharge_time

@@ -9,6 +9,8 @@ func add(kind: String, pos: Vector2, extra: Dictionary = {}) -> void:
 	var item := {"kind": kind, "pos": pos, "t": 0.0, "life": 0.5}
 	item.merge(extra, true)
 	match kind:
+		"merge", "combine":
+			item.life = 0.65 if kind == "merge" else 0.32
 		"shift":
 			item.life = 0.7
 			for i in 8:
@@ -53,6 +55,12 @@ func _draw() -> void:
 		var k: float = item.t / item.life
 		var p: Vector2 = item.pos
 		match item.kind:
+			"merge", "combine":
+				draw_arc(p, 15 + 38 * k, 0, TAU, 32, Color(1, 0.85, 0.25, 1.0 - k), 4 * (1.0 - k) + 1, true)
+				if item.kind == "merge":
+					Icons.star(self, p + Vector2(0, -35 - 25 * k), 18 * sin(PI * k), Color(1, 0.9, 0.3, 1.0 - k))
+					for j in 8:
+						Icons.star(self, p + Vector2.from_angle(TAU * j / 8.0) * (20 + 35 * k), 5 * (1.0 - k), Color(1, 0.9, 0.3, 1.0 - k))
 			"shift":
 				var col := Icons.MAGIC
 				col.a = 1.0 - k

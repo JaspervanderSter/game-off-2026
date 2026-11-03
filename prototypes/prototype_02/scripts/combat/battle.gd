@@ -14,6 +14,7 @@ const PROJECTILE_SPEED := 9.0 * Rules.CELL
 
 var units: Array[Unit] = []
 var projectiles: Array[Dictionary] = []
+var blizzards: Array[Dictionary] = []
 var spells: Array[ShiftSpell] = [ShiftSpell.new(), ShiftSpell.new()]
 var ai_casting: Array[bool] = [false, true]
 var casting_enabled := true
@@ -40,15 +41,17 @@ func setup(teams: Array[WizardState], seed_value: int = -1) -> void:
 	else:
 		rng.randomize()
 	for state in teams:
+		spells[state.team].recharge_time = state.shift_recharge_time()
 		for c in state.fielded():
-			spawn(state.team, c.form_id, Rules.cell_center(c.cell), c.uid, c.stars)
+			spawn(state.team, c.form_id, Rules.cell_center(c.cell), c.uid, c.stars, c.merge_copies)
 	for t in 2:
 		_ai_delay[t] = rng.randf_range(1.0, 2.0)
 
 
-func spawn(team: int, form: String, pos: Vector2, uid: int = 0, stars: int = 1) -> Unit:
+func spawn(team: int, form: String, pos: Vector2, uid: int = 0, stars: int = 0, copies: int = 1) -> Unit:
 	var u := Unit.new()
 	u.stars = stars
+	u.merge_copies = copies
 	u.setup(self, uid, team, form, pos)
 	units.append(u)
 	add_child(u)
@@ -68,6 +71,7 @@ func step(dt: float) -> void:
 	for u in units.duplicate():
 		u.tick(dt)
 	_update_projectiles(dt)
+	_tick_blizzards(dt)
 	_separate()
 	_reap()
 	_check_end()
@@ -197,9 +201,64 @@ func _update_projectiles(dt: float) -> void:
 
 
 func _draw_projectiles() -> void:
+	for storm in blizzards:
+		var rect: Rect2 = storm.rect
+		draw_blizzard(rect, storm.t)
 	for p in projectiles:
 		var dir: Vector2 = (p.aim - p.pos).normalized()
 		Icons.projectile(_projectile_layer, p.kind, p.pos, dir)
+
+
+func best_blizzard_center(src: Unit) -> Vector2:
+	var best := Vector2(INF, INF)
+	var score := -1.0
+	for candidate in living(1 - src.team):
+		if src.edge_dist(candidate) > src.range_px():
+			continue
+		var centre := (candidate.position / CELL).floor() * CELL + Vector2.ONE * CELL * 0.5
+		centre = centre.clamp(Vector2.ONE * CELL * 1.5, Rules.BOARD_SIZE - Vector2.ONE * CELL * 1.5)
+		var rect := Rect2(centre - Vector2.ONE * CELL * 1.5, Vector2.ONE * CELL * 3.0)
+		var value := 0.0
+		for enemy in living(1 - src.team):
+			if rect.has_point(enemy.position):
+				value += 1.0 + (1.0 - enemy.hp / enemy.max_hp) * 0.2
+		if value > score:
+			score = value
+			best = centre
+	return best
+
+
+func add_blizzard(src: Unit, centre: Vector2) -> void:
+	blizzards.append({"rect": Rect2(centre - Vector2.ONE * CELL * 1.5, Vector2.ONE * CELL * 3.0),
+		"team": src.team, "src": src, "t": 0.0, "remaining": src.data.duration,
+		"dps": src.data.storm_dps, "slow": src.data.power})
+
+
+func _tick_blizzards(dt: float) -> void:
+	for storm in blizzards.duplicate():
+		var step := minf(dt, storm.remaining)
+		for enemy in living(1 - int(storm.team)):
+			if storm.rect.has_point(enemy.position):
+				var src: Unit = storm.src if is_instance_valid(storm.src) else null
+				damage(src, enemy, storm.dps * step, "dot")
+				if enemy.alive:
+					enemy.add_status("chilled", 0.35, storm.slow, false)
+		storm.t += step
+		storm.remaining -= step
+		if storm.remaining <= 0.0:
+			blizzards.erase(storm)
+
+
+func draw_blizzard(rect: Rect2, elapsed: float) -> void:
+	var ci := _projectile_layer
+	ci.draw_rect(rect, Color(0.45, 0.78, 1.0, 0.20))
+	ci.draw_rect(rect, Color(0.6, 0.9, 1.0, 0.8), false, 2.0)
+	for i in range(1, 3):
+		ci.draw_line(rect.position + Vector2(i * CELL, 0), rect.position + Vector2(i * CELL, rect.size.y), Color(0.7, 0.9, 1.0, 0.12), 1.0)
+		ci.draw_line(rect.position + Vector2(0, i * CELL), rect.position + Vector2(rect.size.x, i * CELL), Color(0.7, 0.9, 1.0, 0.12), 1.0)
+	for i in 28:
+		var p := rect.position + Vector2(fposmod(i * 43.0 + elapsed * 60.0, rect.size.x), fposmod(i * 71.0 + elapsed * 85.0, rect.size.y))
+		ci.draw_line(p + Vector2(-3, -4), p + Vector2(3, 4), Color(0.9, 0.97, 1.0, 0.85), 2.0, true)
 
 
 # --- Spatial helpers -------------------------------------------------------------
@@ -213,11 +272,11 @@ func _separate() -> void:
 	var min_d := 2.0 * Rules.BODY_RADIUS * CELL
 	for i in units.size():
 		var a := units[i]
-		if a.dive_target != null:
+		if a.dive_target != null or a.jump_t > 0.0:
 			continue
 		for j in range(i + 1, units.size()):
 			var b := units[j]
-			if b.dive_target != null:
+			if b.dive_target != null or b.jump_t > 0.0:
 				continue
 			var d := a.position - b.position
 			var dist := d.length()
@@ -262,6 +321,18 @@ func nearest_enemy(of: Unit) -> Unit:
 			if d < best_d:
 				best_d = d
 				best = u
+	return best
+
+
+## Deepest row relative to the opposing team's side, rather than diagonal distance.
+func backline_enemy(of: Unit) -> Unit:
+	var best: Unit = null
+	var depth := -INF
+	for u in living(1 - of.team):
+		var value := -u.position.y if of.team == 0 else u.position.y
+		if value > depth or (is_equal_approx(value, depth) and best != null and of.position.distance_squared_to(u.position) < of.position.distance_squared_to(best.position)):
+			depth = value
+			best = u
 	return best
 
 

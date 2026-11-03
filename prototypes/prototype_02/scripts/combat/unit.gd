@@ -12,7 +12,8 @@ var team := 0
 var form_id := ""
 var data: Dictionary
 var level := 1
-var stars := 1
+var stars := 0
+var merge_copies := 1
 var max_hp := 1.0
 var hp := 1.0
 var alive := true
@@ -33,6 +34,10 @@ var hunted := false
 var hunt_retarget := 0.0
 var dash_vel := Vector2.ZERO
 var dash_t := 0.0
+var jump_t := 0.0
+var jump_start := Vector2.ZERO
+var jump_end := Vector2.ZERO
+var jump_target: Unit = null
 var last_hurt := -99.0
 
 # Visual-only state.
@@ -79,11 +84,16 @@ func transform_to(new_form: String, gain_level: bool) -> void:
 	# immediately ready ability.
 	if ability_timer <= 0.0:
 		ability_timer = data.get("cd", 0.0)
+	# Rabbit's defining entry action is an immediate backline leap.
+	if data.ability == "hop":
+		ability_timer = 0.0
 	shell_t = 0.0
 	charging = false
 	dive_target = null
 	parry_ready = false
 	hunted = false
+	jump_t = 0.0
+	jump_target = null
 	immune_t = Rules.TARGET_IMMUNITY
 	pop_t = 0.45
 
@@ -92,6 +102,10 @@ func transform_to(new_form: String, gain_level: bool) -> void:
 
 func stat_mult() -> float:
 	return Rules.level_mult(level) * Rules.star_mult(stars)
+
+
+func visual_scale() -> float:
+	return minf(1.0 + Rules.LEVEL_VISUAL_GROWTH * (level - 1), Rules.MAX_LEVEL_VISUAL_SCALE)
 
 
 func attack_damage() -> float:
@@ -110,6 +124,8 @@ func attack_interval() -> float:
 	interval /= 1.0 + bonus
 	if statuses.has("dazzled"):
 		interval *= statuses.dazzled.v
+	if statuses.has("chilled"):
+		interval *= 1.0 + statuses.chilled.v
 	return interval
 
 
@@ -169,6 +185,9 @@ func tick(dt: float) -> void:
 	attack_timer = maxf(0.0, attack_timer - dt)
 	ability_timer = maxf(0.0, ability_timer - dt)
 	_tick_visuals(dt)
+	if jump_t > 0.0:
+		_tick_jump(dt)
+		return
 
 	if dash_t > 0.0:
 		dash_t -= dt
@@ -186,7 +205,7 @@ func tick(dt: float) -> void:
 		return
 
 	_tick_ability()
-	if shell_t > 0.0 or dive_target != null or charging or dash_t > 0.0:
+	if shell_t > 0.0 or dive_target != null or charging or dash_t > 0.0 or jump_t > 0.0:
 		return
 
 	_choose_target(dt)
@@ -289,16 +308,25 @@ func _tick_ability() -> void:
 				battle.emit_fx("charge", position)
 		"hop":
 			if ability_timer <= 0.0:
-				for e in battle.enemies_near(self, position, (2.0 * Rules.BODY_RADIUS + 0.6) * CELL):
-					if e.is_melee():
-						var away := (position - e.position).normalized()
-						if away == Vector2.ZERO:
-							away = Vector2.DOWN if team == 0 else Vector2.UP
-						dash_vel = away * data.power * CELL / 0.25
-						dash_t = 0.25
-						ability_timer = data.cd
-						battle.emit_fx("hop", position)
-						break
+				var prey := battle.backline_enemy(self)
+				if prey != null and edge_dist(prey) > range_px() + 0.2 * CELL:
+					jump_target = prey
+					jump_start = position
+					var behind := Vector2.UP if team == 0 else Vector2.DOWN
+					jump_end = prey.position + behind * (2.0 * Rules.BODY_RADIUS + 0.12) * CELL
+					var r := Rules.BODY_RADIUS * CELL
+					jump_end = jump_end.clamp(Vector2(r, r), Rules.BOARD_SIZE - Vector2(r, r))
+					jump_t = 0.5
+					ability_timer = data.cd
+					battle.emit_fx("hop", position)
+					Sfx.play("hop")
+		"blizzard":
+			if ability_timer <= 0.0:
+				var centre := battle.best_blizzard_center(self)
+				if centre.is_finite():
+					battle.add_blizzard(self, centre)
+					ability_timer = data.cd
+					Sfx.play("blizzard")
 		"spray":
 			if ability_timer <= 0.0:
 				var hit := battle.enemies_near(self, position, data.radius * CELL)
@@ -336,6 +364,16 @@ func _tick_ability() -> void:
 		"graze":
 			for a in battle.allies_near(self, position, data.radius * CELL):
 				a.add_status("regen", 0.35, data.power, true)
+
+
+func _tick_jump(dt: float) -> void:
+	jump_t = maxf(0.0, jump_t - dt)
+	position = jump_start.lerp(jump_end, 1.0 - jump_t / 0.5)
+	if jump_t == 0.0:
+		target = jump_target if is_instance_valid(jump_target) and jump_target.alive else null
+		jump_target = null
+		attack_timer = 0.0
+		battle.emit_fx("impact", position)
 
 
 func _tick_dive(dt: float) -> void:
@@ -396,6 +434,7 @@ func _process(_dt: float) -> void:
 
 func _draw() -> void:
 	var r := Rules.BODY_RADIUS * CELL
+	var image_r := r * visual_scale()
 	var offset := lunge_dir * sin(lunge_t / 0.18 * PI) * 10.0 if lunge_t > 0.0 else Vector2.ZERO
 	var scale_k := 1.0 + 0.35 * sin(pop_t / 0.45 * PI)
 	var bob := Vector2(0, sin(anim_t * 6.0) * 1.2)
@@ -406,23 +445,25 @@ func _draw() -> void:
 	Icons.team_base(self, p, r * scale_k, team, hovered)
 	if dive_target != null:
 		p += Vector2(0, -8)
-	Icons.creature(self, form_id, p, r * 0.92 * scale_k)
+	if jump_t > 0.0:
+		p += Vector2(0, -sin(jump_t / 0.5 * PI) * 30.0)
+	Icons.creature(self, form_id, p, image_r * 0.92 * scale_k)
 	if shell_t > 0.0:
-		draw_arc(p, r * 1.15, 0, TAU, 32, Color(0.5, 1.0, 0.6, 0.9), 4.0, true)
+		draw_arc(p, image_r * 1.15, 0, TAU, 32, Color(0.5, 1.0, 0.6, 0.9), 4.0, true)
 	if parry_ready:
-		Icons.parry_mark(self, p + Vector2(r * 0.95, -r * 0.6), 7.0)
+		Icons.parry_mark(self, p + Vector2(image_r * 0.95, -image_r * 0.6), 7.0)
 	if flash_t > 0.0:
-		draw_circle(p, r * 1.05, Color(1, 1, 1, flash_t / 0.12 * 0.6))
+		draw_circle(p, image_r * 1.05, Color(1, 1, 1, flash_t / 0.12 * 0.6))
 	if immune_t > 0.0:
-		Icons.immunity_ring(self, p, r * 1.3, immune_t / Rules.TARGET_IMMUNITY, anim_t)
+		Icons.immunity_ring(self, p, image_r * 1.3, immune_t / Rules.TARGET_IMMUNITY, anim_t)
 
-	# Health bar, level stars and status icons.
+	# Fixed team base / health bar; image size shows temporary levels only.
 	var bar_w := r * 2.2
 	var bar_pos := Vector2(-bar_w * 0.5, r + 6.0)
 	Icons.health_bar(self, bar_pos, bar_w, hp / max_hp, team)
-	Icons.level_stars(self, Vector2(0, -r - 10.0), stars)
-	if level > 1:
-		Icons.temporary_levels(self, Vector2(r + 10, -r - 5), level - 1)
+	Icons.merge_stars(self, Vector2(0, -image_r - 10.0), stars)
+	if hovered:
+		Icons.merge_progress(self, Vector2(0, -image_r - 22.0), merge_copies, stars)
 	var i := 0
 	for key in statuses.keys():
 		Icons.status(self, key, Vector2(-r - 4.0, -r + 2.0 + i * 13.0), 6.0)

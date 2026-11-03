@@ -290,17 +290,21 @@ static func star(ci: CanvasItem, p: Vector2, r: float, col := GOLD) -> void:
 	ci.draw_colored_polygon(pts, col)
 
 
-static func level_stars(ci: CanvasItem, center: Vector2, count: int) -> void:
-	var shown := mini(count, 5)
+static func merge_stars(ci: CanvasItem, center: Vector2, count: int) -> void:
+	var shown := clampi(count, 0, Rules.MAX_STARS)
 	for i in shown:
 		star(ci, center + Vector2((i - (shown - 1) * 0.5) * 11.0, 0), 6.0)
-	if count > 5:
-		ci.draw_circle(center + Vector2(shown * 6.0 + 6.0, 0), 3.0, GOLD)
 
 
-static func temporary_levels(ci: CanvasItem, p: Vector2, count: int) -> void:
-	ci.draw_circle(p, 9, Color(0.12, 0.06, 0.2, 0.95))
-	ci.draw_string(ThemeDB.fallback_font, p + Vector2(-8, 4), "+" + str(count), HORIZONTAL_ALIGNMENT_CENTER, 16, 11, MAGIC)
+static func merge_progress(ci: CanvasItem, center: Vector2, copies: int, stars: int) -> void:
+	if stars >= Rules.MAX_STARS:
+		return
+	for i in 3:
+		var p := center + Vector2((i - 1) * 10, 0)
+		ci.draw_circle(p, 4, Color(0.08, 0.06, 0.04, 0.95))
+		ci.draw_arc(p, 3.4, 0, TAU, 16, GOLD, 1.1, true)
+		if i < copies:
+			ci.draw_circle(p, 2.3, GOLD)
 
 
 static func padlock(ci: CanvasItem, p: Vector2) -> void:
@@ -383,6 +387,24 @@ static func heart(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
 	ci.draw_circle(p + Vector2(-r * 0.45, -r * 0.2), r * 0.5, col)
 	ci.draw_circle(p + Vector2(r * 0.45, -r * 0.2), r * 0.5, col)
 	ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.93, 0.0), p + Vector2(r * 0.93, 0.0), p + Vector2(0, r * 0.95)]), col)
+
+
+static func heart_half(ci: CanvasItem, p: Vector2, r: float, side: int, col: Color) -> void:
+	var points := PackedVector2Array()
+	for i in 16:
+		var angle := lerpf(-0.45, -3.55, i / 15.0)
+		var x := (-0.45 + cos(angle) * 0.5) * r
+		points.append(p + Vector2(x if side == 0 else -x, (-0.2 + sin(angle) * 0.5) * r))
+	points.append(p + Vector2(0, r * 0.95))
+	ci.draw_colored_polygon(points, col)
+
+
+static func wizard_heart(ci: CanvasItem, p: Vector2, r: float, amount: float) -> void:
+	heart(ci, p, r, Color(0.25, 0.2, 0.2))
+	if amount >= 1.0:
+		heart(ci, p, r, Color(0.9, 0.2, 0.28))
+	elif amount >= 0.5:
+		heart_half(ci, p, r, 0, Color(0.9, 0.2, 0.28))
 
 
 static func coin(ci: CanvasItem, p: Vector2, r: float) -> void:
