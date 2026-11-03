@@ -18,6 +18,8 @@ const RESERVE_CAP := 6
 const WIZARD_HP := 10
 const FIRST_INCOME := 3 # +1 gold each subsequent round
 const SHOP_SIZE := 3
+const REROLL_COST := 1
+const MAX_STARS := 3
 const COMBAT_TIMEOUT := 60.0
 
 # Shapeshift spell.
@@ -38,6 +40,10 @@ const FIGHT_RADIUS := 58.0
 
 static func income(round_num: int) -> int:
 	return FIRST_INCOME + round_num - 1
+
+
+static func star_mult(stars: int) -> float:
+	return pow(1.8, clampi(stars, 1, MAX_STARS) - 1)
 
 
 static func level_mult(level: int) -> float:

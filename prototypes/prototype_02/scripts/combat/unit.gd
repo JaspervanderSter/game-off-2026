@@ -12,6 +12,7 @@ var team := 0
 var form_id := ""
 var data: Dictionary
 var level := 1
+var stars := 1
 var max_hp := 1.0
 var hp := 1.0
 var alive := true
@@ -49,7 +50,7 @@ func setup(b: Battle, uid: int, team_id: int, form: String, pos: Vector2) -> voi
 	team = team_id
 	position = pos
 	_set_form(form)
-	max_hp = data.hp * Rules.level_mult(level)
+	max_hp = data.hp * stat_mult()
 	hp = max_hp
 	ability_timer = data.get("cd_start", data.get("cd", 0.0) * 0.5)
 	anim_t = randf() * 10.0
@@ -68,7 +69,7 @@ func transform_to(new_form: String, gain_level: bool) -> void:
 	_set_form(new_form)
 	if gain_level:
 		level += 1
-	max_hp = data.hp * Rules.level_mult(level)
+	max_hp = data.hp * stat_mult()
 	hp = minf(max_hp, ratio * max_hp + Rules.SHIFT_HEAL * max_hp)
 	attack_timer = 0.0
 	for key in statuses.keys():
@@ -89,8 +90,12 @@ func transform_to(new_form: String, gain_level: bool) -> void:
 
 # --- Derived statistics ---------------------------------------------------
 
+func stat_mult() -> float:
+	return Rules.level_mult(level) * Rules.star_mult(stars)
+
+
 func attack_damage() -> float:
-	return data.dmg * Rules.level_mult(level)
+	return data.dmg * stat_mult()
 
 
 func attack_interval() -> float:
@@ -415,8 +420,9 @@ func _draw() -> void:
 	var bar_w := r * 2.2
 	var bar_pos := Vector2(-bar_w * 0.5, r + 6.0)
 	Icons.health_bar(self, bar_pos, bar_w, hp / max_hp, team)
+	Icons.level_stars(self, Vector2(0, -r - 10.0), stars)
 	if level > 1:
-		Icons.level_stars(self, Vector2(0, -r - 10.0), level - 1)
+		Icons.temporary_levels(self, Vector2(r + 10, -r - 5), level - 1)
 	var i := 0
 	for key in statuses.keys():
 		Icons.status(self, key, Vector2(-r - 4.0, -r + 2.0 + i * 13.0), 6.0)

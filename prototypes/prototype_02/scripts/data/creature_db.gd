@@ -42,18 +42,21 @@ const FORMS := {
 	"cleric": {"family": "fantasy", "hp": 110, "dmg": 5, "interval": 1.4, "range": 3.0, "speed": 1.4, "armour": 10, "price": 2, "role": "support", "attack": "holy", "ability": "heal", "cd": 3.5, "cd_start": 2.0, "radius": 3.5, "power": 22.0},
 	"bard": {"family": "fantasy", "hp": 105, "dmg": 5, "interval": 1.2, "range": 3.0, "speed": 1.4, "armour": 0, "price": 2, "role": "support", "attack": "note", "ability": "inspire", "radius": 2.2, "power": 0.35},
 	# --- Animals (transformation outcomes only; price = rough value for AI) ---
+	# Sidegrades with distinct combat niches, not a weaker roster. Rabbit trades
+	# durability for high DPS; its short hops limit time lost returning to melee.
+	# Deer/peacock/skunk trade damage for sustained healing or area disruption.
 	"turtle": {"family": "animal", "hp": 245, "dmg": 6, "interval": 1.4, "range": 0.3, "speed": 0.8, "armour": 30, "price": 2, "role": "front", "attack": "melee", "ability": "shell", "cd": 6.0, "cd_start": 0.0, "duration": 2.0, "power": 50.0},
 	"rhino": {"family": "animal", "hp": 215, "dmg": 14, "interval": 1.8, "range": 0.3, "speed": 1.4, "armour": 25, "price": 3, "role": "front", "attack": "melee", "ability": "charge", "cd": 8.0, "cd_start": 0.0, "power": 2.0, "knock": 1.2},
 	"gorilla": {"family": "animal", "hp": 200, "dmg": 15, "interval": 1.7, "range": 0.4, "speed": 1.3, "armour": 10, "price": 3, "role": "front", "attack": "melee", "ability": "cleave", "radius": 0.9},
-	"wolf": {"family": "animal", "hp": 130, "dmg": 9, "interval": 1.0, "range": 0.3, "speed": 2.2, "armour": 5, "price": 2, "role": "front", "attack": "melee", "ability": "pack", "radius": 2.0, "power": 0.4},
-	"leopard": {"family": "animal", "hp": 105, "dmg": 13, "interval": 0.8, "range": 0.3, "speed": 2.8, "armour": 0, "price": 3, "role": "front", "attack": "melee", "ability": "hunt", "radius": 4.0},
-	"rabbit": {"family": "animal", "hp": 70, "dmg": 4, "interval": 0.8, "range": 0.3, "speed": 3.0, "armour": 0, "price": 1, "role": "front", "attack": "melee", "ability": "hop", "cd": 3.0, "cd_start": 0.0, "power": 1.6},
-	"snake": {"family": "animal", "hp": 100, "dmg": 4, "interval": 1.0, "range": 0.3, "speed": 1.8, "armour": 0, "price": 2, "role": "front", "attack": "melee", "ability": "poison", "duration": 4.0, "power": 5.0},
-	"skunk": {"family": "animal", "hp": 110, "dmg": 5, "interval": 1.2, "range": 0.3, "speed": 1.6, "armour": 5, "price": 2, "role": "front", "attack": "melee", "ability": "spray", "cd": 5.0, "cd_start": 2.0, "radius": 1.6, "duration": 4.0, "power": 30.0},
-	"eagle": {"family": "animal", "hp": 110, "dmg": 10, "interval": 1.0, "range": 0.3, "speed": 2.0, "armour": 0, "price": 2, "role": "front", "attack": "melee", "ability": "dive", "cd": 7.0, "cd_start": 1.5, "power": 22.0},
-	"hedgehog": {"family": "animal", "hp": 145, "dmg": 6, "interval": 1.1, "range": 0.3, "speed": 1.3, "armour": 15, "price": 2, "role": "front", "attack": "melee", "ability": "thorns", "power": 5.0},
-	"deer": {"family": "animal", "hp": 110, "dmg": 5, "interval": 1.2, "range": 0.3, "speed": 1.9, "armour": 0, "price": 2, "role": "support", "attack": "melee", "ability": "graze", "radius": 2.2, "power": 3.0},
-	"peacock": {"family": "animal", "hp": 105, "dmg": 5, "interval": 1.2, "range": 0.3, "speed": 1.7, "armour": 0, "price": 2, "role": "support", "attack": "melee", "ability": "display", "cd": 6.0, "cd_start": 2.0, "radius": 2.0, "duration": 3.0, "power": 1.6},
+	"wolf": {"family": "animal", "hp": 150, "dmg": 11, "interval": 1.0, "range": 0.3, "speed": 2.2, "armour": 5, "price": 2, "role": "front", "attack": "melee", "ability": "pack", "radius": 2.0, "power": 0.4},
+	"leopard": {"family": "animal", "hp": 120, "dmg": 15, "interval": 0.8, "range": 0.3, "speed": 2.8, "armour": 0, "price": 3, "role": "front", "attack": "melee", "ability": "hunt", "radius": 4.0},
+	"rabbit": {"family": "animal", "hp": 120, "dmg": 10, "interval": 0.65, "range": 0.3, "speed": 3.0, "armour": 0, "price": 1, "role": "front", "attack": "melee", "ability": "hop", "cd": 4.0, "cd_start": 0.0, "power": 0.8},
+	"snake": {"family": "animal", "hp": 125, "dmg": 6, "interval": 1.0, "range": 0.3, "speed": 1.8, "armour": 0, "price": 2, "role": "front", "attack": "melee", "ability": "poison", "duration": 4.0, "power": 7.0},
+	"skunk": {"family": "animal", "hp": 145, "dmg": 7, "interval": 1.2, "range": 0.3, "speed": 1.6, "armour": 5, "price": 2, "role": "front", "attack": "melee", "ability": "spray", "cd": 5.0, "cd_start": 2.0, "radius": 2.0, "duration": 4.0, "power": 30.0},
+	"eagle": {"family": "animal", "hp": 135, "dmg": 13, "interval": 1.0, "range": 0.3, "speed": 2.0, "armour": 0, "price": 2, "role": "front", "attack": "melee", "ability": "dive", "cd": 7.0, "cd_start": 1.5, "power": 30.0},
+	"hedgehog": {"family": "animal", "hp": 165, "dmg": 6, "interval": 1.1, "range": 0.3, "speed": 1.3, "armour": 15, "price": 2, "role": "front", "attack": "melee", "ability": "thorns", "power": 5.0},
+	"deer": {"family": "animal", "hp": 155, "dmg": 7, "interval": 1.2, "range": 0.3, "speed": 1.9, "armour": 0, "price": 2, "role": "support", "attack": "melee", "ability": "graze", "radius": 2.8, "power": 5.0},
+	"peacock": {"family": "animal", "hp": 140, "dmg": 7, "interval": 1.2, "range": 0.3, "speed": 1.7, "armour": 0, "price": 2, "role": "support", "attack": "melee", "ability": "display", "cd": 6.0, "cd_start": 2.0, "radius": 2.6, "duration": 4.0, "power": 1.8},
 }
 
 # Thematic starting packs (three are drawn at random for the choice).

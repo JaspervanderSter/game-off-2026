@@ -13,8 +13,11 @@ func _ready() -> void:
 	_test_transformation_rules()
 	_test_immunity_and_invalid_casts()
 	_test_economy()
+	_test_shop_and_merges()
+	_test_preparation_input()
 	_test_round_reset_and_damage()
 	_test_abilities()
+	_test_animal_roles()
 	_simulate_duels()
 	print("\n%d checks, %d failures" % [_checks, _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
@@ -216,6 +219,126 @@ func _test_economy() -> void:
 	check(not s.move_to_cell(fielded, Vector2i(0, 0)), "cannot place in the enemy half")
 
 
+func _test_shop_and_merges() -> void:
+	var s := WizardState.new(0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	s.gold = 100
+	s.offers = ["peasant", "archer", "cleric"]
+	var bought := s.buy(0)
+	check(bought != null and not bought.is_fielded() and bought.slot == 0,
+		"purchase goes to bench even with an empty board")
+	check(s.field_count() == 0, "purchase never auto-fields")
+	check(s.toggle_lock(1), "right-click can lock an offer")
+	var gold := s.gold
+	check(s.reroll(rng) and s.gold == gold - Rules.REROLL_COST, "reroll charges exactly once")
+	check(s.offers[0] != "" and s.offers[1] == "archer" and s.offers[2] != "cleric",
+		"reroll fills sold slots, changes unlocked offers and keeps locks")
+	s.refresh_offers(rng)
+	check(s.offers[1] == "archer" and s.locked[1], "locks persist into next round")
+	s.toggle_lock(0)
+	s.toggle_lock(2)
+	gold = s.gold
+	check(not s.reroll(rng) and s.gold == gold, "all locked prevents paid no-op reroll")
+	s.buy(1)
+	check(not s.locked[1] and s.offers[1] == "", "buying clears the offer lock")
+	s.gold = 0
+	var offers := s.offers.duplicate()
+	check(not s.reroll(rng) and s.offers == offers, "no gold means no reroll")
+	check(not s.toggle_lock(1), "empty offer cannot be locked")
+
+	# Nine purchased copies chain into one three-star unit, keeping its board cell.
+	var m := WizardState.new(0)
+	m.gold = 100
+	m.offers = ["peasant", "", ""]
+	var first := m.buy(0)
+	m.move_to_cell(first, Vector2i(3, 3))
+	for i in 8:
+		m.offers[0] = "peasant"
+		var result := m.buy(0)
+		check(result != null and result in m.creatures, "purchase returns surviving merge result")
+		if i == 1:
+			check(first.stars == 2 and m.creatures.size() == 1, "three one-star copies merge")
+	check(m.creatures.size() == 1 and first.stars == 3, "nine copies merge to three stars")
+	check(first.cell == Vector2i(3, 3), "merge preserves fielded survivor and position")
+	check(first.price() == 9, "merged sale preserves invested gold")
+	for i in 2:
+		var capped := m.add_creature("peasant")
+		capped.stars = 3
+	m._merge(first)
+	check(m.creatures.size() == 3 and first.stars == 3, "three-star rank never merges further")
+
+	# Full-bench third-copy exception, and rejection without an available merge.
+	var full := WizardState.new(0)
+	full.gold = 100
+	for i in Rules.RESERVE_CAP:
+		var c := OwnedCreature.new("peasant" if i < 2 else "archer")
+		c.slot = i
+		full.creatures.append(c)
+	full.offers = ["guardian", "peasant", ""]
+	gold = full.gold
+	check(full.buy(0) == null and full.gold == gold and full.offers[0] == "guardian",
+		"full bench rejects purchase even when the board has room")
+	var merged := full.buy(1)
+	check(merged != null and merged.stars == 2 and merged.slot >= 0 and full.benched().size() == 5,
+		"full bench accepts a third copy and frees a slot by merging")
+	var mixed := WizardState.new(0)
+	var rank_two := mixed.add_creature("archer")
+	rank_two.stars = 2
+	mixed.add_creature("archer")
+	mixed.offers = ["archer", "", ""]
+	mixed.gold = 10
+	mixed.buy(0)
+	check(mixed.creatures.size() == 3 and rank_two.stars == 2, "different ranks do not merge")
+
+	var foe := WizardState.new(1)
+	foe.add_creature("guardian")
+	var b := _new_battle()
+	var teams: Array[WizardState] = [m, foe]
+	b.setup(teams, 12)
+	var u: Unit = b.living(0)[0]
+	check(u.stars == 3 and u.level == 1, "combat copies permanent stars separately from levels")
+	check(u.max_hp > CreatureDB.get_form("peasant").hp * 3, "stars improve combat health")
+	u.transform_to("rabbit", true)
+	check(u.stars == 3 and u.level == 2 and first.stars == 3, "transformation keeps stars and grants temporary level")
+	check(absf(u.attack_damage() - u.data.dmg * Rules.star_mult(3) * Rules.level_mult(2)) < 0.001,
+		"star and temporary level bonuses combine")
+	b.free()
+	b = _new_battle()
+	b.setup(teams, 12)
+	u = b.living(0)[0]
+	check(u.stars == 3 and u.level == 1 and u.form_id == "peasant", "next combat resets form and level but keeps stars")
+	b.free()
+
+
+func _test_preparation_input() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.choose_pack(0)
+	game.player.gold = 20
+	var state: WizardState = game.player
+	state.offers = ["peasant", "archer", "cleric"]
+	var offer_pos := Hud.offer_rect(1).get_center()
+	game._right_press(offer_pos)
+	check(game.player.locked[1], "shop right-click locks offer through game input")
+	game._left_press(Hud.REROLL_RECT.get_center())
+	check(game.player.gold == 19 and game.player.offers[1] == "archer", "reroll button refreshes through game input")
+	var field_count: int = game.player.field_count()
+	game._left_press(offer_pos)
+	check(game.player.field_count() == field_count and game.player.benched().size() == 1,
+		"shop click purchases onto bench")
+	var bought: OwnedCreature = game.player.benched()[0]
+	game._left_press(Rules.reserve_slot_rect(bought.slot).get_center())
+	var cell: Vector2i = game.player.preferred_free_cell("back")
+	game._left_release(Rules.BOARD_POS + Rules.cell_center(cell))
+	check(bought.cell == cell and game.player.field_count() == field_count + 1,
+		"player can drag purchased bench unit onto board")
+	game._right_press(Hud.offer_rect(0).get_center())
+	game._right_press(Hud.offer_rect(0).get_center())
+	check(not game.player.locked[0], "second right-click unlocks an offer")
+	game.free()
+
+
 func _test_round_reset_and_damage() -> void:
 	var p := WizardState.new(0)
 	var e := WizardState.new(1)
@@ -283,6 +406,41 @@ func _test_abilities() -> void:
 	berserker.hp = berserker.max_hp * 0.2
 	check(berserker.attack_interval() < full * 0.6, "berserker speeds up")
 	b.queue_free()
+
+
+## Animal transformations must offer useful combat niches, including the
+## previously weak stage-2 outcomes. These checks exercise their actual effects.
+func _test_animal_roles() -> void:
+	var b := _new_battle()
+	var rabbit := b.spawn(0, "rabbit", Vector2(200, 200))
+	var guardian := b.spawn(1, "guardian", Vector2(240, 200))
+	check(rabbit.attack_damage() / rabbit.attack_interval() > guardian.attack_damage() / guardian.attack_interval() * 2.0,
+		"rabbit trades guardian durability for substantially higher basic DPS")
+	rabbit.tick(0.01)
+	check(rabbit.dash_t > 0.0, "rabbit hops away from melee pressure")
+	check(rabbit.dash_vel.length() * 0.25 <= Rules.CELL,
+		"rabbit hop stays short enough to re-engage quickly")
+	var deer := b.spawn(0, "deer", Vector2(200, 230))
+	guardian.hp = guardian.max_hp * 0.5
+	rabbit.hp = rabbit.max_hp * 0.5
+	deer.hp = deer.max_hp * 0.5
+	deer.tick(0.01)
+	var rabbit_hp := rabbit.hp
+	var deer_hp := deer.hp
+	rabbit._tick_statuses(0.3)
+	deer._tick_statuses(0.3)
+	check(rabbit.hp > rabbit_hp and deer.hp > deer_hp, "deer sustains nearby allies and itself")
+	check(not guardian.statuses.has("regen"), "deer does not heal enemies")
+	var skunk := b.spawn(0, "skunk", Vector2(220, 240))
+	skunk.ability_timer = 0.0
+	skunk.tick(0.01)
+	check(guardian.armour() < guardian.data.armour, "skunk weakens an armoured frontline")
+	var peacock := b.spawn(0, "peacock", Vector2(220, 260))
+	peacock.ability_timer = 0.0
+	var interval := guardian.attack_interval()
+	peacock.tick(0.01)
+	check(guardian.attack_interval() > interval, "peacock slows enemy attacks")
+	b.free()
 
 
 # --- Simulations ------------------------------------------------------------------------

@@ -41,13 +41,14 @@ func setup(teams: Array[WizardState], seed_value: int = -1) -> void:
 		rng.randomize()
 	for state in teams:
 		for c in state.fielded():
-			spawn(state.team, c.form_id, Rules.cell_center(c.cell), c.uid)
+			spawn(state.team, c.form_id, Rules.cell_center(c.cell), c.uid, c.stars)
 	for t in 2:
 		_ai_delay[t] = rng.randf_range(1.0, 2.0)
 
 
-func spawn(team: int, form: String, pos: Vector2, uid: int = 0) -> Unit:
+func spawn(team: int, form: String, pos: Vector2, uid: int = 0, stars: int = 1) -> Unit:
 	var u := Unit.new()
+	u.stars = stars
 	u.setup(self, uid, team, form, pos)
 	units.append(u)
 	add_child(u)

@@ -4,16 +4,30 @@ extends Node
 ##   godot --path . res://tests/capture.tscn
 
 var game: Node
+var capture_dir := "user://captures"
 
 
 func _ready() -> void:
-	DirAccess.make_dir_recursive_absolute("user://captures")
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--capture-dir="):
+			capture_dir = arg.trim_prefix("--capture-dir=")
+	DirAccess.make_dir_recursive_absolute(capture_dir)
 	game = load("res://main.tscn").instantiate()
 	add_child(game)
 	await _frames(10)
 	_shot("01_pack")
 	game.choose_pack(0)
 	game.player.gold += 6
+	# Exercise the visible shop additions: a two-star fielded creature, a
+	# purchased bench creature, and a locked offer retained across a reroll.
+	var first: OwnedCreature = game.player.fielded()[0]
+	for i in 2:
+		game.player.offers[0] = first.form_id
+		game._left_press(Hud.offer_rect(0).get_center())
+	game.player.offers[0] = "archer"
+	game._left_press(Hud.offer_rect(0).get_center())
+	game._right_press(Hud.offer_rect(1).get_center())
+	game._left_press(Hud.REROLL_RECT.get_center())
 	await _frames(5)
 	game.hover_info = {}
 	_shot("02_prep")
@@ -53,5 +67,6 @@ func _seconds(s: float) -> void:
 
 func _shot(name: String) -> void:
 	var img := get_viewport().get_texture().get_image()
-	img.save_png("user://captures/%s.png" % name)
-	print("saved ", ProjectSettings.globalize_path("user://captures/%s.png" % name))
+	var path := capture_dir.path_join(name + ".png")
+	img.save_png(path)
+	print("saved ", ProjectSettings.globalize_path(path))

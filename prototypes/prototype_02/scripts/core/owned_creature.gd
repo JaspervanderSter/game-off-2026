@@ -7,6 +7,7 @@ static var _next_uid := 1
 
 var uid: int
 var form_id: String
+var stars := 1 # permanent rank, independent of temporary combat levels
 var cell := Vector2i(-1, -1) # board cell when fielded
 var slot := -1 # reserve slot when benched
 
@@ -22,4 +23,4 @@ func is_fielded() -> bool:
 
 
 func price() -> int:
-	return CreatureDB.get_form(form_id).price
+	return CreatureDB.get_form(form_id).price * int(pow(3, stars - 1))

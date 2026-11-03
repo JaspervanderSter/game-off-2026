@@ -298,6 +298,17 @@ static func level_stars(ci: CanvasItem, center: Vector2, count: int) -> void:
 		ci.draw_circle(center + Vector2(shown * 6.0 + 6.0, 0), 3.0, GOLD)
 
 
+static func temporary_levels(ci: CanvasItem, p: Vector2, count: int) -> void:
+	ci.draw_circle(p, 9, Color(0.12, 0.06, 0.2, 0.95))
+	ci.draw_string(ThemeDB.fallback_font, p + Vector2(-8, 4), "+" + str(count), HORIZONTAL_ALIGNMENT_CENTER, 16, 11, MAGIC)
+
+
+static func padlock(ci: CanvasItem, p: Vector2) -> void:
+	ci.draw_arc(p + Vector2(0, -4), 6, PI, TAU, 12, GOLD, 3.0, true)
+	ci.draw_rect(Rect2(p + Vector2(-8, -4), Vector2(16, 13)), GOLD)
+	ci.draw_circle(p + Vector2(0, 1), 2, DARK)
+
+
 static func immunity_ring(ci: CanvasItem, p: Vector2, r: float, ratio: float, t: float) -> void:
 	var segs := 10
 	for i in segs:

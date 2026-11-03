@@ -11,6 +11,7 @@ const ROUND_POS := Vector2(270, 300)
 const TOGGLE_R := 26.0
 const RESTART_POS := Vector2(640, 420)
 const OFFER_SIZE := Vector2(288, 112)
+const REROLL_RECT := Rect2(1000, 458, 224, 42)
 const PACK_TOP := 222.0
 
 var game # main.gd
@@ -137,6 +138,16 @@ func _draw_shop() -> void:
 			Icons.coin(self, r.position + Vector2(140 + j * 36, 56), 14)
 		if not affordable:
 			draw_rect(r, Color(0, 0, 0, 0.55))
+		if game.player.locked[i]:
+			draw_rect(r.grow(-2), Icons.GOLD, false, 3.0)
+			Icons.padlock(self, r.position + Vector2(264, 22))
+	var reroll_ok: bool = game.player.can_reroll()
+	_panel(REROLL_RECT, Color(0.23, 0.18, 0.12) if reroll_ok else Color(0.1, 0.09, 0.08))
+	Icons.restart(self, REROLL_RECT.position + Vector2(30, 21), 12, Icons.GOLD if reroll_ok else Color.DIM_GRAY)
+	Icons.coin(self, REROLL_RECT.position + Vector2(116, 21), 11)
+	draw_string(font, REROLL_RECT.position + Vector2(136, 28), str(Rules.REROLL_COST), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Icons.GOLD)
+	if not reroll_ok:
+		draw_rect(REROLL_RECT, Color(0, 0, 0, 0.35))
 	if selling:
 		var r := Rect2(Rules.SHOP_RECT.position, Vector2(OFFER_SIZE.x, 124 * Rules.SHOP_SIZE - 12))
 		var over := r.has_point(get_global_mouse_position())
@@ -219,6 +230,8 @@ func _draw_hover_card(info: Dictionary) -> void:
 	var form: String = info.form
 	var team: int = info.get("team", 0)
 	var u: Unit = info.get("unit")
+	var owned: OwnedCreature = info.get("owned")
+	var stars: int = u.stars if u != null else owned.stars if owned != null else 1
 	var size := Vector2(236, 150)
 	var pos: Vector2 = info.pos + Vector2(24, 16)
 	pos.x = clampf(pos.x, 8, 1280 - size.x - 8)
@@ -226,9 +239,10 @@ func _draw_hover_card(info: Dictionary) -> void:
 	_panel(Rect2(pos, size), Color(0.08, 0.06, 0.1, 0.93))
 	var main := pos + Vector2(36, 40)
 	Icons.token(self, form, main, 26, team)
+	Icons.level_stars(self, main + Vector2(0, 34), stars)
 	if u != null:
 		if u.level > 1:
-			Icons.level_stars(self, main + Vector2(0, 34), u.level - 1)
+			Icons.temporary_levels(self, main + Vector2(29, -22), u.level - 1)
 		if u.immune_t > 0.0:
 			Icons.immunity_ring(self, main, 31, u.immune_t / Rules.TARGET_IMMUNITY, u.anim_t)
 	Icons.arrow_right(self, pos + Vector2(78, 40), 9, Icons.MAGIC)
@@ -239,7 +253,7 @@ func _draw_hover_card(info: Dictionary) -> void:
 		Icons.chance_pie(self, op + Vector2(0, 29), 7, outs[i].chance)
 	# Stat bars (normalised against the roster's high values).
 	var d := CreatureDB.get_form(form)
-	var mult: float = Rules.level_mult(u.level) if u != null else 1.0
+	var mult: float = u.stat_mult() if u != null else Rules.star_mult(stars)
 	var stats := [
 		["hp", d.hp * mult / 250.0], ["dmg", d.dmg * mult / d.interval / 14.0],
 		["speed", 1.0 / d.interval / 1.3], ["range", d.range / 5.0],

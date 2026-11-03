@@ -205,6 +205,9 @@ func _left_press(pos: Vector2) -> void:
 					choose_pack(i)
 					return
 		Phase.PREP:
+			if Hud.REROLL_RECT.has_point(pos):
+				Sfx.play("click" if player.reroll(rng) else "fail")
+				return
 			if pos.distance_to(Rules.FIGHT_CENTER) < Rules.FIGHT_RADIUS:
 				start_combat()
 				return
@@ -245,6 +248,11 @@ func _left_release(pos: Vector2) -> void:
 
 
 func _right_press(pos: Vector2) -> void:
+	if phase == Phase.PREP:
+		for i in Rules.SHOP_SIZE:
+			if Hud.offer_rect(i).has_point(pos):
+				Sfx.play("click" if player.toggle_lock(i) else "fail")
+				return
 	if phase != Phase.COMBAT:
 		return
 	var u := battle.unit_at(pos - Rules.BOARD_POS)

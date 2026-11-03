@@ -23,6 +23,7 @@ func _draw() -> void:
 				continue
 			var hl: bool = game.hover_info.get("owned") == c
 			Icons.token(self, c.form_id, Rules.cell_center(c.cell), Rules.BODY_RADIUS * CELL, state.team, hl)
+			Icons.level_stars(self, Rules.cell_center(c.cell) + Vector2(0, -32), c.stars)
 	if game.drag != null:
 		_draw_drag()
 
@@ -55,6 +56,7 @@ func _draw_reserve() -> void:
 		if c != null and c != game.drag:
 			var hl: bool = game.hover_info.get("owned") == c
 			Icons.token(self, c.form_id, r.get_center(), Rules.BODY_RADIUS * CELL, 0, hl)
+			Icons.level_stars(self, r.get_center() + Vector2(0, -28), c.stars)
 	# Field capacity pips.
 	var fielded: int = game.player.field_count()
 	for i in Rules.FIELD_CAP:
@@ -68,3 +70,4 @@ func _draw_drag() -> void:
 	var p := get_global_mouse_position() - position
 	draw_circle(p + Vector2(4, 10), 22, Color(0, 0, 0, 0.3))
 	Icons.token(self, game.drag.form_id, p, Rules.BODY_RADIUS * CELL * 1.1, 0, true)
+	Icons.level_stars(self, p + Vector2(0, -34), game.drag.stars)
