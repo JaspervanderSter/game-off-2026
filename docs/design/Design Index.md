@@ -6,6 +6,8 @@ Open the repository as an Obsidian vault to follow the internal links.
 
 ## Notes
 
+- [[Prototype 02]] — prototype-specific scope, learning questions and experiment proposals (draft).
+- [[Roster and Transformation Map]] — Prototype 02 creature sheets, proposed statistics and editable Obsidian Canvas maps.
 - [[Game Vision]] — core concept, references and design priorities.
 - [[Gameplay Loop]] — round structure, spells and prototype scope.
 - [[Economy and Progression]] — separate creature and wizard resources, plus economy experiments.
