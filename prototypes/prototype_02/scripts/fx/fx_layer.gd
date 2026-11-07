@@ -11,8 +11,9 @@ func add(kind: String, pos: Vector2, extra: Dictionary = {}) -> void:
 	match kind:
 		"shift":
 			item.life = 0.7
+			var shift_col: Color = extra.get("col", Color(0.8, 0.65, 1.0))
 			for i in 8:
-				add("puff", pos + Vector2.from_angle(TAU * i / 8.0) * 14.0, {"vel": Vector2.from_angle(TAU * i / 8.0) * 60.0, "col": Color(0.8, 0.65, 1.0, 0.8), "size": 9.0})
+				add("puff", pos + Vector2.from_angle(TAU * i / 8.0) * 14.0, {"vel": Vector2.from_angle(TAU * i / 8.0) * 60.0, "col": Color(shift_col.r, shift_col.g, shift_col.b, 0.8), "size": 9.0})
 		"rocket":
 			item.life = 1.6
 			var side := -1.0 if randf() < 0.5 else 1.0
@@ -27,6 +28,18 @@ func add(kind: String, pos: Vector2, extra: Dictionary = {}) -> void:
 			item.life = 0.45
 		"fizzle":
 			item.life = 0.35
+		"blocked":
+			item.life = 0.4
+		"interrupt":
+			item.life = 0.45
+		"dodge":
+			item.life = 0.4
+		"combo":
+			item.life = 0.8
+		"special", "special_blast", "special_heal":
+			item.life = 0.65
+		"need_special":
+			item.life = 0.45
 	items.append(item)
 
 
@@ -83,11 +96,51 @@ func _draw() -> void:
 				var c := Color(0.5, 1.0, 0.5, 1.0 - k)
 				draw_line(q + Vector2(-8, 0), q + Vector2(8, 0), c, 4.0)
 				draw_line(q + Vector2(0, -8), q + Vector2(0, 8), c, 4.0)
-			"parry":
-				Icons.parry_mark(self, p + Vector2(0, -10), 10.0 + 6.0 * k)
 			"impact", "charge", "dive", "hop", "shell":
 				draw_arc(p, 12.0 + 30.0 * k, 0, TAU, 24, Color(1, 1, 1, 1.0 - k), 3.0, true)
 			"fizzle":
 				var c := Color(0.7, 0.7, 0.75, 1.0 - k)
 				draw_line(p + Vector2(-8, -8), p + Vector2(8, 8), c, 3.0)
 				draw_line(p + Vector2(-8, 8), p + Vector2(8, -8), c, 3.0)
+			"blocked":
+				var c := Color(0.85, 0.8, 1.0, 1.0 - k)
+				draw_arc(p, 24.0 + 10.0 * k, 0, TAU, 24, c, 3.0, true)
+				draw_line(p + Vector2(-9, -9), p + Vector2(9, 9), Color(1.0, 0.35, 0.35, 1.0 - k), 3.0)
+			"interrupt":
+				var c := Color(1.0, 0.55, 0.2, 1.0 - k)
+				draw_line(p + Vector2(-12, -12), p + Vector2(12, 12), c, 4.0, true)
+				draw_line(p + Vector2(-12, 12), p + Vector2(12, -12), c, 4.0, true)
+				draw_arc(p, 18.0 + 18.0 * k, 0, TAU, 20, Color(1.0, 0.8, 0.3, 1.0 - k), 2.0, true)
+			"dodge":
+				var c := Color(0.7, 0.9, 1.0, 1.0 - k)
+				draw_arc(p, 14.0 + 30.0 * k, 0, TAU, 24, c, 3.0, true)
+				for i in 4:
+					var a := TAU * i / 4.0 + k * 3.0
+					draw_circle(p + Vector2.from_angle(a) * (18.0 + 16.0 * k), 2.5 * (1.0 - k), c)
+			"combo":
+				var c := Color(1.0, 0.78, 0.2, 1.0 - k)
+				draw_arc(p, 12.0 + 52.0 * k, 0, TAU, 32, c, 4.0 * (1.0 - k) + 1.0, true)
+				for i in 8:
+					var a := TAU * i / 8.0 + k * 2.0
+					Icons.star(self, p + Vector2.from_angle(a) * (18.0 + 40.0 * k), 5.0 * (1.0 - k) + 1.0, Color(1.0, 0.9, 0.4, 1.0 - k))
+			"special":
+				var col: Color = item.get("color", Color(0.8, 0.7, 1.0))
+				col.a = 1.0 - k
+				draw_arc(p, 12.0 + 46.0 * k, 0, TAU, 28, col, 4.0 * (1.0 - k) + 1.0, true)
+				for i in 6:
+					var a := TAU * i / 6.0 + k * 3.0
+					Icons.star(self, p + Vector2.from_angle(a) * (16.0 + 34.0 * k), 5.0 * (1.0 - k) + 1.0, col)
+			"special_blast":
+				var col: Color = item.get("color", Color(1.0, 0.55, 0.2))
+				col.a = 0.5 * (1.0 - k)
+				draw_circle(p, item.get("radius", 70.0) * (0.4 + 0.6 * k), col)
+				draw_arc(p, item.get("radius", 70.0) * (0.4 + 0.6 * k), 0, TAU, 28, Color(col.r, col.g, col.b, 1.0 - k), 3.0, true)
+			"special_heal":
+				var col: Color = item.get("color", Color(0.5, 1.0, 0.5))
+				col.a = 0.45 * (1.0 - k)
+				draw_circle(p, item.get("radius", 70.0) * (0.4 + 0.6 * k), col)
+				draw_arc(p, item.get("radius", 70.0) * (0.5 + 0.5 * k), 0, TAU, 28, Color(col.r, col.g, col.b, 1.0 - k), 2.5, true)
+			"need_special":
+				var col := Color(1.0, 0.85, 0.35, 1.0 - k)
+				Icons.special_rune(self, p, 12.0, col, false, false)
+				draw_line(p + Vector2(-13, -13), p + Vector2(13, 13), Color(1.0, 0.35, 0.3, 1.0 - k), 3.0, true)

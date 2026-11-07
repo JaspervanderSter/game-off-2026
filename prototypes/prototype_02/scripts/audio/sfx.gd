@@ -26,6 +26,11 @@ func _ready() -> void:
 	_streams.win = _make(0.7, func(t, k): return sin(t * TAU * [523.0, 659.0, 784.0, 1047.0][mini(3, int(k * 4.0))]) * 0.35 * (1.0 - k * 0.5))
 	_streams.lose = _make(0.7, func(t, k): return sin(t * TAU * [392.0, 330.0, 262.0, 196.0][mini(3, int(k * 4.0))]) * 0.35 * (1.0 - k * 0.5))
 	_streams.damage = _make(0.3, func(t, k): return sin(t * TAU * lerpf(220.0, 90.0, k)) * (1.0 - k) * 0.6)
+	_streams.windup = _make(0.07, func(t, k): return sin(t * TAU * lerpf(180.0, 260.0, k)) * (1.0 - k) * 0.18)
+	_streams.interrupt = _make(0.22, func(t, k): return sign(sin(t * TAU * 90.0)) * (1.0 - k) * 0.25 + (randf() * 2.0 - 1.0) * 0.12 * (1.0 - k))
+	_streams.dodge = _make(0.18, func(t, k): return sin(t * TAU * lerpf(1200.0, 700.0, k)) * (1.0 - k) * 0.3)
+	_streams.combo = _make(0.4, func(t, k): return (sin(t * TAU * 880.0) + sin(t * TAU * 1320.0) * 0.6 + sin(t * TAU * 1760.0) * 0.3) * exp(-k * 3.0) * 0.35)
+	_streams.special = _make(0.45, func(t, k): return (sin(t * TAU * lerpf(420.0, 980.0, k)) + sin(t * TAU * lerpf(630.0, 1470.0, k)) * 0.5) * (1.0 - k) * 0.35)
 
 
 func play(name: String, pitch_jitter := 0.08) -> void:

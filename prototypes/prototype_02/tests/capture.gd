@@ -24,7 +24,7 @@ func _ready() -> void:
 	for i in 2:
 		game.player.offers[0] = first.form_id
 		game._left_press(Hud.offer_rect(0).get_center())
-	game.player.offers[0] = "archer"
+	game.player.offers[0] = "ranger"
 	game._left_press(Hud.offer_rect(0).get_center())
 	game._right_press(Hud.offer_rect(1).get_center())
 	game._left_press(Hud.REROLL_RECT.get_center())
@@ -41,6 +41,9 @@ func _ready() -> void:
 		game.battle.cast(0, allies[0])
 	if not foes.is_empty():
 		game.battle.cast(0, foes[0])
+	if not allies.is_empty() and allies[0].alive and allies[0].stage() > 0:
+		game.battle.spells[0].charges = 3
+		game.battle.trigger_special(0, allies[0], true)
 	await _frames(12)
 	_shot("03_cast")
 	if not allies.is_empty() and allies[0].alive:

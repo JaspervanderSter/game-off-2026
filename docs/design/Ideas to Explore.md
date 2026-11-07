@@ -19,9 +19,9 @@ The spell would be the bridge between those two worlds, making the transformatio
 
 ## Three shapeshift charges
 
-**Status:** working proposal.
-
-Allow players to save up to three casts and chain transformations. Explore whether this creates interesting timing decisions; recharge rules remain open.
+**Status:** implemented in the second Prototype 02 iteration (6 November 2026).
+Three maximum charges, one starting charge and a three-second recharge are the
+current tuning values. See [[Shapeshifting]].
 
 ## Bench and bench transformations
 
@@ -31,7 +31,8 @@ Include a reserve bench and allow creatures there to be transformed. Establish w
 
 ## Transformation persistence between rounds
 
-**Status:** explicitly left for prototyping to answer.
+**Status:** decided for Prototype 02. Temporary forms, momentum and statuses reset
+between rounds; purchases and permanent merge stars persist.
 
 Compare creatures keeping their transformed forms between rounds with creatures returning to their initial forms. Neither option is currently selected. Use the prototype to assess the consequences for team building and tactical spell use. See [[Shapeshifting]].
 
@@ -45,7 +46,8 @@ This is an example to discuss, not a defined rule. Whether statistics are exchan
 
 ## Starting packs and a possible tier-1 power-up
 
-**Status:** working proposal for replayability.
+**Status:** implemented as three-creature starting packs in Prototype 02; the
+tier-1 power-up remains unvalidated.
 
 Choose a creature pack at the start of the duel, potentially alongside a tier-1 power-up. Contents, selection rules and effects are not yet defined.
 

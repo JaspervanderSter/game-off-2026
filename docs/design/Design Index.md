@@ -6,12 +6,14 @@ Open the repository as an Obsidian vault to follow the internal links.
 
 ## Notes
 
-- [[Prototype 02]] — prototype-specific scope, learning questions and experiment proposals (draft).
-- [[Roster and Transformation Map]] — Prototype 02 creature sheets, proposed statistics and editable Obsidian Canvas maps.
+- [[Prototype 02]] — prototype-specific scope, six-archetype roster, momentum and experiment proposals.
+- [[Roster and Transformation Map]] — six transformation families, form statistics and attack behaviours.
+- [[Combat and Transformation Spec]] — shared data schema, combat timing and implementation rules.
+- Family notes: [[Vanguard]], [[Striker]], [[Ranger]], [[Mystic]], [[Support]], [[Berserker]].
 - [[Game Vision]] — core concept, references and design priorities.
 - [[Gameplay Loop]] — round structure, spells and prototype scope.
 - [[Economy and Progression]] — separate creature and wizard resources, plus economy experiments.
-- [[Shapeshifting]] — targeting, transformation graph and initial tuning.
+- [[Shapeshifting]] — casting, immunity, families, momentum and timing.
 - [[Art Direction]] — setting, readability and visual decisions.
 - [[Ideas to Explore]] — proposals awaiting team validation.
 - [[Meeting - 2026-11-02]] — meeting recollections and follow-up questions.

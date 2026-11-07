@@ -16,6 +16,7 @@ var battle: Battle = null
 var rng := RandomNumberGenerator.new()
 var no_spells := false # experiment toggle: disables casting for both wizards
 var fast := false # combat speed x2
+var momentum_enabled := true # experiment toggle: momentum combos
 var drag: OwnedCreature = null
 var hover_info := {}
 var last_result := {}
@@ -88,6 +89,7 @@ func start_combat() -> void:
 	add_child(battle)
 	move_child(battle, board_view.get_index() + 1)
 	battle.casting_enabled = not no_spells
+	battle.momentum_enabled = momentum_enabled
 	battle.setup(states)
 	battle.unit_died.connect(_on_unit_died)
 	battle.unit_transformed.connect(_on_unit_transformed)
@@ -143,8 +145,8 @@ func _on_unit_died(u: Unit) -> void:
 	Sfx.play("death")
 
 
-func _on_unit_transformed(u: Unit, _caster: int, _from: String) -> void:
-	fx.add("shift", u.position)
+func _on_unit_transformed(u: Unit, _caster: int, _from: String, _combo: bool) -> void:
+	fx.add("shift", u.position, {"col": CreatureDB.family_color(u.form_id)})
 	Sfx.play("shift")
 
 
@@ -198,6 +200,13 @@ func _left_press(pos: Vector2) -> void:
 		else:
 			Sfx.play("fail")
 		return
+	if pos.distance_to(Hud.TOGGLE_MOMENTUM) < Hud.TOGGLE_SMALL_R:
+		if phase != Phase.COMBAT and phase != Phase.RESOLVE:
+			momentum_enabled = not momentum_enabled
+			Sfx.play("click")
+		else:
+			Sfx.play("fail")
+		return
 	match phase:
 		Phase.PACK:
 			for i in pack_choices.size():
@@ -221,6 +230,14 @@ func _left_press(pos: Vector2) -> void:
 			drag = _owned_at(pos)
 			if drag != null:
 				Sfx.play("click")
+		Phase.COMBAT:
+			var u := battle.unit_at(pos - Rules.BOARD_POS)
+			if u == null or u.team != 0:
+				return
+			if battle.trigger_special(0, u, true):
+				return
+			fx.add("fizzle", pos - Rules.BOARD_POS)
+			Sfx.play("fail")
 		Phase.OVER:
 			if pos.distance_to(Hud.RESTART_POS) < 46:
 				Sfx.play("click")
@@ -256,7 +273,19 @@ func _right_press(pos: Vector2) -> void:
 	if phase != Phase.COMBAT:
 		return
 	var u := battle.unit_at(pos - Rules.BOARD_POS)
-	if u == null or not battle.cast(0, u):
+	if u == null:
+		fx.add("fizzle", pos - Rules.BOARD_POS)
+		Sfx.play("fail")
+		return
+	if u.immune_t > 0.0:
+		fx.add("blocked", u.position)
+		Sfx.play("fail")
+		return
+	if u.needs_special_for_upgrade():
+		fx.add("need_special", u.position)
+		Sfx.play("fail")
+		return
+	if not battle.cast(0, u):
 		fx.add("fizzle", pos - Rules.BOARD_POS)
 		Sfx.play("fail")
 

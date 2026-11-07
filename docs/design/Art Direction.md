@@ -33,4 +33,27 @@ These are the current speaker's preferences, recorded for discussion rather than
 - Transformation effects and how to communicate their gameplay consequences.
 - Asset production approach and achievable content volume for the jam.
 
+## Second Prototype 02 iteration — readability requirements
+
+Each of the six archetypes must have a visibly different attack presentation:
+Vanguard thrust, Striker slash, Ranger bow draw, Mystic cast, Support pulse and
+Berserker smash. Animal forms reuse the same vocabulary with a fitting style.
+
+The following combat events need distinct feedback:
+
+- Transformation, with a family-coloured burst and scale pop.
+- Blocked transformation by immunity.
+- Special ready/used rune and the padlock on a gated upgrade.
+- Successful animal special, with its area effect.
+- Momentum window and successful combo.
+- Attack windup telegraph.
+- Attack interruption.
+- Projectile dodge.
+- Hit reaction and death ejection.
+
+The interface remains icon-first. Family accents help players recognise which
+archetype a transformed creature came from.
+
+See [[Prototype 02]] and [[Combat and Transformation Spec]].
+
 See [[Game Vision]] and [[Design Index]].

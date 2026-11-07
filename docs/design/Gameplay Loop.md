@@ -37,7 +37,14 @@ The exact cooldown, recharge model, starting charge count and interaction with o
 - **Deferred idea:** transformations involving multiple creatures, including exchanges of properties between opposing units.
 - **Working proposal:** allow shapeshifting creatures on the bench as well.
 
-The initial interaction targets one creature, with a weighted random outcome based on its current form and an initial three-second immunity after transformation. See [[Shapeshifting]] for the working rules and unresolved questions.
+The initial interaction targets one creature with a three-second immunity after transformation. Each purchasable archetype owns a directed family ladder of four forms: Base → Animal I → Animal II → Animal III. Base forms always upgrade; Animal I and II must use their one-use special before the next upgrade; Animal III refreshes. See [[Shapeshifting]].
+
+## Combat timing — second Prototype 02 iteration
+
+Basic attacks have a visible windup. Transforming the attacker during the windup
+interrupts the attack. Transforming the target grants a short projectile-dodge
+window. Consecutive transformations can trigger an experimental momentum combo
+after the immunity expires. These rules are tunable; see [[Combat and Transformation Spec]].
 
 ## Bench — working proposal
 

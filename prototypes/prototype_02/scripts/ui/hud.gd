@@ -7,8 +7,11 @@ const ENEMY_BLOCK := Rect2(24, 84, 300, 140)
 const PLAYER_BLOCK := Rect2(24, 376, 300, 156)
 const TOGGLE_NOSPELL := Vector2(78, 300)
 const TOGGLE_FAST := Vector2(158, 300)
-const ROUND_POS := Vector2(270, 300)
+const TOGGLE_MOMENTUM := Vector2(238, 300)
+const ROUND_POS := Vector2(286, 300)
 const TOGGLE_R := 26.0
+const TOGGLE_SMALL_R := 20.0
+const ROUND_R := 18.0
 const RESTART_POS := Vector2(640, 420)
 const OFFER_SIZE := Vector2(288, 112)
 const REROLL_RECT := Rect2(1000, 458, 224, 42)
@@ -114,10 +117,14 @@ func _draw_toggles() -> void:
 	draw_circle(TOGGLE_FAST, TOGGLE_R, Color(0.3, 0.25, 0.08) if game.fast else Color(0.15, 0.1, 0.1))
 	draw_arc(TOGGLE_FAST, TOGGLE_R, 0, TAU, 24, Color(1.0, 0.85, 0.3), 2.0, true)
 	Icons.fast_forward(self, TOGGLE_FAST, 14, Color(1.0, 0.85, 0.3) if game.fast else Color(0.6, 0.55, 0.4))
+	# Momentum toggle.
+	draw_circle(TOGGLE_MOMENTUM, TOGGLE_SMALL_R, Color(0.3, 0.2, 0.05) if game.momentum_enabled else Color(0.15, 0.1, 0.1))
+	draw_arc(TOGGLE_MOMENTUM, TOGGLE_SMALL_R, 0, TAU, 24, Color(1.0, 0.72, 0.2, 1.0 if editable else 0.35), 2.0, true)
+	Icons.momentum_icon(self, TOGGLE_MOMENTUM, 11, Color(1.0, 0.78, 0.3) if game.momentum_enabled else Color(0.55, 0.5, 0.4))
 	# Round counter.
-	draw_circle(ROUND_POS, 22, Color(0.15, 0.1, 0.1))
-	draw_arc(ROUND_POS, 22, 0, TAU, 24, Color(0.6, 0.5, 0.4), 2.0, true)
-	draw_string(font, ROUND_POS + Vector2(-20, 8), str(maxi(1, game.round_num)), HORIZONTAL_ALIGNMENT_CENTER, 40, 22, Color(0.9, 0.85, 0.75))
+	draw_circle(ROUND_POS, ROUND_R, Color(0.15, 0.1, 0.1))
+	draw_arc(ROUND_POS, ROUND_R, 0, TAU, 24, Color(0.6, 0.5, 0.4), 2.0, true)
+	draw_string(font, ROUND_POS + Vector2(-16, 7), str(maxi(1, game.round_num)), HORIZONTAL_ALIGNMENT_CENTER, 32, 20, Color(0.9, 0.85, 0.75))
 
 
 func _draw_shop() -> void:
@@ -241,23 +248,37 @@ func _draw_hover_card(info: Dictionary) -> void:
 	Icons.token(self, form, main, 26, team)
 	Icons.level_stars(self, main + Vector2(0, 34), stars)
 	if u != null:
-		if u.level > 1:
-			Icons.temporary_levels(self, main + Vector2(29, -22), u.level - 1)
 		if u.immune_t > 0.0:
 			Icons.immunity_ring(self, main, 31, u.immune_t / Rules.TARGET_IMMUNITY, u.anim_t)
+		if u.momentum_window_t > 0.0:
+			Icons.momentum_ring(self, main, 33, u.momentum_window_t / Rules.MOMENTUM_WINDOW, u.anim_t)
 	Icons.arrow_right(self, pos + Vector2(78, 40), 9, Icons.MAGIC)
-	var outs := CreatureDB.outcomes(form)
-	for i in outs.size():
-		var op := pos + Vector2(116 + i * 46, 32)
-		Icons.token(self, outs[i].id, op, 18, team)
-		Icons.chance_pie(self, op + Vector2(0, 29), 7, outs[i].chance)
+	# Family ladder: the current form is highlighted, later forms are the next
+	# upgrades. At the final stage, a refresh icon replaces the upgrade path.
+	var ladder := CreatureDB.family_ladder(form)
+	var stage := CreatureDB.stage_of(form)
+	for i in ladder.size():
+		var op := pos + Vector2(102 + i * 32, 32)
+		Icons.token(self, ladder[i], op, 12, team)
+		if i == stage:
+			draw_arc(op, 17.0, 0, TAU, 20, Color.WHITE, 2.0, true)
+	if u != null and u.needs_special_for_upgrade() and stage + 1 < ladder.size():
+		Icons.padlock(self, pos + Vector2(102 + (stage + 1) * 32, 12))
+	if CreatureDB.is_final_stage(form):
+		Icons.restart(self, pos + Vector2(220, 32), 10, Icons.MAGIC)
+	if u != null and u.stage() > 0:
+		Icons.special_rune(self, pos + Vector2(36, 76), 8, CreatureDB.family_color(form), u.special_used, u.special_used and not u.is_final_stage())
 	# Stat bars (normalised against the roster's high values).
 	var d := CreatureDB.get_form(form)
 	var mult: float = u.stat_mult() if u != null else Rules.star_mult(stars)
+	var dps: float = d.dmg * mult / maxf(d.interval, 0.1)
 	var stats := [
-		["hp", d.hp * mult / 250.0], ["dmg", d.dmg * mult / d.interval / 14.0],
-		["speed", 1.0 / d.interval / 1.3], ["range", d.range / 5.0],
-		["move", d.speed / 3.0], ["armour", d.armour / 50.0],
+		["hp", d.hp * mult / CreatureDB.STAT_MAX["hp"]],
+		["dmg", dps / CreatureDB.STAT_MAX["dps"]],
+		["speed", 1.0 / d.interval / CreatureDB.STAT_MAX["interval"]],
+		["range", d.range / CreatureDB.STAT_MAX["range"]],
+		["move", d.speed / CreatureDB.STAT_MAX["speed"]],
+		["armour", d.armour / CreatureDB.STAT_MAX["armour"]],
 	]
 	for i in stats.size():
 		var col := i % 2

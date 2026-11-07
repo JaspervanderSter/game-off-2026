@@ -5,7 +5,8 @@ extends Node2D
 ## tests call it directly.
 
 signal unit_died(unit: Unit)
-signal unit_transformed(unit: Unit, caster_team: int, from_form: String)
+signal unit_transformed(unit: Unit, caster_team: int, from_form: String, combo: bool)
+signal special_triggered(unit: Unit, caster_team: int, manual: bool, special_id: String)
 signal fx_requested(kind: String, pos: Vector2, extra: Dictionary)
 signal ended(result: Dictionary)
 
@@ -17,13 +18,16 @@ var projectiles: Array[Dictionary] = []
 var spells: Array[ShiftSpell] = [ShiftSpell.new(), ShiftSpell.new()]
 var ai_casting: Array[bool] = [false, true]
 var casting_enabled := true
+var momentum_enabled := Rules.MOMENTUM_ENABLED
 var time := 0.0
 var finished := false
 var result := {}
 var rng := RandomNumberGenerator.new()
-var casts := [0, 0] # successful casts per team, for tests and tuning
+var casts := [0, 0] # successful transformations per team, for tests and tuning
+var specials_cast := [0, 0] # successful special triggers per team
 
 var _ai_delay := [0.0, 0.0]
+var _ai_special_delay := [0.0, 0.0]
 var _projectile_layer: Node2D
 
 
@@ -64,6 +68,7 @@ func step(dt: float) -> void:
 	for t in 2:
 		spells[t].tick(dt)
 		if casting_enabled and ai_casting[t]:
+			_ai_special(t, dt)
 			_ai_cast(t, dt)
 	for u in units.duplicate():
 		u.tick(dt)
@@ -76,17 +81,70 @@ func step(dt: float) -> void:
 
 
 ## Casts the shapeshift spell for a team. Invalid casts consume nothing.
+## Base forms always advance. Animal stages I and II require their one-use
+## special to have been triggered. Stage III refreshes instead of upgrading.
 func cast(team: int, u: Unit) -> bool:
 	if finished or not casting_enabled or u == null or not u.alive:
 		return false
 	if u.immune_t > 0.0 or not spells[team].can_cast():
 		return false
+	if u.needs_special_for_upgrade():
+		return false
 	var from := u.form_id
+	var interrupted := u.has_pending_attack()
+	var combo := momentum_enabled and u.momentum_window_t > 0.0
+	var next := CreatureDB.next_form(from)
 	spells[team].consume()
-	u.transform_to(CreatureDB.roll_outcome(from, rng), u.team == team)
+	u.transform_to(next, combo)
 	casts[team] += 1
-	unit_transformed.emit(u, team, from)
+	if interrupted:
+		emit_fx("interrupt", u.position)
+		Sfx.play("interrupt")
+	if combo:
+		emit_fx("combo", u.position)
+		Sfx.play("combo")
+	unit_transformed.emit(u, team, from, combo)
 	return true
+
+
+## Triggers a friendly unit's one-use special. Manual triggers spend a charge;
+## automatic triggers are free but require the unit's data condition.
+func trigger_special(team: int, u: Unit, manual := true) -> bool:
+	if finished or not casting_enabled or u == null or not u.alive or u.team != team:
+		return false
+	if not u.can_use_special():
+		return false
+	if manual and not spells[team].can_cast():
+		return false
+	if manual:
+		spells[team].consume()
+	var special_id := str(u.data.special.get("id", ""))
+	if not u._execute_special():
+		return false
+	specials_cast[team] += 1
+	special_triggered.emit(u, team, manual, special_id)
+	return true
+
+
+func _ai_special(team: int, dt: float) -> void:
+	_ai_special_delay[team] -= dt
+	if _ai_special_delay[team] > 0.0:
+		return
+	if spells[team].charges < 2:
+		_ai_special_delay[team] = 0.5
+		return
+	var candidates: Array[Unit] = []
+	for u in living(team):
+		if u.can_use_special() and (u.special_condition_met() or spells[team].charges >= 3):
+			candidates.append(u)
+	if candidates.is_empty():
+		_ai_special_delay[team] = 0.5
+		return
+	var choice: Unit = candidates[rng.randi_range(0, candidates.size() - 1)]
+	if trigger_special(team, choice, true):
+		_ai_special_delay[team] = rng.randf_range(1.2, 2.2)
+	else:
+		_ai_special_delay[team] = 0.3
 
 
 func _ai_cast(team: int, dt: float) -> void:
@@ -139,11 +197,6 @@ func _reap() -> void:
 func damage(src: Unit, dst: Unit, amount: float, kind: String, pierce := false) -> void:
 	if dst == null or not dst.alive:
 		return
-	if (kind == "melee" or kind == "ranged") and dst.parry_ready:
-		dst.parry_ready = false
-		dst.ability_timer = dst.data.cd
-		emit_fx("parry", dst.position)
-		return
 	var reduction := 0.0 if pierce else dst.armour() / 100.0
 	dst.hp -= amount * (1.0 - reduction)
 	dst.last_hurt = time
@@ -151,6 +204,8 @@ func damage(src: Unit, dst: Unit, amount: float, kind: String, pierce := false) 
 		dst.flash_t = 0.12
 	if kind == "melee" and dst.data.ability == "thorns" and src != null and src.alive:
 		damage(dst, src, dst.data.power, "thorns")
+	if kind == "melee" and dst.statuses.has("retaliate") and src != null and src.alive:
+		damage(dst, src, dst.statuses["retaliate"].v, "thorns")
 	if dst.hp <= 0.0:
 		dst.hp = 0.0
 		dst.alive = false
@@ -158,17 +213,17 @@ func damage(src: Unit, dst: Unit, amount: float, kind: String, pierce := false) 
 
 # --- Projectiles --------------------------------------------------------------
 
-func spawn_projectile(src: Unit, t: Unit) -> void:
+func spawn_projectile(src: Unit, t: Unit, damage_mult := 1.0) -> void:
 	projectiles.append({
 		"pos": src.position,
 		"target": t,
 		"aim": t.position,
 		"team": src.team,
-		"kind": src.data.attack,
-		"dmg": src.attack_damage(),
+		"kind": src.data.get("projectile", "arrow"),
+		"dmg": src.attack_damage() * damage_mult,
 		"src": src,
-		"pierce": src.data.ability == "pierce",
-		"splash": src.data.radius * CELL if src.data.ability == "splash" else 0.0,
+		"pierce": src.data.get("pierce", false),
+		"splash": src.data.get("splash_radius", 0.0) * CELL,
 		"chill": [src.data.duration, src.data.power] if src.data.ability == "chill" else [],
 	})
 	Sfx.play("shoot")
@@ -185,6 +240,12 @@ func _update_projectiles(dt: float) -> void:
 			p.pos += to.normalized() * travel
 			continue
 		projectiles.erase(p)
+		# A transformation grants a short projectile-dodge window. The
+		# projectile is committed only when it arrives, so timing matters.
+		if t != null and t.alive and t.dodge_t > 0.0:
+			emit_fx("dodge", t.position)
+			Sfx.play("dodge")
+			continue
 		var src: Unit = p.src if is_instance_valid(p.src) else null
 		if p.splash > 0.0:
 			for e in enemies_of_team_near(p.team, p.aim, p.splash):
@@ -200,6 +261,13 @@ func _draw_projectiles() -> void:
 	for p in projectiles:
 		var dir: Vector2 = (p.aim - p.pos).normalized()
 		Icons.projectile(_projectile_layer, p.kind, p.pos, dir)
+
+
+func incoming_projectile_to(u: Unit) -> bool:
+	for p in projectiles:
+		if p.target == u:
+			return true
+	return false
 
 
 # --- Spatial helpers -------------------------------------------------------------
@@ -263,6 +331,19 @@ func nearest_enemy(of: Unit) -> Unit:
 				best_d = d
 				best = u
 	return best
+
+
+func nearest_enemies(of: Unit, count: int) -> Array[Unit]:
+	var candidates: Array[Unit] = []
+	for u in units:
+		if u.alive and u.team != of.team:
+			candidates.append(u)
+	candidates.sort_custom(func(a, b):
+		return of.position.distance_squared_to(a.position) < of.position.distance_squared_to(b.position))
+	var result: Array[Unit] = []
+	for i in mini(count, candidates.size()):
+		result.append(candidates[i])
+	return result
 
 
 func farthest_enemy(of: Unit) -> Unit:

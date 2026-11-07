@@ -28,7 +28,15 @@ const MAX_CHARGES := 3
 const RECHARGE_TIME := 3.0
 const TARGET_IMMUNITY := 3.0
 const SHIFT_HEAL := 0.10 # fraction of the new max HP
-const LEVEL_SCALE := 0.20 # max HP and basic damage per level above 1
+const SHIFT_ATTACK_RECOVERY := 0.40 # recovery after interrupting an attack
+const DODGE_WINDOW := 0.30 # projectile-dodge window after a transformation
+
+# Experimental momentum combos.
+const MOMENTUM_ENABLED := true
+const MOMENTUM_WINDOW := 2.5 # seconds after immunity expires
+const MOMENTUM_DURATION := 4.0
+const MOMENTUM_ATTACK_SPEED := 0.25
+const MOMENTUM_DAMAGE := 0.15
 
 # Screen layout (1280 x 720).
 const BOARD_POS := Vector2(352, 84)
@@ -44,10 +52,6 @@ static func income(round_num: int) -> int:
 
 static func star_mult(stars: int) -> float:
 	return pow(1.8, clampi(stars, 1, MAX_STARS) - 1)
-
-
-static func level_mult(level: int) -> float:
-	return 1.0 + LEVEL_SCALE * (level - 1)
 
 
 static func cell_center(cell: Vector2i) -> Vector2:
