@@ -112,8 +112,8 @@ All confirmed rules and delegated defaults of the design note, notably:
 
 `scripts/audio/phase_music.gd` plays the supplied looping OGG tracks in `music/`:
 
-- Pack choice and preparation: `menu_super_auto_pets_loop.ogg`.
-- Combat: `battle_super_auto_pets_loop.ogg`.
+- Pack choice and preparation: `cartoon_magic.ogg`.
+- Combat: `marching_beat.ogg`.
 - Resolution fades battle music to silence so heart-loss and coin sounds remain
   clear; the next preparation fades its track in. Game over remains silent.
 

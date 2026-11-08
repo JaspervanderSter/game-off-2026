@@ -6,8 +6,8 @@ extends Node
 const FADE_SECONDS := 1.2
 const MUSIC_DB := -16.0 # leave room for combat and reward sound effects
 const TRACKS := {
-	"prep": preload("res://music/menu_super_auto_pets_loop.ogg"),
-	"battle": preload("res://music/battle_super_auto_pets_loop.ogg"),
+	"prep": preload("res://music/cartoon_magic.ogg"),
+	"battle": preload("res://music/marching_beat.ogg"),
 }
 
 var players: Dictionary = {}
