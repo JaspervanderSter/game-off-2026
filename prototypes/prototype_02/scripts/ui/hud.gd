@@ -384,7 +384,6 @@ func _draw_result() -> void:
 func _draw_pack_choice() -> void:
 	var dim := Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE)
 	draw_rect(dim, Color(0, 0, 0, 0.45))
-	Icons.star(self, Vector2(640, PACK_TOP - 50), 26)
 	for i in game.pack_choices.size():
 		var r := pack_rect(i)
 		var hovered := r.has_point(get_global_mouse_position())

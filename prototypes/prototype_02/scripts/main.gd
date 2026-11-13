@@ -275,6 +275,19 @@ func _owned_at(pos: Vector2) -> OwnedCreature:
 	return null
 
 
+func _input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	if event.keycode != KEY_ENTER or not event.alt_pressed or Engine.is_embedded_in_editor():
+		return
+	var window := get_window()
+	if window.mode == Window.MODE_FULLSCREEN or window.mode == Window.MODE_EXCLUSIVE_FULLSCREEN:
+		window.mode = Window.MODE_WINDOWED
+	else:
+		window.mode = Window.MODE_FULLSCREEN
+	get_viewport().set_input_as_handled()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and shop_drag_index >= 0:
 		shop_drag_position = event.position

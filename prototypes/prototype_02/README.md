@@ -10,6 +10,9 @@ Learning goal: does shapeshifting make a complete auto-battler duel more fun?
 
 Open `prototypes/prototype_02/project.godot` in Godot 4.7 and press F5.
 
+To use fullscreen when launching from the editor, turn off **Embed Game on Next
+Play** in the **Game** tab's window options, then relaunch with F5.
+
 ## How to play (no text in game: everything is icons)
 
 | Action | Control |
@@ -23,6 +26,7 @@ Open `prototypes/prototype_02/project.godot` in Godot 4.7 and press F5.
 | Combine / merge | Drag onto an identical creature of the same star rank; gold highlights show compatible targets |
 | Sell | Drag a creature onto the shop panel (refund = price) |
 | Start combat | Crossed-swords button (or Space) |
+| Toggle fullscreen | Alt+Enter |
 | Shapeshift | Right-click any living creature during combat, friend or foe |
 | Inspect | Hover a creature: its three possible outcomes with their chances, plus stat bars |
 | Experiment toggles | Wand: no-spell mode for both wizards (outside combat). Double chevron: combat speed x2 |
