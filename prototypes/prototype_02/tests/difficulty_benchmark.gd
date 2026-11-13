@@ -44,7 +44,7 @@ func run() -> void:
 		var states: Array[WizardState] = [WizardState.new(0), WizardState.new(1)]
 		states[challenger].ai_level = level
 		for s in states:
-			s.take_starting_pack(EnemyAI.choose_pack(rng))
+			s.take_starting_pack(EnemyAI.choose_pack(rng, EnemyAI.profile_for(s.ai_level)))
 		var rounds := 0
 		while states[0].hp > 0 and states[1].hp > 0 and rounds < MAX_ROUNDS:
 			rounds += 1

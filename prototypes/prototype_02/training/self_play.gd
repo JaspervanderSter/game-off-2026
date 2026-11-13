@@ -54,9 +54,9 @@ func _duel(profiles: Array[Dictionary], seed_id: int, first_side: int) -> Dictio
 			EnemyAI.shop(state, shops[team], profiles[team ^ first_side])
 		var battle := Battle.new()
 		add_child(battle)
-		battle.ai_profiles = [profiles[first_side], profiles[1 ^ first_side]]
 		battle.ai_casting = [true, true]
 		battle.setup(states, combat_rng.randi())
+		battle.ai_profiles = [profiles[first_side], profiles[1 ^ first_side]]
 		while not battle.finished:
 			battle.step(STEP)
 		var winner: int = battle.result.winner

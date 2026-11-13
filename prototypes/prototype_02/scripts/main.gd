@@ -141,7 +141,7 @@ func choose_pack(index: int) -> void:
 	if phase != Phase.PACK or index < 0 or index >= CreatureDB.PACKS.size():
 		return
 	player.take_starting_pack(CreatureDB.PACKS[index])
-	enemy.take_starting_pack(EnemyAI.choose_pack(rng))
+	enemy.take_starting_pack(EnemyAI.choose_pack(rng, EnemyAI.profile_for(enemy.ai_level)))
 	Sfx.play("buy")
 	start_round()
 

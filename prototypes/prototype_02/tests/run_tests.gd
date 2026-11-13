@@ -1279,7 +1279,7 @@ func _test_ai_strategy() -> void:
 	state.add_creature("guardian")
 	state.add_creature("guardian")
 	state.offers = ["", "", ""]
-	EnemyAI.shop_step(state, rng)
+	EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE)
 	check(state.field_count() == 2 and state.creatures[0].merge_copies == 1,
 		"AI keeps two fielded bodies instead of merging for no star")
 	state = WizardState.new(1)
@@ -1289,35 +1289,35 @@ func _test_ai_strategy() -> void:
 	guard.merge_copies = 2
 	state.gold = 2
 	state.offers = ["guardian", "", ""]
-	var action := EnemyAI.shop_step(state, rng)
+	var action := EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE)
 	check(action.get("kind") == "buy" and state.gold == 0 and state.creatures.size() == 7,
 		"AI buys a completing duplicate with a full field instead of stopping")
-	action = EnemyAI.shop_step(state, rng)
+	action = EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE)
 	check(action.get("kind") == "merge" and guard.stars == 1 and state.field_count() == 6,
 		"AI upgrades a full team without removing a fielded body")
 	state.shift_recharge_upgraded = true
 	state.gold = 4
 	state.offers = ["peasant", "", ""]
-	action = EnemyAI.shop_step(state, rng)
+	action = EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE)
 	check(action.get("kind") == "reroll" and state.gold == 3, "AI spends gold rerolling unhelpful offers")
 	state.shift_recharge_upgraded = false
 	state.gold = 4
 	state.offers = ["", "", ""]
-	action = EnemyAI.shop_step(state, rng)
+	action = EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE)
 	check(action.get("kind") == "upgrade" and state.shift_recharge_upgraded and state.gold == 0,
 		"AI buys recharge upgrade from its own gold")
 	state.gold = 10
 	state.ai_rerolls = 2
 	state.offers = ["peasant", "", ""]
-	action = EnemyAI.shop_step(state, rng)
+	action = EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE)
 	check(action.get("kind") == "reroll" and state.gold == 9, "AI keeps looking for improvements after two rerolls")
 	state.gold = Rules.REROLL_COST
 	state.offers = ["peasant", "", ""]
-	check(EnemyAI.shop_step(state, rng).is_empty() and state.gold == Rules.REROLL_COST,
+	check(EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE).is_empty() and state.gold == Rules.REROLL_COST,
 		"AI keeps its last coin when a reroll would leave nothing for a purchase")
 	state.gold = 2
 	state.offers = ["guardian", "", ""]
-	action = EnemyAI.shop_step(state, rng)
+	action = EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE)
 	check(action.get("kind") == "buy" and state.gold == 0,
 		"AI starts collecting copies towards the next star of a fielded unit")
 
@@ -1330,7 +1330,7 @@ func _test_ai_strategy() -> void:
 	guard.merge_copies = 2
 	state.gold = 2
 	state.offers = ["guardian", "", ""]
-	action = EnemyAI.shop_step(state, rng)
+	action = EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE)
 	check(action.get("kind") == "merge" and action.get("cost") == 2 and state.gold == 0
 		and guard.stars == 1 and state.free_slot() == -1 and state.field_count() == Rules.FIELD_CAP,
 		"AI pays for a direct promotion even when the field and bench are full")
@@ -1340,7 +1340,7 @@ func _test_ai_strategy() -> void:
 	state.shift_recharge_upgraded = true
 	state.gold = 10
 	state.offers = ["guardian", "pyromancer", ""]
-	check(EnemyAI.shop_step(state, rng).is_empty() and state.gold == 10,
+	check(EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE).is_empty() and state.gold == 10,
 		"AI skips rerolls when the shop has no way to improve a max-rank team")
 	var b := _new_battle()
 	var weak_enemy := b.spawn(0, "peasant", Vector2(100, 350))
@@ -1348,6 +1348,29 @@ func _test_ai_strategy() -> void:
 	b.spells[1].charges = 3
 	check(EnemyAI.choose_cast(b, 1) != weak_enemy, "AI avoids transforming a weak enemy into stronger expected forms")
 	b.free()
+
+	# Archmage strategy: its own profile, Control opening and harvest economy.
+	check(EnemyAI.profile_for(Difficulty.ARCHMAGE) == EnemyAI.ARCHMAGE_PROFILE
+		and EnemyAI.profile_for(Difficulty.ADEPT) == EnemyAI.DEFAULT_PROFILE
+		and EnemyAI.profile_for(Difficulty.APPRENTICE) == EnemyAI.DEFAULT_PROFILE,
+		"only the archmage uses the tuned strategy profile")
+	check(EnemyAI.choose_pack(rng, EnemyAI.ARCHMAGE_PROFILE).name == "Control", "archmage opens with the Control pack")
+	state = WizardState.new(1)
+	for id in ["guardian", "berserker", "archer"]:
+		state.add_creature(id)
+	state.shift_recharge_upgraded = true
+	state.gold = 1
+	state.offers = ["peasant", "", ""]
+	action = EnemyAI.shop_step(state, rng)
+	check(action.get("kind") == "buy" and state.harvest_total() == 1, "archmage fields a peasant for its harvest")
+	var hexed := _new_battle()
+	var leveled := hexed.spawn(0, "duelist", Vector2(100, 350))
+	leveled.level = 4
+	hexed.spawn(1, "guardian", Vector2(100, 100))
+	hexed.spells[1].charges = 3
+	check(EnemyAI.choose_cast(hexed, 1, EnemyAI.ARCHMAGE_PROFILE) == leveled,
+		"archmage hexes a leveled enemy, counting the reset to level 1")
+	hexed.free()
 
 
 func _test_difficulty() -> void:

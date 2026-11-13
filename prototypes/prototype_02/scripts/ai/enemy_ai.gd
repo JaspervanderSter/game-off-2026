@@ -29,16 +29,42 @@ const DEFAULT_PROFILE := {
 	"target_power_weight": 0.0, "ally_cast_bias": 0.0,
 	"low_health_bonus": 0.25, "stun_value": 0.16, "interrupt_value": 1.1,
 }
+# Archmage strategy, tuned in full AI-vs-AI duels (training/arena.gd):
+# Control opening, peasant harvest valued while hearts remain, seeker-bolt
+# crossbowmen, a wide frontline and hexes that count the level reset.
+const ARCHMAGE_PROFILE := {
+	"pack": 0, # Control
+	"fireball_value": 32.0, "blizzard_value": 8.0,
+	"star_ability_scaling": 1.0, "chain_value": 25.0,
+	"harvest_value": 35.0, "harvest_hp_power": 1.0,
+	"duplicate_value": 10.0, "promotion_value": 28.0, "price_weight": 0.05,
+	"replacement_margin": 1.25, "rerolls": -1, "reroll_reserve": 0,
+	"upgrade_field": 5, "upgrade_gold": 7, "spread_front": true,
+	"front_cols": [0, 7, 1, 6, 2, 5, 3, 4],
+	"cast_threshold": 0.22, "full_cast_threshold": 0.03,
+	"target_power_weight": 0.9, "ally_cast_bias": 0.1,
+	"low_health_bonus": 0.12, "stun_value": 0.3, "interrupt_value": 1.1,
+	"hex_level_reset": true,
+}
 
 
-static func choose_pack(rng: RandomNumberGenerator) -> Dictionary:
+## Strategy of a difficulty level. Easier levels keep DEFAULT_PROFILE and decide
+## worse through Difficulty; the Archmage plays its own tuned strategy.
+static func profile_for(level: int) -> Dictionary:
+	return ARCHMAGE_PROFILE if level == Difficulty.ARCHMAGE else DEFAULT_PROFILE
+
+
+static func choose_pack(rng: RandomNumberGenerator, profile: Dictionary = DEFAULT_PROFILE) -> Dictionary:
 	# With three fixed options, sample directly to give each opening opponents.
-	return CreatureDB.PACKS[rng.randi_range(0, CreatureDB.PACKS.size() - 1)]
+	var index := rng.randi_range(0, CreatureDB.PACKS.size() - 1)
+	return CreatureDB.PACKS[int(profile.get("pack", index))]
 
 
 ## The simulation consumes the same actions immediately; the live game spaces
 ## them out so spending, combining and placement remain visible.
-static func shop(state: WizardState, rng: RandomNumberGenerator, profile: Dictionary = DEFAULT_PROFILE) -> void:
+static func shop(state: WizardState, rng: RandomNumberGenerator, profile: Dictionary = {}) -> void:
+	if profile.is_empty():
+		profile = profile_for(state.ai_level)
 	state.ai_rerolls = 0
 	while not shop_step(state, rng, profile).is_empty():
 		pass
@@ -64,11 +90,22 @@ static func form_value(id: String, stars: int = 0, profile: Dictionary = DEFAULT
 		"spray", "display": value += 13
 		"thorns", "shell", "pack": value += 7
 		"kite": value += 6
+	# Seeker bolts chain to more targets from one star (crossbowman).
+	var chain: Array = d.get("chain_targets", [])
+	if not chain.is_empty():
+		value += profile.get("chain_value", 0.0) * (int(chain[clampi(stars, 0, chain.size() - 1)]) - 1)
 	return value
 
 
+## Fielding value: combat value plus the gold a harvester pays when the fight begins.
+static func field_value(state: WizardState, form_id: String, stars: int, profile: Dictionary) -> float:
+	# Early harvests pay for more rounds; a wizard low on hearts has fewer left.
+	var weight: float = profile.get("harvest_value", 0.0) * pow(state.hp / Rules.WIZARD_HP, profile.get("harvest_hp_power", 0.0))
+	return form_value(form_id, stars, profile) + weight * Rules.harvest_gold(form_id, stars)
+
+
 static func _protected_value(state: WizardState, c: OwnedCreature, profile: Dictionary) -> float:
-	var value := form_value(c.form_id, c.stars, profile)
+	var value := field_value(state, c.form_id, c.stars, profile)
 	var role: String = CreatureDB.get_form(c.form_id).role
 	var same_role := 0
 	for other in state.fielded():
@@ -87,7 +124,9 @@ static func _weakest_fielded(state: WizardState, profile: Dictionary) -> OwnedCr
 	return weakest
 
 
-static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: Dictionary = DEFAULT_PROFILE) -> Dictionary:
+static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: Dictionary = {}) -> Dictionary:
+	if profile.is_empty():
+		profile = profile_for(state.ai_level)
 	var difficulty := Difficulty.profile(state.ai_level)
 	var targets := state.creatures.duplicate()
 	targets.sort_custom(func(a, b): return a.is_fielded() and not b.is_fielded())
@@ -113,7 +152,7 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 	var plans := {}
 	for id in CreatureDB.shop_ids():
 		var role: String = CreatureDB.get_form(id).role
-		var value := form_value(id, 0, profile)
+		var value: float = field_value(state, id, 0, profile) + profile.get("focus", {}).get(id, 0.0)
 		var need := _role_need(state, role)
 		var target: OwnedCreature = null
 		var copies := 0
@@ -195,9 +234,11 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 
 ## Select by fighting power, preserve a frontline and keep support close enough
 ## to cover it. Spread ranged units to reduce exposure to 3x3 blizzards.
-static func arrange(state: WizardState, profile: Dictionary = DEFAULT_PROFILE) -> void:
+static func arrange(state: WizardState, profile: Dictionary = {}) -> void:
+	if profile.is_empty():
+		profile = profile_for(state.ai_level)
 	var sorted := state.creatures.duplicate()
-	sorted.sort_custom(func(a, b): return form_value(a.form_id, a.stars, profile) > form_value(b.form_id, b.stars, profile))
+	sorted.sort_custom(func(a, b): return field_value(state, a.form_id, a.stars, profile) > field_value(state, b.form_id, b.stars, profile))
 	var selected: Array[OwnedCreature] = []
 	var roles: Array = ["front", "back"] if Difficulty.profile(state.ai_level).smart_field else []
 	for role in roles:
@@ -216,9 +257,9 @@ static func arrange(state: WizardState, profile: Dictionary = DEFAULT_PROFILE) -
 	for c in selected:
 		var d := CreatureDB.get_form(c.form_id)
 		var role: String = "mid" if d.role == "support" else d.role
-		if role == "back" or (role == "front" and profile.spread_front):
+		if role == "back" or (role == "front" and profile.spread_front) or profile.has(role + "_cols"):
 			var row := state.preferred_row(role)
-			for col in [1, 6, 3, 4, 0, 7, 2, 5]:
+			for col in profile.get(role + "_cols", [1, 6, 3, 4, 0, 7, 2, 5]):
 				var cell := Vector2i(col, row)
 				if state.at_cell(cell) == null:
 					c.cell = cell
@@ -267,8 +308,10 @@ static func choose_cast(battle: Battle, team: int, profile: Dictionary = DEFAULT
 		var power := form_value(u.form_id, u.stars, profile) * Rules.level_mult(u.level)
 		var current := power * sqrt(maxf(ratio, 0.05))
 		var expected := 0.0
+		# An allied cast adds a level; a hex resets the target to level 1.
+		var new_level := u.level + 1 if allied else (1 if profile.get("hex_level_reset", false) else u.level)
 		for outcome in CreatureDB.outcomes(u.form_id):
-			var value := form_value(outcome.id, u.stars, profile) * Rules.level_mult(u.level + (1 if allied else 0))
+			var value := form_value(outcome.id, u.stars, profile) * Rules.level_mult(new_level)
 			value *= sqrt(shifted_ratio)
 			var d := CreatureDB.get_form(outcome.id)
 			if d.range > 2.0 and u.target != null and u.edge_dist(u.target) < Rules.CELL:

@@ -318,7 +318,11 @@ Apprentice unlocks Adept, and winning against Adept unlocks Archmage. The game
 saves unlocked difficulties locally. When the player replays after unlocking a
 difficulty, its padlock opens on the difficulty screen.
 
-- **Archmage** uses the full-strength AI strategy, including budget-driven shop rerolls.
+- **Archmage** plays its own tuned strategy (`EnemyAI.ARCHMAGE_PROFILE`), with
+  the same rules, gold and information as the player: it opens with the Control
+  pack, fields peasants for their harvest while it has hearts to spare, values
+  crossbowman seeker-bolt chains, spreads its frontline from the board edges,
+  counts the level reset when choosing hex targets, and rerolls on budget.
 - **Adept** and **Apprentice** follow the same rules, gold and spell charges as
   the player. They only decide worse: noisier shop scoring, fewer rerolls, a later
   (adept) or no (apprentice) recharge upgrade, no locks, no selling to replace
@@ -339,6 +343,22 @@ godot --headless --path prototypes/prototype_02 res://tests/difficulty_benchmark
 
 Run this benchmark separately from the regression tests. `--set=key=value` overrides
 one profile key of the tested level for tuning experiments.
+
+## Archmage strategy arena (13 November 2026)
+
+`training/arena.tscn` plays complete AI-vs-AI duels with the live rules (peasant
+harvest included), each seed from both sides with exchanged shop generators.
+`training/arena.sh` runs it in parallel; `training/climb.sh` compares one-change
+variants against a champion profile. Neither is part of the regression tests.
+
+```bash
+prototypes/prototype_02/training/arena.sh '{"level":2}' '{"level":1}' 22 10 1
+```
+
+A side is `{"level": 0-2, "profile": {EnemyAI key overrides}, "cast": {Difficulty
+casting overrides}}`. With the tuned profile, the Archmage won 220/220 duels
+against the Adept and 220/220 against the Apprentice (previously about 75% and
+96%); the tuning chain beat the previous Archmage strategy about 89% of the time.
 
 ## Tests
 
