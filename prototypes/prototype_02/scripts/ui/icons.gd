@@ -283,6 +283,8 @@ static func health_bar(ci: CanvasItem, pos: Vector2, w: float, ratio: float, tea
 
 
 static func star(ci: CanvasItem, p: Vector2, r: float, col := GOLD) -> void:
+	if r < 0.5:
+		return # fading effects shrink stars to nothing; degenerate polygons fail to triangulate
 	var pts := PackedVector2Array()
 	for i in 10:
 		var a := -PI / 2 + TAU * i / 10.0

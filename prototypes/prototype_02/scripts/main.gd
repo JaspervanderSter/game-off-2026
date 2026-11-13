@@ -82,6 +82,7 @@ func new_duel() -> void:
 	last_damage = 0
 	last_damage_team = -1
 	hud.clear_loss_rewards()
+	hud.clear_harvest()
 	phase = Phase.DIFFICULTY
 	music.transition_to("prep")
 
@@ -108,9 +109,14 @@ func start_round() -> void:
 	for s in states:
 		s.ai_rerolls = 0
 		s.gold += Rules.income(round_num)
+		var sources: Array[Dictionary] = []
+		for y in s.harvest():
+			sources.append({"uid": y.creature.uid, "pos": Rules.BOARD_POS + Rules.cell_center(y.creature.cell), "gold": y.gold})
+		hud.begin_harvest(s.team, sources)
 		s.refresh_offers(rng)
 	enemy_preparing = true
-	_enemy_wait = 0.3
+	# The opponent shops only once its harvest has visibly landed in its purse.
+	_enemy_wait = maxf(0.3, hud.harvest_remaining(1))
 	enemy_action.clear()
 	enemy_moves.clear()
 	phase = Phase.PREP

@@ -25,7 +25,7 @@ func _draw() -> void:
 				continue
 			var hl: bool = game.hover_info.get("owned") == c
 			var p: Vector2 = game.enemy_display_position(c) if state == game.enemy else Rules.cell_center(c.cell)
-			Icons.token(self, c.form_id, p, Rules.BODY_RADIUS * CELL, state.team, hl)
+			_draw_token(c, p, state.team, hl)
 			Icons.merge_stars(self, p + Vector2(0, -32), c.stars)
 			if game.show_merge_progress(c):
 				Icons.merge_progress(self, p + Vector2(0, 30), c.merge_copies, c.stars)
@@ -63,7 +63,7 @@ func _draw_reserve() -> void:
 		var c: OwnedCreature = game.player.at_slot(s)
 		if c != null and c != game.drag:
 			var hl: bool = game.hover_info.get("owned") == c
-			Icons.token(self, c.form_id, r.get_center(), Rules.BODY_RADIUS * CELL, 0, hl)
+			_draw_token(c, r.get_center(), 0, hl)
 			Icons.merge_stars(self, r.get_center() + Vector2(0, -28), c.stars)
 			if game.show_merge_progress(c):
 				Icons.merge_progress(self, r.get_center() + Vector2(0, 28), c.merge_copies, c.stars)
@@ -76,6 +76,18 @@ func _draw_reserve() -> void:
 		draw_circle(p, 7, Color(0.2, 0.14, 0.1))
 		if i < fielded:
 			draw_circle(p, 5, Icons.team_color(0))
+
+
+## Preparation token; a harvesting creature hops and stretches as it pays out.
+func _draw_token(c: OwnedCreature, p: Vector2, team: int, highlight: bool) -> void:
+	var hop: float = game.hud.harvest_hop(c.uid)
+	if hop <= 0.0:
+		Icons.token(self, c.form_id, p, Rules.BODY_RADIUS * CELL, team, highlight)
+		return
+	draw_circle(p + Vector2(0, 14), 18.0 * (1.0 - 0.3 * hop), Color(0, 0, 0, 0.25))
+	draw_set_transform(p + Vector2(0, -16.0 * hop), 0.0, Vector2(1.0 - 0.12 * hop, 1.0 + 0.2 * hop))
+	Icons.token(self, c.form_id, Vector2.ZERO, Rules.BODY_RADIUS * CELL, team, highlight)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_drag() -> void:

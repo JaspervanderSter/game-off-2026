@@ -17,11 +17,23 @@ const HEART_STAGGER := 0.26
 const HEART_BURST := 0.20
 const COIN_FLIGHT := 0.62
 const REWARD_TAIL := 0.45
+# Round-start harvest: each harvester hops in turn, its coins burst out in a
+# fan above it, hover a beat, then fly one by one into the wizard's purse.
+const HARVEST_DELAY := 0.35
+const HARVEST_STAGGER := 0.26
+const HARVEST_HOP := 0.42
+const HARVEST_POP := 0.34
+const HARVEST_HOVER := 0.18
+const HARVEST_COIN_STAGGER := 0.09
+const HARVEST_FLIGHT := 0.58
 
 var game # main.gd
 var font: Font
 var loss_rewards: Array[Dictionary] = []
 var reward_time := 0.0
+var harvest_time := 0.0
+var harvest_sources: Array[Dictionary] = []
+var harvest_coins: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -30,6 +42,69 @@ func _ready() -> void:
 
 func _process(dt: float) -> void:
 	advance_loss_rewards(dt)
+	advance_harvest(dt)
+
+
+func clear_harvest() -> void:
+	harvest_sources.clear()
+	harvest_coins.clear()
+	harvest_time = 0.0
+
+
+## Queues the harvest animation for one wizard. Rules already granted the gold;
+## displayed_gold() hides each coin until it lands. sources: [{uid, pos, gold}]
+## with screen positions.
+func begin_harvest(team: int, sources: Array[Dictionary]) -> void:
+	var base := harvest_time + HARVEST_DELAY
+	for i in sources.size():
+		var src: Dictionary = sources[i]
+		var start := base + i * HARVEST_STAGGER
+		var from: Vector2 = src.pos
+		harvest_sources.append({"team": team, "uid": src.uid, "pos": from, "start": start, "popped": false})
+		var n: int = src.gold
+		var fan := minf(1.25, 0.3 * (n - 1))
+		for j in n:
+			var spread := 0.0 if n == 1 else (j - (n - 1) / 2.0) / ((n - 1) / 2.0)
+			var radius := 42.0 + (12.0 if n > 4 and j % 2 == 1 else 0.0)
+			harvest_coins.append({"team": team, "from": from, "index": j, "start": start + j * 0.025,
+				"hover": from + Vector2.from_angle(-PI / 2 + spread * fan) * radius,
+				"fly": start + HARVEST_POP + HARVEST_HOVER + j * HARVEST_COIN_STAGGER, "arrived": false})
+
+
+## Seconds until the last queued coin of a team has landed (0 when none).
+func harvest_remaining(team: int) -> float:
+	var remaining := 0.0
+	for coin in harvest_coins:
+		if coin.team == team:
+			remaining = maxf(remaining, coin.fly + HARVEST_FLIGHT - harvest_time)
+	return remaining
+
+
+func advance_harvest(dt: float) -> void:
+	if harvest_sources.is_empty() and harvest_coins.is_empty():
+		return
+	harvest_time += dt
+	for src in harvest_sources:
+		if not src.popped and harvest_time >= src.start:
+			src.popped = true
+			Sfx.play("coin_pop", 0.04)
+	for coin in harvest_coins:
+		if not coin.arrived and harvest_time >= coin.fly + HARVEST_FLIGHT:
+			coin.arrived = true
+			# Each landing coin rings a little higher: a rising cash-register run.
+			Sfx.play("coin_gain", 0.02, 1.0 + 0.07 * coin.index)
+	harvest_sources = harvest_sources.filter(func(s): return harvest_time < s.start + HARVEST_HOP + 0.3)
+	harvest_coins = harvest_coins.filter(func(c): return harvest_time < c.fly + HARVEST_FLIGHT + REWARD_TAIL)
+
+
+## Hop of a harvesting creature (0 at rest, 1 at the top of its jump).
+func harvest_hop(uid: int) -> float:
+	for src in harvest_sources:
+		if src.uid == uid:
+			var k: float = (harvest_time - src.start) / HARVEST_HOP
+			if k >= 0.0 and k < 1.0:
+				return sin(k * PI)
+	return 0.0
 
 
 func clear_loss_rewards() -> void:
@@ -82,6 +157,9 @@ func displayed_gold(state: WizardState) -> int:
 	var value := state.gold
 	for reward in loss_rewards:
 		if reward.team == state.team and reward.coin and not reward.arrived:
+			value -= 1
+	for coin in harvest_coins:
+		if coin.team == state.team and not coin.arrived:
 			value -= 1
 	return value
 
@@ -152,6 +230,7 @@ func _draw() -> void:
 	if not game.hover_info.is_empty() and game.drag == null and game.phase != game.Phase.RESOLVE:
 		_draw_hover_card(game.hover_info)
 	_draw_loss_rewards()
+	_draw_harvest()
 	_draw_enemy_preparation()
 	if game.shop_drag_index >= 0 and game.drag_visual_active():
 		# Shop previews travel above the cards and side panels, without being
@@ -180,6 +259,10 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 		var arrival_age := age - HEART_BURST - COIN_FLIGHT
 		if reward.coin and arrival_age >= 0.0 and arrival_age < REWARD_TAIL:
 			coin_pulse = maxf(coin_pulse, 1.0 - arrival_age / REWARD_TAIL)
+	for coin in harvest_coins:
+		var landed: float = harvest_time - coin.fly - HARVEST_FLIGHT
+		if coin.team == team and landed >= 0.0 and landed < REWARD_TAIL:
+			coin_pulse = maxf(coin_pulse, 1.0 - landed / REWARD_TAIL)
 	if team == 1 and game.phase == game.Phase.PREP and not game.enemy_action.is_empty():
 		var action: Dictionary = game.enemy_action
 		if action.kind == "buy" and action.t < 0.45:
@@ -216,7 +299,7 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 	Icons.coin(self, gold_pos(team), 15 * (1.0 + coin_pulse * 0.45))
 	draw_string(font, block.position + Vector2(66, 135 - coin_pulse * 5), str(displayed_gold(state)), HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Icons.GOLD.lerp(Color.WHITE, coin_pulse))
 	if team == 0 and game.phase != game.Phase.PACK:
-		var next_income := Rules.income(game.round_num + 1)
+		var next_income := Rules.income(game.round_num + 1) + state.harvest_total()
 		Icons.coin(self, block.position + Vector2(150, 124), 9)
 		draw_string(font, block.position + Vector2(163, 132), "+" + str(next_income), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.9, 0.8, 0.5, 0.7))
 
@@ -263,6 +346,65 @@ func _draw_loss_rewards() -> void:
 			draw_arc(dest, 16 + 30 * k, 0, TAU, 32, Color(1, 0.85, 0.3, 1.0 - k), 4 * (1.0 - k), true)
 			for j in 7:
 				Icons.star(self, dest + Vector2.from_angle(TAU * j / 7.0) * (18 + k * 28), 5 * (1.0 - k), Color(1, 0.9, 0.35, 1.0 - k))
+
+
+func _draw_harvest() -> void:
+	# Harvester burst: a golden flash and ring with sparkles under the hop.
+	for src in harvest_sources:
+		var age: float = harvest_time - src.start
+		if age < 0.0 or age >= 0.5:
+			continue
+		var k := age / 0.5
+		var p: Vector2 = src.pos
+		draw_circle(p, 30.0 * (1.0 - k * 0.4), Color(1.0, 0.85, 0.3, 0.35 * (1.0 - k)))
+		draw_arc(p, 18.0 + 36.0 * k, 0, TAU, 32, Color(1.0, 0.85, 0.3, 1.0 - k), 5.0 * (1.0 - k) + 1.0, true)
+		for j in 8:
+			var q := p + Vector2.from_angle(TAU * j / 8.0 + 0.4) * (22.0 + 30.0 * k)
+			Icons.star(self, q, 5.0 * (1.0 - k), Color(1.0, 0.92, 0.45, 1.0 - k))
+	for coin in harvest_coins:
+		var age: float = harvest_time - coin.start
+		if age < 0.0:
+			continue
+		var from: Vector2 = coin.from
+		var hover: Vector2 = coin.hover
+		var dest := gold_pos(coin.team)
+		var flight: float = (harvest_time - coin.fly) / HARVEST_FLIGHT
+		var spin: float = harvest_time * 9.0 + coin.index * 0.8
+		if flight < 0.0:
+			# Pop out with an overshoot, then hover, bobbing, spinning and twinkling.
+			var k := clampf(age / HARVEST_POP, 0.0, 1.0)
+			var e := 1.0 + 2.70158 * pow(k - 1.0, 3) + 1.70158 * pow(k - 1.0, 2)
+			var p := from.lerp(hover, e) + Vector2(0, -sin(k * PI) * 14.0 + sin(harvest_time * 10.0 + coin.index) * 2.0 * k)
+			_spinning_coin(p, 13.0 * (0.35 + 0.65 * e), spin)
+			if k >= 1.0 and fmod(harvest_time * 3.0 + coin.index * 0.37, 1.0) < 0.3:
+				var tw := fmod(harvest_time * 3.0 + coin.index * 0.37, 1.0) / 0.3
+				Icons.star(self, p + Vector2(9, -9), 5.0 * sin(tw * PI), Color(1, 1, 0.85))
+		elif flight < 1.0:
+			# Curved, accelerating flight with a fading gold trail.
+			var control := hover.lerp(dest, 0.5) + Vector2(0, -90)
+			var progress := flight * flight
+			for j in 8:
+				var t := maxf(0.0, progress - j * 0.03)
+				var trail := hover.bezier_interpolate(control, control, dest, t)
+				draw_circle(trail, 6.5 - j * 0.7, Color(1, 0.75, 0.12, (1.0 - j / 8.0) * 0.55))
+			var p := hover.bezier_interpolate(control, control, dest, progress)
+			_spinning_coin(p, 13.0 + sin(flight * PI) * 5.0, spin)
+		else:
+			# Landing: a ring and a little star burst on the purse.
+			var k := clampf((flight - 1.0) * HARVEST_FLIGHT / REWARD_TAIL, 0.0, 1.0)
+			draw_arc(dest, 16 + 26 * k, 0, TAU, 32, Color(1, 0.85, 0.3, 1.0 - k), 4 * (1.0 - k) + 0.5, true)
+			for j in 5:
+				var a: float = TAU * j / 5.0 + coin.index * 0.6
+				Icons.star(self, dest + Vector2.from_angle(a) * (16 + k * 24), 4.5 * (1.0 - k), Color(1, 0.9, 0.35, 1.0 - k))
+
+
+## A coin seen turning on its vertical axis, with a bright rim on its edge.
+func _spinning_coin(p: Vector2, r: float, spin: float) -> void:
+	draw_circle(p + Vector2(2, 4), r * 0.9, Color(0, 0, 0, 0.25))
+	draw_set_transform(p, 0.0, Vector2(0.25 + absf(cos(spin)) * 0.75, 1.0))
+	Icons.coin(self, Vector2.ZERO, r)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	draw_circle(p + Vector2(-r * 0.3, -r * 0.35), r * 0.18, Color(1, 1, 0.9, 0.8))
 
 
 func _draw_toggles() -> void:
@@ -460,6 +602,8 @@ func _draw_pack_choice() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 14, Color(0.84, 0.76, 0.68))
 		Icons.coin(self, r.position + Vector2(32, 143), 9)
 		var starting_gold := Rules.income(1) + int(pack.bonus_gold)
+		for id in pack.forms:
+			starting_gold += Rules.harvest_gold(id, 0)
 		draw_string(font, r.position + Vector2(47, 148), "%d starting gold" % starting_gold,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Icons.GOLD)
 
@@ -503,6 +647,10 @@ func _draw_hover_card(info: Dictionary) -> void:
 		var op := pos + Vector2(116 + i * 46, 32)
 		Icons.token(self, outs[i].id, op, 18, team)
 		Icons.chance_pie(self, op + Vector2(0, 29), 7, outs[i].chance)
+	# Harvesters: one coin per gold they bring at the start of each round.
+	var harvest := Rules.harvest_gold(form, stars)
+	for i in harvest:
+		Icons.coin(self, pos + Vector2(100 + i * 15, 84), 6)
 	# Stat bars (normalised against the roster's high values).
 	var d := CreatureDB.get_form(form)
 	var mult: float = u.stat_mult() if u != null else Rules.star_mult(stars)

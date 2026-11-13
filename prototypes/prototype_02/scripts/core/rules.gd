@@ -52,6 +52,12 @@ static func income(round_num: int) -> int:
 	return FIRST_INCOME + round_num - 1
 
 
+## Round-start gold of a harvesting form: its base harvest, doubled per star
+## (peasant: 1, 2, 4, 8 gold at 0 to 3 stars).
+static func harvest_gold(form_id: String, stars: int) -> int:
+	return int(CreatureDB.get_form(form_id).get("harvest", 0)) << clampi(stars, 0, MAX_STARS)
+
+
 static func star_mult(stars: int) -> float:
 	return pow(1.8, clampi(stars, 0, MAX_STARS))
 

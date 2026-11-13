@@ -36,6 +36,31 @@ func take_round_damage(survivors: int) -> float:
 	return lost
 
 
+## Fielded harvesters (peasants) as [{"creature", "gold"}]; benched ones idle.
+func harvest_yields() -> Array[Dictionary]:
+	var yields: Array[Dictionary] = []
+	for c in fielded():
+		var amount := Rules.harvest_gold(c.form_id, c.stars)
+		if amount > 0:
+			yields.append({"creature": c, "gold": amount})
+	return yields
+
+
+func harvest_total() -> int:
+	var total := 0
+	for y in harvest_yields():
+		total += y.gold
+	return total
+
+
+## Round-start harvest: grants every harvester's gold and returns the yields.
+func harvest() -> Array[Dictionary]:
+	var yields := harvest_yields()
+	for y in yields:
+		gold += y.gold
+	return yields
+
+
 func can_upgrade_shift_recharge() -> bool:
 	return not shift_recharge_upgraded and gold >= Rules.SHIFT_RECHARGE_COST
 

@@ -45,7 +45,9 @@ func _ready() -> void:
 	_streams.damage = _make(0.3, func(t, k): return sin(t * TAU * lerpf(220.0, 90.0, k)) * (1.0 - k) * 0.6)
 	_streams.heart_break = _make(0.20, func(t, k): return (sin(t * TAU * lerpf(180.0, 65.0, k)) * 0.65 + (randf() * 2.0 - 1.0) * exp(-k * 12.0) * 0.35) * (1.0 - k))
 	_streams.coin_gain = _make(0.24, func(t, k): return (sin(t * TAU * 1568.0) + sin(t * TAU * 2352.0) * 0.35) * exp(-k * 7.0) * 0.45)
-	_streams.combine = _make(0.16, func(t, k): return sin(t * TAU * lerpf(440.0, 740.0, k)) * sin(k * PI) * 0.35)
+	# Peasant harvest: a springy upward blip with a bright bell on top.
+	_streams.coin_pop = _make(0.16, func(t, k): return sin(t * TAU * lerpf(520.0, 1400.0, k)) * (1.0 - k) * 0.35 + sin(t * TAU * 2637.0) * exp(-k * 9.0) * 0.18)
+	_streams.combine =_make(0.16, func(t, k): return sin(t * TAU * lerpf(440.0, 740.0, k)) * sin(k * PI) * 0.35)
 	_streams.merge = _make(0.55, func(t, k): return (sin(t * TAU * [523.0, 659.0, 784.0][mini(2, int(k * 3))]) + sin(t * TAU * 1047.0) * 0.3) * sin(k * PI) * 0.4)
 	# Shapeshift of an own creature: bright rising arpeggio (C E G C) over a shimmer.
 	_streams.shift_bless = _make(0.55, func(t, k): return (sin(t * TAU * [523.25, 659.25, 783.99, 1046.5][mini(3, int(k * 5.0))]) * 0.5 + sin(t * TAU * 2093.0) * 0.12 * sin(k * PI)) * (1.0 - k) * 0.55)
@@ -58,7 +60,7 @@ func _ready() -> void:
 	_streams.blizzard =_make(0.55, func(t, k): return ((randf() * 2.0 - 1.0) * 0.2 + sin(t * TAU * 880.0) * 0.08) * sin(k * PI))
 
 
-func play(name: String, pitch_jitter := 0.08) -> void:
+func play(name: String, pitch_jitter := 0.08, pitch := 1.0) -> void:
 	if not enabled or not _streams.has(name):
 		return
 	# Avoid machine-gun stacking of identical sounds in the same instant.
@@ -75,7 +77,7 @@ func play(name: String, pitch_jitter := 0.08) -> void:
 	_next = (_next + 1) % VOICES
 	p.stream = _streams[name]
 	p.volume_db = VOICE_DB
-	p.pitch_scale = 1.0 + randf_range(-pitch_jitter, pitch_jitter)
+	p.pitch_scale = pitch + randf_range(-pitch_jitter, pitch_jitter)
 	p.play()
 
 

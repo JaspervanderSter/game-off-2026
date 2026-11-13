@@ -54,7 +54,8 @@ const OUTCOME_ORDER := {
 # attack: melee, or the projectile drawn for ranged attacks.
 const FORMS := {
 	# --- Heroic fantasy (purchasable) ---
-	"peasant": {"family": "fantasy", "hp": 85, "dmg": 6, "interval": 1.0, "range": 0.3, "speed": 1.6, "armour": 0, "price": 1, "role": "front", "attack": "melee", "ability": ""},
+	# harvest: gold given at the start of every round, doubled per star (Rules.harvest_gold).
+	"peasant": {"family": "fantasy", "hp": 85, "dmg": 6, "interval": 1.0, "range": 0.3, "speed": 1.6, "armour": 0, "price": 1, "role": "front", "attack": "melee", "ability": "", "harvest": 1},
 	"guardian": {"family": "fantasy", "hp": 220, "dmg": 7, "interval": 1.3, "range": 0.3, "speed": 1.1, "armour": 40, "price": 2, "role": "front", "attack": "melee", "ability": ""},
 	"berserker": {"family": "fantasy", "hp": 155, "dmg": 10, "interval": 1.1, "range": 0.3, "speed": 1.7, "armour": 10, "price": 2, "role": "front", "attack": "melee", "ability": "berserk", "power": 0.55},
 	"duelist": {"family": "fantasy", "hp": 135, "dmg": 12, "interval": 0.9, "range": 0.3, "speed": 1.8, "armour": 10, "price": 2, "role": "front", "attack": "melee", "ability": "parry", "cd": 4.0, "cd_start": 0.0},
