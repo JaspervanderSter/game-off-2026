@@ -507,6 +507,10 @@ func _draw() -> void:
 		var glow := Icons.GOLD
 		glow.a = (0.55 + 0.45 * beat_k) * clampf(statuses.inspired.t, 0.25, 1.0)
 		draw_arc(p, r * scale_k * (1.12 + 0.12 * beat_k), 0, TAU, 32, glow, 2.5 + 2.5 * beat_k, true)
+	if hovered and battle != null and battle.casting_enabled and not battle.finished:
+		# The local player is team 0: hovering previews its shapeshift on this unit.
+		var ready := battle.spells[0].can_cast() and immune_t <= 0.0
+		Icons.shift_reticle(self, p, r * scale_k, anim_t, team == 0, ready)
 	if dive_target != null:
 		p += Vector2(0, -8)
 	if jump_t > 0.0:

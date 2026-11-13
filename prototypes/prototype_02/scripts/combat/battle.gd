@@ -263,15 +263,28 @@ func add_blizzard(src: Unit, centre: Vector2) -> void:
 		"dps": src.data.storm_dps, "slow": src.data.chill_slow})
 
 
+## Overlapping blizzards do not stack: a creature inside several storms only
+## suffers the strongest one (damage and chill) each step.
 func _tick_blizzards(dt: float) -> void:
-	for storm in blizzards.duplicate():
+	var strongest := {} # Unit -> {"storm": Dictionary, "step": float}
+	for storm in blizzards:
 		var step := minf(dt, storm.remaining)
 		for enemy in living(1 - int(storm.team)):
-			if storm.rect.has_point(enemy.position):
-				var src: Unit = storm.src if is_instance_valid(storm.src) else null
-				damage(src, enemy, storm.dps * step, "dot")
-				if enemy.alive:
-					enemy.add_status("chilled", 0.35, storm.slow, false)
+			if not storm.rect.has_point(enemy.position):
+				continue
+			var best: Dictionary = strongest.get(enemy, {})
+			if best.is_empty() or storm.dps * step > best.storm.dps * best.step \
+					or (is_equal_approx(storm.dps * step, best.storm.dps * best.step) and storm.slow > best.storm.slow):
+				strongest[enemy] = {"storm": storm, "step": step}
+	for enemy in strongest:
+		var hit: Dictionary = strongest[enemy]
+		var storm: Dictionary = hit.storm
+		var src: Unit = storm.src if is_instance_valid(storm.src) else null
+		damage(src, enemy, storm.dps * hit.step, "dot")
+		if enemy.alive:
+			enemy.add_status("chilled", 0.35, storm.slow, false)
+	for storm in blizzards.duplicate():
+		var step := minf(dt, storm.remaining)
 		storm.t += step
 		storm.remaining -= step
 		if storm.remaining <= 0.0:

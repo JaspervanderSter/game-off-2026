@@ -33,6 +33,9 @@ var last_result := {}
 var last_damage := 0.0
 var last_damage_team := -1
 var _resolve_t := 0.0
+var _shake_t := 0.0
+var _shake_len := 0.0
+var _shake_mag := 0.0
 
 var board_view: BoardView
 var fx: FxLayer
@@ -181,9 +184,34 @@ func _on_unit_died(u: Unit) -> void:
 	Sfx.play("death")
 
 
-func _on_unit_transformed(u: Unit, _caster: int, _from: String) -> void:
-	fx.add("shift", u.position)
-	Sfx.play("shift")
+## Blessing (own creature) and hex (enemy creature) have distinct effects and
+## sounds; both flash the creature and shake the board briefly.
+func _on_unit_transformed(u: Unit, caster: int, _from: String) -> void:
+	var blessing := u.team == caster
+	fx.add("shift_bless" if blessing else "shift_hex", u.position)
+	Sfx.play("shift_bless" if blessing else "shift_hex", 0.03)
+	u.flash_t = 0.12
+	_shake(4.0 if blessing else 6.0, 0.22)
+
+
+func _shake(magnitude: float, duration: float) -> void:
+	_shake_mag = maxf(_shake_mag if _shake_t > 0.0 else 0.0, magnitude)
+	_shake_t = maxf(_shake_t, duration)
+	_shake_len = _shake_t
+
+
+## Offsets the board, its creatures and effects (not the HUD) while shaking.
+func _apply_shake(dt: float) -> void:
+	if _shake_t <= 0.0:
+		return
+	_shake_t = maxf(0.0, _shake_t - dt)
+	var offset := Vector2.ZERO
+	if _shake_t > 0.0:
+		offset = Vector2.from_angle(randf() * TAU) * _shake_mag * (_shake_t / _shake_len)
+	board_view.position = Rules.BOARD_POS + offset
+	fx.position = Rules.BOARD_POS + offset
+	if battle != null and is_instance_valid(battle):
+		battle.position = Rules.BOARD_POS + offset
 
 
 # --- Input ---------------------------------------------------------------------------
@@ -348,6 +376,8 @@ func _left_press(pos: Vector2) -> void:
 			drag = _owned_at(pos)
 			if drag != null:
 				Sfx.play("click")
+		Phase.COMBAT:
+			_cast_at(pos)
 		Phase.OVER:
 			if pos.distance_to(Hud.RESTART_POS) < 46:
 				Sfx.play("click")
@@ -424,7 +454,12 @@ func _right_press(pos: Vector2) -> void:
 			if Hud.offer_rect(i).has_point(pos):
 				Sfx.play("click" if player.toggle_lock(i) else "fail")
 				return
-	if phase != Phase.COMBAT:
+
+
+## Left click / tap on a living creature during combat casts the shapeshift.
+## Clicks on empty board cells fizzle; clicks outside the board are ignored.
+func _cast_at(pos: Vector2) -> void:
+	if not Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE).has_point(pos):
 		return
 	var u := battle.unit_at(pos - Rules.BOARD_POS)
 	if u == null or not battle.cast(0, u):
@@ -434,7 +469,8 @@ func _right_press(pos: Vector2) -> void:
 
 # --- Hover ---------------------------------------------------------------------------
 
-func _process(_dt: float) -> void:
+func _process(dt: float) -> void:
+	_apply_shake(dt)
 	var mouse := get_global_mouse_position()
 	hover_info = {}
 	match phase:

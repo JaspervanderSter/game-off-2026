@@ -11,10 +11,28 @@ func add(kind: String, pos: Vector2, extra: Dictionary = {}) -> void:
 	match kind:
 		"merge", "combine":
 			item.life = 0.65 if kind == "merge" else 0.32
-		"shift":
-			item.life = 0.7
-			for i in 8:
-				add("puff", pos + Vector2.from_angle(TAU * i / 8.0) * 14.0, {"vel": Vector2.from_angle(TAU * i / 8.0) * 60.0, "col": Color(0.8, 0.65, 1.0, 0.8), "size": 9.0})
+		"shift_bless":
+			# Shapeshift of one of the caster's own creatures: a golden pillar of
+			# light, a double ring, rising sparks and a level-up chevron.
+			item.life = 0.95
+			for i in 14:
+				var a := -PI / 2 + randf_range(-1.1, 1.1)
+				add("spark", pos + Vector2(randf_range(-14, 14), randf_range(-6, 10)), {
+					"vel": Vector2.from_angle(a) * randf_range(90, 230), "col": Color(1.0, 0.9, 0.45),
+					"size": randf_range(3.0, 6.0), "drag": 2.2, "lift": -60.0})
+		"shift_hex":
+			# Shapeshift of an enemy creature: a violet vortex implodes into the
+			# target, then bursts with crackles and dark smoke.
+			item.life = 0.85
+			item.cracks = []
+			for i in 6:
+				var a := TAU * i / 6.0 + randf_range(-0.3, 0.3)
+				var pts := [Vector2.ZERO]
+				for j in 4:
+					pts.append(Vector2.from_angle(a + randf_range(-0.45, 0.45)) * (10.0 + j * 11.0))
+				item.cracks.append(pts)
+		"spark":
+			item.life = randf_range(0.5, 0.8)
 		"rocket":
 			item.life = 1.6
 			var side := -1.0 if randf() < 0.5 else 1.0
@@ -56,6 +74,19 @@ func _process(dt: float) -> void:
 					add("puff", item.pos, {"vel": -item.vel * 0.05, "col": Color(0.85, 0.85, 0.85, 0.7), "size": 7.0})
 			"puff":
 				item.pos += item.get("vel", Vector2.ZERO) * dt
+			"spark":
+				item.vel *= maxf(0.0, 1.0 - item.get("drag", 0.0) * dt)
+				item.vel.y += item.get("lift", 0.0) * dt
+				item.pos += item.vel * dt
+			"shift_hex":
+				# Dark smoke bursts out once the vortex has collapsed.
+				if item.t >= item.life * 0.45 and not item.get("burst", false):
+					item.burst = true
+					for i in 10:
+						var dir := Vector2.from_angle(TAU * i / 10.0 + randf_range(-0.2, 0.2))
+						add("puff", item.pos + dir * 10.0, {"vel": dir * randf_range(70, 130), "col": Color(0.45, 0.15, 0.6, 0.8), "size": randf_range(7.0, 11.0)})
+					for i in 6:
+						add("spark", item.pos, {"vel": Vector2.from_angle(randf() * TAU) * randf_range(120, 220), "col": Color(0.85, 0.5, 1.0), "size": 4.0, "drag": 3.0})
 			"song_note":
 				# Home in on the ally while it moves; keep the last spot if it dies.
 				var unit: Variant = item.unit
@@ -77,13 +108,50 @@ func _draw() -> void:
 					Icons.star(self, p + Vector2(0, -35 - 25 * k), 18 * sin(PI * k), Color(1, 0.9, 0.3, 1.0 - k))
 					for j in 8:
 						Icons.star(self, p + Vector2.from_angle(TAU * j / 8.0) * (20 + 35 * k), 5 * (1.0 - k), Color(1, 0.9, 0.3, 1.0 - k))
-			"shift":
-				var col := Icons.MAGIC
-				col.a = 1.0 - k
-				draw_arc(p, 10.0 + k * 50.0, 0, TAU, 32, col, 6.0 * (1.0 - k) + 1.0, true)
-				for i in 6:
-					var a := TAU * i / 6.0 + k * 3.0
-					Icons.star(self, p + Vector2.from_angle(a) * (16.0 + k * 34.0), 6.0 * (1.0 - k) + 1.0, Color(1.0, 0.9, 0.5, 1.0 - k))
+			"shift_bless":
+				# White flash, then a narrowing pillar of golden light.
+				if k < 0.18:
+					draw_circle(p, 34.0 + 30.0 * k, Color(1, 1, 0.9, 0.85 * (1.0 - k / 0.18)))
+				var w := 34.0 * (1.0 - k)
+				var top := maxf(p.y - 150.0, -12.0) # stay on the board, off the HUD
+				for i in 4:
+					var band := Rect2(p.x - w * (1.0 - i * 0.22) * 0.5, top, w * (1.0 - i * 0.22), p.y + 15.0 - top)
+					draw_rect(band, Color(1.0, 0.92, 0.55, 0.16 * (1.0 - k)))
+				for i in 2:
+					var ring := clampf(k * 1.5 - i * 0.25, 0.0, 1.0)
+					if ring > 0.0 and ring < 1.0:
+						draw_arc(p, 16.0 + 48.0 * ring, 0, TAU, 40, Color(1.0, 0.85, 0.3, 1.0 - ring), 5.0 * (1.0 - ring) + 1.0, true)
+				# Level-up chevrons rising above the creature.
+				for i in 2:
+					var c := Color(1.0, 0.95, 0.6, 1.0 - k)
+					var q := p + Vector2(0, -34.0 - 40.0 * k - i * 9.0)
+					draw_polyline(PackedVector2Array([q + Vector2(-9, 6), q, q + Vector2(9, 6)]), c, 4.0, true)
+			"shift_hex":
+				var col := Color(0.62, 0.2, 0.9)
+				if k < 0.45:
+					# Implosion: a dark disc and particles spiralling into the target.
+					var e := k / 0.45
+					draw_circle(p, 26.0 * (1.0 - e) + 8.0, Color(0.18, 0.02, 0.25, 0.55))
+					for i in 12:
+						var a := TAU * i / 12.0 + e * 5.0
+						var q := p + Vector2.from_angle(a) * 70.0 * (1.0 - e * e)
+						draw_circle(q, 4.0 + 2.0 * e, Color(col.r, col.g, col.b, 0.4 + 0.6 * e))
+					draw_arc(p, 70.0 * (1.0 - e * e), 0, TAU, 40, Color(col.r, col.g, col.b, 0.35 + 0.5 * e), 3.0, true)
+				else:
+					# Burst: a dark flash, a fast violet shock ring and crackles.
+					var e := (k - 0.45) / 0.55
+					if e < 0.2:
+						draw_circle(p, 30.0, Color(0.1, 0.0, 0.15, 0.7 * (1.0 - e / 0.2)))
+					draw_arc(p, 12.0 + 62.0 * e, 0, TAU, 40, Color(0.85, 0.5, 1.0, 1.0 - e), 6.0 * (1.0 - e) + 1.0, true)
+					for crack in item.cracks:
+						var pts := PackedVector2Array()
+						for v in crack:
+							pts.append(p + v * (0.6 + 0.6 * e))
+						draw_polyline(pts, Color(0.9, 0.7, 1.0, 1.0 - e), 2.5, true)
+			"spark":
+				var c: Color = item.col
+				c.a *= 1.0 - k
+				Icons.star(self, p, item.size * (1.0 - 0.5 * k), c)
 			"rocket":
 				draw_set_transform(p, item.t * item.spin, Vector2.ONE)
 				Icons.token(self, item.form, Vector2.ZERO, Rules.BODY_RADIUS * Rules.CELL, item.team)

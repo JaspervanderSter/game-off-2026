@@ -313,6 +313,49 @@ static func padlock(ci: CanvasItem, p: Vector2) -> void:
 	ci.draw_circle(p + Vector2(0, 1), 2, DARK)
 
 
+## Hover reticle for the shapeshift spell. Ally: a cyan blessing circle with
+## orbiting runes and rising sparkles (cyan, so it never reads as the bard's
+## golden inspiration). Enemy: a violet hex reticle whose fangs close in.
+## Greyed out when the cast is impossible (no charge or immunity).
+static func shift_reticle(ci: CanvasItem, p: Vector2, r: float, t: float, ally: bool, ready: bool) -> void:
+	var main_col := Color(0.45, 0.95, 1.0) if ally else Color(0.78, 0.35, 1.0)
+	var glow_col := Color(0.7, 1.0, 1.0) if ally else Color(0.35, 0.05, 0.45)
+	if not ready:
+		main_col = Color(0.6, 0.6, 0.65, 0.55)
+		glow_col = Color(0.3, 0.3, 0.35, 0.0)
+	var pulse := 0.5 + 0.5 * sin(t * 7.0)
+	var ring_r := r * (1.55 + 0.05 * pulse) # outside the bard's inspiration ring
+	var fill := glow_col
+	fill.a = 0.16 + 0.1 * pulse if ready else 0.0
+	ci.draw_circle(p, ring_r, fill)
+	# Dashed rotating ring: blessings turn clockwise, hexes anticlockwise.
+	var spin := t * (1.6 if ally else -2.2)
+	for i in 8:
+		var a := spin + TAU * i / 8.0
+		ci.draw_arc(p, ring_r, a, a + TAU / 8.0 * 0.62, 6, main_col, 4.0, true)
+	if ally:
+		for i in 4:
+			var a := -spin * 0.7 + TAU * i / 4.0
+			var q := p + Vector2.from_angle(a) * (ring_r + 7.0)
+			var d := 4.5 + 1.5 * pulse
+			ci.draw_colored_polygon(PackedVector2Array([q + Vector2(0, -d), q + Vector2(d * 0.7, 0), q + Vector2(0, d), q + Vector2(-d * 0.7, 0)]), main_col)
+		if ready:
+			for i in 3:
+				var k := fposmod(t * 0.9 + i / 3.0, 1.0)
+				var sx := sin(i * 2.4 + t * 2.0) * r * 0.9
+				var sc := Color(0.85, 1.0, 1.0, 1.0 - k)
+				star(ci, p + Vector2(sx, r * 0.6 - k * r * 2.4), 3.5 * (1.0 - k) + 1.5, sc)
+	else:
+		# Four fangs pointing at the target, closing in and out.
+		for i in 4:
+			var a := spin * 0.5 + TAU * i / 4.0 + PI / 4.0
+			var dir := Vector2.from_angle(a)
+			var tip := p + dir * (ring_r - 2.0 - 5.0 * pulse)
+			var base := p + dir * (ring_r + 11.0 - 3.0 * pulse)
+			var side := dir.orthogonal() * 5.0
+			ci.draw_colored_polygon(PackedVector2Array([tip, base + side, base - side]), main_col)
+
+
 static func immunity_ring(ci: CanvasItem, p: Vector2, r: float, ratio: float, t: float) -> void:
 	var segs := 10
 	for i in segs:

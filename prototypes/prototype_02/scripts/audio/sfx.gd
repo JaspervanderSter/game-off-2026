@@ -34,7 +34,6 @@ func _ready() -> void:
 		enabled = false
 		AudioServer.set_bus_mute(0, true)
 		return
-	_streams.shift = _make(0.45, func(t, k): return _sweep(t, 300.0, 1400.0, k) * 0.5 + sin(t * TAU * 2400.0 * (1.0 + k)) * 0.15 * (1.0 - k))
 	_streams.hit = _make(0.09, func(t, k): return (randf() * 2.0 - 1.0) * (1.0 - k) * 0.7 + sin(t * TAU * 120.0) * (1.0 - k) * 0.5)
 	_streams.shoot = _make(0.08, func(t, k): return sin(t * TAU * lerpf(900.0, 500.0, k)) * (1.0 - k) * 0.35)
 	_streams.death = _make(0.5, func(t, k): return _sweep(t, 700.0, 120.0, k) * (1.0 - k) * 0.5 + (randf() * 2.0 - 1.0) * 0.2 * (1.0 - k))
@@ -48,7 +47,11 @@ func _ready() -> void:
 	_streams.coin_gain = _make(0.24, func(t, k): return (sin(t * TAU * 1568.0) + sin(t * TAU * 2352.0) * 0.35) * exp(-k * 7.0) * 0.45)
 	_streams.combine = _make(0.16, func(t, k): return sin(t * TAU * lerpf(440.0, 740.0, k)) * sin(k * PI) * 0.35)
 	_streams.merge = _make(0.55, func(t, k): return (sin(t * TAU * [523.0, 659.0, 784.0][mini(2, int(k * 3))]) + sin(t * TAU * 1047.0) * 0.3) * sin(k * PI) * 0.4)
-	_streams.note = _make(0.45, func(t, k): return (sin(t * TAU * 523.25) + sin(t * TAU * 1046.5) * 0.35 + sin(t * TAU * 1569.75) * 0.12) * exp(-k * 6.0) * 0.45)
+	# Shapeshift of an own creature: bright rising arpeggio (C E G C) over a shimmer.
+	_streams.shift_bless = _make(0.55, func(t, k): return (sin(t * TAU * [523.25, 659.25, 783.99, 1046.5][mini(3, int(k * 5.0))]) * 0.5 + sin(t * TAU * 2093.0) * 0.12 * sin(k * PI)) * (1.0 - k) * 0.55)
+	# Shapeshift of an enemy creature: a wobbling descending growl with grit.
+	_streams.shift_hex = _make(0.5, func(t, k): return (_sweep(t, 420.0, 90.0, k) * (0.7 + 0.3 * sin(t * TAU * 18.0)) * 0.5 + (randf() * 2.0 - 1.0) * 0.18 * exp(-k * 3.0)) * (1.0 - k))
+	_streams.note =_make(0.45, func(t, k): return (sin(t * TAU * 523.25) + sin(t * TAU * 1046.5) * 0.35 + sin(t * TAU * 1569.75) * 0.12) * exp(-k * 6.0) * 0.45)
 	_streams.hop =_make(0.24, func(t, k): return sin(t * TAU * lerpf(250.0, 1100.0, k)) * sin(k * PI) * 0.3)
 	_streams.blizzard = _make(0.55, func(t, k): return ((randf() * 2.0 - 1.0) * 0.2 + sin(t * TAU * 880.0) * 0.08) * sin(k * PI))
 

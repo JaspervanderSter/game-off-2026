@@ -24,6 +24,8 @@ func _ready() -> void:
 	_test_animal_roles()
 	_test_mage_attacks()
 	_test_bard_song()
+	_test_overlapping_blizzards()
+	_test_combat_click_casts()
 	_test_blizzard_and_recharge_upgrade()
 	_test_ai_strategy()
 	_simulate_duels()
@@ -862,6 +864,51 @@ func _test_mage_attacks() -> void:
 # --- Simulations ------------------------------------------------------------------------
 
 ## Plays AI-vs-AI duels to check the loop terminates and to report pacing.
+func _test_overlapping_blizzards() -> void:
+	var b := _new_battle()
+	var mage := b.spawn(0, "frost_mage", Vector2(200, 300))
+	var other_mage := b.spawn(0, "frost_mage", Vector2(260, 300))
+	var victim := b.spawn(1, "peasant", Vector2(200, 170))
+	var lone := b.spawn(1, "peasant", Vector2(380, 170))
+	b.add_blizzard(mage, Vector2(200, 170))
+	b.add_blizzard(other_mage, Vector2(236, 170)) # overlaps the first storm
+	b.add_blizzard(other_mage, Vector2(380, 170))
+	b._tick_blizzards(1.0)
+	check(absf(victim.max_hp - victim.hp - 6.0) < 0.01 and absf(lone.max_hp - lone.hp - 6.0) < 0.01,
+		"overlapping blizzards deal the damage of one storm, not their sum")
+	check(victim.statuses.has("chilled") and is_equal_approx(victim.statuses.chilled.v, 0.5),
+		"overlapping blizzards still chill once at full strength")
+	b.free()
+
+
+func _test_combat_click_casts() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.choose_pack(0)
+	game.enemy_preparing = false
+	game.enemy_moves.clear()
+	game.enemy_action.clear()
+	if game.enemy.field_count() == 0:
+		game.enemy.add_creature("peasant")
+	game.start_combat()
+	var b: Battle = game.battle
+	b.spells[0].charges = 2
+	var ally: Unit = b.living(0)[0]
+	var foe: Unit = b.living(1)[0]
+	game._right_press(Rules.BOARD_POS + foe.position)
+	check(b.casts[0] == 0, "right-click no longer casts during combat")
+	game._left_press(Rules.BOARD_POS + ally.position)
+	check(b.casts[0] == 1 and game.fx.items.any(func(i): return i.kind == "shift_bless"),
+		"left click shapeshifts an own creature with the blessing effect")
+	game._left_press(Rules.BOARD_POS + foe.position)
+	check(b.casts[0] == 2 and game.fx.items.any(func(i): return i.kind == "shift_hex"),
+		"left click shapeshifts an enemy creature with the hex effect")
+	var effects: int = game.fx.items.size()
+	game._left_press(Vector2(20, 20))
+	check(game.fx.items.size() == effects, "clicks outside the board neither cast nor fizzle")
+	game.queue_free()
+
+
 func _test_blizzard_and_recharge_upgrade() -> void:
 	var b := _new_battle()
 	var mage := b.spawn(0, "frost_mage", Vector2(200, 300))

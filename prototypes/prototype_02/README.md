@@ -27,8 +27,8 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 | Sell | Drag a creature onto the shop panel (refund = price) |
 | Start combat | Crossed-swords button (or Space) |
 | Toggle fullscreen | Alt+Enter |
-| Shapeshift | Right-click any living creature during combat, friend or foe |
-| Inspect | Hover a creature: its three possible outcomes with their chances, plus stat bars |
+| Shapeshift | Left-click (or tap) any living creature during combat, friend or foe |
+| Inspect | Hover a creature: its three possible outcomes with their chances, plus stat bars. In combat, a reticle previews the cast: cyan blessing circle on your creatures, violet hex fangs on enemies, grey when no charge is ready or the target is immune |
 | Experiment toggles | Wand: no-spell mode for both wizards (outside combat). Double chevron: combat speed x2 |
 
 Reading the board: blue ring = yours, red ring = the AI's. Purple orbs = spell
@@ -108,6 +108,11 @@ All confirmed rules and delegated defaults of the design note, notably:
   give +1 level (+20% base HP and damage per level), enemy casts preserve level.
   Combat forms, temporary levels and statuses reset at the end of combat;
   permanent merge stars remain.
+  Feedback differs by target. Blessing (own creature): white flash, golden pillar
+  of light, double golden ring, rising sparks, level-up chevrons and a rising
+  arpeggio. Hex (enemy creature): a violet vortex implodes into the target, then
+  bursts with a shock ring, crackles, dark smoke and a descending growl. Both flash
+  the creature and briefly shake the board (stronger for a hex).
 - Ability cooldowns carry over across forms; a form never gets an instant ability
   just by being entered, except the rabbit's defining immediate backline leap.
 - Death: the entity is removed; a visual-only copy is rocketed off the board.
@@ -185,6 +190,8 @@ playtesting is still needed to judge each form's situational value.
   chill on hit for 1 s. Chill halves movement and basic attack speed, and repeated
   hits refresh it.
   Storms persist after caster death or transformation, then expire normally.
+  Overlapping storms do not stack: a creature inside several storms takes the
+  damage and chill of the strongest one only.
 - Pyromancer: basic shots deal area damage and burn enemies for 5 damage/s before
   armour for 4 s. The pyromancer switches targets between shots when another enemy
   is in range, preferring the shortest remaining burn. A separate homing fireball
