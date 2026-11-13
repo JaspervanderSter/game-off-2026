@@ -28,6 +28,7 @@ func _ready() -> void:
 	_test_combat_click_casts()
 	_test_blizzard_and_recharge_upgrade()
 	_test_ai_strategy()
+	_test_difficulty()
 	_simulate_duels()
 	print("\n%d checks, %d failures" % [_checks, _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
@@ -1065,6 +1066,84 @@ func _test_ai_strategy() -> void:
 	b.spawn(1, "guardian", Vector2(100, 100))
 	b.spells[1].charges = 3
 	check(EnemyAI.choose_cast(b, 1) != weak_enemy, "AI avoids transforming a weak enemy into stronger expected forms")
+	b.free()
+
+
+func _test_difficulty() -> void:
+	var archmage := Difficulty.profile(Difficulty.ARCHMAGE)
+	check(archmage.shop_noise == 0.05 and archmage.max_rerolls == 2 and archmage.upgrade_gold == 7
+		and archmage.replace and archmage.lock and archmage.smart_field,
+		"archmage keeps the full-strength shopping policy")
+	check(archmage.first_delay == Vector2(1.0, 2.0) and archmage.cast_delay == Vector2(0.6, 1.6)
+		and archmage.retry_delay == 0.3 and archmage.threshold == 0.0 and archmage.blunder == 0.0,
+		"archmage keeps the full-strength casting policy")
+	var apprentice := Difficulty.profile(Difficulty.APPRENTICE)
+	var adept := Difficulty.profile(Difficulty.ADEPT)
+	check(apprentice.blunder > adept.blunder and adept.blunder > 0.0
+		and apprentice.cast_delay.x > adept.cast_delay.x and adept.cast_delay.x > archmage.cast_delay.x,
+		"easier levels cast more slowly and less accurately")
+
+	# Start screen: a duel opens on the hat choice, which sets the opponent level.
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	check(game.phase == game.Phase.DIFFICULTY and game.enemy.ai_level == Difficulty.ARCHMAGE,
+		"a new game opens on the difficulty screen, archmage by default")
+	game._left_press(Hud.difficulty_rect(Difficulty.APPRENTICE).get_center())
+	check(game.phase == game.Phase.PACK and game.enemy.ai_level == Difficulty.APPRENTICE
+		and game.player.creatures.is_empty(), "clicking the apprentice hat selects it and opens pack choice")
+	game.choose_pack(0)
+	game.player.hp = 0.5
+	game._on_battle_ended({"winner": 1, "survivors": 1})
+	game.battle = Battle.new()
+	game.add_child(game.battle)
+	game._finish_round()
+	check(game.phase == game.Phase.OVER, "duel reaches game over")
+	game._left_press(Hud.RESTART_POS)
+	check(game.phase == game.Phase.DIFFICULTY and game.enemy.ai_level == Difficulty.APPRENTICE,
+		"replaying returns to the difficulty screen and remembers the last level")
+	var key := InputEventKey.new()
+	key.pressed = true
+	key.keycode = KEY_2
+	game._unhandled_input(key)
+	check(game.phase == game.Phase.PACK and game.enemy.ai_level == Difficulty.ADEPT, "number keys pick a hat")
+	var hat_battle := Battle.new()
+	add_child(hat_battle)
+	hat_battle.setup(game.states, 5)
+	check(hat_battle.ai_levels[1] == Difficulty.ADEPT and hat_battle._ai_delay[1] >= adept.first_delay.x,
+		"combat uses the opponent level for its casting delays")
+	hat_battle.free()
+	game.free()
+
+	# Apprentice shopping never buys the upgrade, locks, or sells a fielded creature.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	var state := WizardState.new(1)
+	state.ai_level = Difficulty.APPRENTICE
+	for id in ["guardian", "berserker", "spearman", "archer", "cleric", "frost_mage"]:
+		state.add_creature(id)
+	state.gold = 1
+	state.offers = ["guardian", "assassin", ""]
+	EnemyAI.shop_step(state, rng)
+	check(not state.locked[0], "apprentice does not lock unaffordable duplicates")
+	state.gold = 12
+	state.offers = ["", "", ""]
+	EnemyAI.shop(state, rng)
+	check(not state.shift_recharge_upgraded, "apprentice never buys the recharge upgrade")
+	state.offers = ["pyromancer", "", ""]
+	state.gold = 3
+	state.ai_rerolls = 1
+	var before := state.field_count()
+	var action := EnemyAI.shop_step(state, rng)
+	check(action.get("kind") != "sell" and state.field_count() == before, "apprentice never sells to replace")
+
+	var b := _new_battle()
+	var ally := b.spawn(1, "guardian", Vector2(100, 100))
+	var foe := b.spawn(0, "peasant", Vector2(100, 350))
+	foe.immune_t = 1.0
+	var picks := {}
+	for i in 20:
+		picks[EnemyAI.random_cast_target(b)] = true
+	check(picks.size() == 1 and picks.has(ally), "clumsy casts only pick creatures that can be shapeshifted")
 	b.free()
 
 

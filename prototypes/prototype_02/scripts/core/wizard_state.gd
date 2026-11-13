@@ -6,6 +6,7 @@ var team: int
 var hp := float(Rules.WIZARD_HP)
 var loss_gold_progress := 0.0 # half-heart compensation carries across rounds
 var shift_recharge_upgraded := false
+var ai_level := Difficulty.ARCHMAGE # opponent strength; the player ignores it
 var ai_rerolls := 0
 var gold := 0
 var creatures: Array[OwnedCreature] = []

@@ -15,6 +15,11 @@ func _ready() -> void:
 	game = load("res://main.tscn").instantiate()
 	add_child(game)
 	await _frames(10)
+	get_viewport().warp_mouse(Hud.difficulty_rect(Difficulty.ADEPT).get_center())
+	await _frames(4)
+	await _shot("00_difficulty")
+	game.choose_difficulty(Difficulty.ARCHMAGE)
+	await _frames(4)
 	await _shot("01_pack")
 	game.choose_pack(0)
 	if "--balance-only" in OS.get_cmdline_user_args():

@@ -583,3 +583,101 @@ static func stat_icon(ci: CanvasItem, key: String, p: Vector2, r: float) -> void
 			ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.5, -r * 0.8), p + Vector2(r * 0.1, -r * 0.8), p + Vector2(r * 0.1, r * 0.3), p + Vector2(r * 0.9, r * 0.4), p + Vector2(r * 0.9, r * 0.8), p + Vector2(-r * 0.5, r * 0.8)]), Color(0.65, 0.45, 0.3))
 		"armour":
 			ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.8, -r * 0.8), p + Vector2(r * 0.8, -r * 0.8), p + Vector2(r * 0.8, 0), p + Vector2(0, r * 0.95), p + Vector2(-r * 0.8, 0)]), Color(0.55, 0.65, 0.85))
+
+
+# --- Difficulty hats ------------------------------------------------------------
+# One hat per opponent level, from a patched apprentice cap to a glowing
+# archmage hat. `p` is the middle of the crown, `r` its scale, `t` animation time.
+
+static func difficulty_hat(ci: CanvasItem, level: int, p: Vector2, r: float, t: float) -> void:
+	match level:
+		Difficulty.APPRENTICE:
+			_apprentice_hat(ci, p, r)
+		Difficulty.ADEPT:
+			_adept_hat(ci, p, r, t)
+		_:
+			_archmage_hat(ci, p, r, t)
+
+
+## Ring polygon of an ellipse, for brims and trims.
+static func _ellipse_points(c: Vector2, rx: float, ry: float, from := 0.0, to := TAU, steps := 24) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in steps + 1:
+		var a := lerpf(from, to, float(i) / steps)
+		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+	return pts
+
+
+## Band following a straight cone between two heights (cone tip, base half-width).
+static func _cone_band(ci: CanvasItem, p: Vector2, s: float, tip: Vector2, base_y: float, half: float, y0: float, y1: float, col: Color) -> void:
+	var w0 := half * (y0 - tip.y) / (base_y - tip.y)
+	var w1 := half * (y1 - tip.y) / (base_y - tip.y)
+	var c0 := lerpf(tip.x, 0.0, (y0 - tip.y) / (base_y - tip.y))
+	var c1 := lerpf(tip.x, 0.0, (y1 - tip.y) / (base_y - tip.y))
+	_poly(ci, p, s, [Vector2(c0 - w0, y0), Vector2(c0 + w0, y0), Vector2(c1 + w1, y1), Vector2(c1 - w1, y1)], col)
+
+
+## Modest: short, faded felt cap with a drooping tip and a stitched patch.
+static func _apprentice_hat(ci: CanvasItem, p: Vector2, s: float) -> void:
+	var felt := Color(0.56, 0.45, 0.31)
+	_ellipse(ci, p, s, Vector2(0, 0.62), 0.92, 0.2, Color(0, 0, 0, 0.25))
+	_ellipse(ci, p, s, Vector2(0, 0.5), 0.9, 0.19, felt.darkened(0.3))
+	_poly(ci, p, s, [Vector2(-0.55, 0.5), Vector2(0.55, 0.5), Vector2(0.28, -0.12), Vector2(0.66, -0.06),
+		Vector2(0.1, -0.5), Vector2(-0.12, -0.42)], felt)
+	_poly(ci, p, s, [Vector2(-0.55, 0.5), Vector2(-0.2, 0.5), Vector2(-0.02, -0.44), Vector2(-0.12, -0.42)], felt.darkened(0.12))
+	# Patch with stitches.
+	var patch := Color(0.42, 0.5, 0.34)
+	_poly(ci, p, s, [Vector2(-0.2, 0.08), Vector2(0.08, 0.04), Vector2(0.11, 0.3), Vector2(-0.18, 0.33)], patch)
+	for k in 3:
+		var y := 0.1 + k * 0.08
+		_line(ci, p, s, Vector2(-0.24, y + 0.01), Vector2(-0.15, y), Color(0.9, 0.85, 0.7, 0.8), 0.035)
+	_circ(ci, p, s, Vector2(0.66, -0.06), 0.07, felt.darkened(0.2))
+
+
+## Respectable: tall straight blue hat, gold band and a single star.
+static func _adept_hat(ci: CanvasItem, p: Vector2, s: float, t: float) -> void:
+	var cloth := Color(0.2, 0.36, 0.78)
+	var tip := Vector2(0.06, -1.05)
+	_ellipse(ci, p, s, Vector2(0, 0.64), 1.02, 0.22, Color(0, 0, 0, 0.25))
+	_ellipse(ci, p, s, Vector2(0, 0.52), 1.0, 0.21, cloth.darkened(0.35))
+	_poly(ci, p, s, [Vector2(-0.56, 0.52), Vector2(0.56, 0.52), tip], cloth)
+	_poly(ci, p, s, [Vector2(-0.56, 0.52), Vector2(-0.18, 0.52), tip], cloth.darkened(0.15))
+	_cone_band(ci, p, s, tip, 0.52, 0.56, 0.28, 0.46, GOLD.darkened(0.1))
+	var twinkle := 1.0 + sin(t * 3.0) * 0.08
+	star(ci, p + Vector2(0.02, -0.22) * s, 0.2 * s * twinkle, GOLD)
+
+
+## Impressive: tall purple hat with a curled tip, moon and stars, jewelled
+## band, gold-trimmed brim, a pulsing aura and orbiting sparks.
+static func _archmage_hat(ci: CanvasItem, p: Vector2, s: float, t: float) -> void:
+	var cloth := Color(0.44, 0.17, 0.66)
+	var pulse := 0.5 + 0.5 * sin(t * 2.2)
+	for k in 4:
+		ci.draw_circle(p + Vector2(0, -0.25) * s, s * (1.05 + k * 0.12 + pulse * 0.06), Color(MAGIC, 0.07 - k * 0.012))
+	var orbit := func(front: bool) -> void:
+		for k in 5:
+			var a := t * 0.9 + TAU * k / 5.0
+			if (sin(a) > 0.0) != front:
+				continue
+			var q := p + Vector2(cos(a) * 1.25, -0.2 + sin(a) * 0.38) * s
+			star(ci, q, s * (0.07 + 0.04 * (sin(a) + 1.0)), Color(1, 0.92, 0.55, 0.55 + 0.4 * sin(a + 1.0)))
+	orbit.call(false)
+	_ellipse(ci, p, s, Vector2(0, 0.66), 1.12, 0.24, Color(0, 0, 0, 0.3))
+	_ellipse(ci, p, s, Vector2(0, 0.52), 1.12, 0.25, cloth.darkened(0.4))
+	ci.draw_polyline(_pts(p, s, Array(_ellipse_points(Vector2(0, 0.52), 1.12, 0.25, 0.0, PI))), GOLD, maxf(1.5, 0.05 * s), true)
+	var curl_tip := Vector2(0.62, -1.02)
+	_poly(ci, p, s, [Vector2(-0.6, 0.52), Vector2(0.6, 0.52), Vector2(0.24, -0.62), Vector2(curl_tip.x, curl_tip.y + 0.12),
+		curl_tip, Vector2(0.1, -1.04), Vector2(-0.14, -0.66)], cloth)
+	_poly(ci, p, s, [Vector2(-0.6, 0.52), Vector2(-0.22, 0.52), Vector2(-0.02, -0.68), Vector2(-0.14, -0.66)], cloth.darkened(0.18))
+	_circ(ci, p, s, curl_tip, 0.09, GOLD)
+	# Jewelled band.
+	_poly(ci, p, s, [Vector2(-0.53, 0.3), Vector2(0.53, 0.3), Vector2(0.58, 0.47), Vector2(-0.58, 0.47)], GOLD)
+	_circ(ci, p, s, Vector2(0, 0.385), 0.1, Color(0.9, 0.15, 0.3))
+	_circ(ci, p, s, Vector2(-0.03, 0.36), 0.035, Color(1, 0.8, 0.85))
+	# Crescent moon and stars.
+	_circ(ci, p, s, Vector2(-0.2, -0.05), 0.17, Color(1, 0.95, 0.7))
+	_circ(ci, p, s, Vector2(-0.13, -0.09), 0.15, cloth)
+	star(ci, p + Vector2(0.2, -0.32) * s, 0.13 * s, GOLD)
+	star(ci, p + Vector2(0.02, -0.68) * s, 0.09 * s, GOLD.lightened(0.2))
+	star(ci, p + Vector2(0.28, 0.1) * s, 0.08 * s, GOLD.lightened(0.3))
+	orbit.call(true)
