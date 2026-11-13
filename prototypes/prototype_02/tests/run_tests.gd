@@ -447,7 +447,7 @@ func _test_starting_packs() -> void:
 	add_child(game)
 	for i in CreatureDB.PACKS.size():
 		game.new_duel()
-		game.choose_difficulty(Difficulty.ARCHMAGE)
+		game.choose_difficulty(Difficulty.APPRENTICE)
 		var pack: Dictionary = CreatureDB.PACKS[i]
 		game._left_press(Hud.pack_rect(i).get_center())
 		var forms: Array = game.player.fielded().map(func(c: OwnedCreature) -> String: return c.form_id)
@@ -468,7 +468,7 @@ func _test_starting_packs() -> void:
 func _test_preparation_input() -> void:
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
-	game.choose_difficulty(Difficulty.ARCHMAGE)
+	game.choose_difficulty(Difficulty.APPRENTICE)
 	game.choose_pack(0)
 	game.player.gold = 20
 	var state: WizardState = game.player
@@ -530,7 +530,7 @@ func _test_peasant_harvest() -> void:
 
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
-	game.choose_difficulty(Difficulty.ARCHMAGE)
+	game.choose_difficulty(Difficulty.APPRENTICE)
 	game.choose_pack(0)
 	var player: WizardState = game.player
 	var hud: Hud = game.hud
@@ -560,7 +560,7 @@ func _test_peasant_harvest() -> void:
 func _test_fight_layout_animation() -> void:
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
-	game.choose_difficulty(Difficulty.ARCHMAGE)
+	game.choose_difficulty(Difficulty.APPRENTICE)
 	game.choose_pack(0)
 	check(game.shop_out == 1.0, "shop starts off screen before the first shop")
 	game._advance_ui(0.1)
@@ -602,7 +602,7 @@ func _finish_enemy_preparation(game) -> void:
 func _test_shop_drag_and_enemy_preparation() -> void:
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
-	game.choose_difficulty(Difficulty.ARCHMAGE)
+	game.choose_difficulty(Difficulty.APPRENTICE)
 	game.choose_pack(0)
 	var state: WizardState = game.player
 	var foe: WizardState = game.enemy
@@ -790,7 +790,7 @@ func _test_phase_music() -> void:
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
 	check(game.music.current == "prep", "difficulty choice uses preparation music")
-	game.choose_difficulty(Difficulty.ARCHMAGE)
+	game.choose_difficulty(Difficulty.APPRENTICE)
 	game.choose_pack(0)
 	check(game.music.current == "prep", "preparation keeps its music")
 	_finish_enemy_preparation(game)
@@ -819,6 +819,7 @@ func _test_phase_music() -> void:
 
 func _test_result_recordings() -> void:
 	var game = load("res://main.tscn").instantiate()
+	game.unlocked_difficulty = Difficulty.ARCHMAGE
 	add_child(game)
 	var voice: AudioStreamPlayer = Sfx._result_player
 	voice.stop()
@@ -1176,7 +1177,7 @@ func _test_overlapping_blizzards() -> void:
 func _test_combat_click_casts() -> void:
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
-	game.choose_difficulty(Difficulty.ARCHMAGE)
+	game.choose_difficulty(Difficulty.APPRENTICE)
 	game.choose_pack(0)
 	game.enemy_preparing = false
 	game.enemy_moves.clear()
@@ -1253,7 +1254,7 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 	b.free()
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
-	game.choose_difficulty(Difficulty.ARCHMAGE)
+	game.choose_difficulty(Difficulty.APPRENTICE)
 	game.choose_pack(0)
 	game.player.gold = Rules.SHIFT_RECHARGE_COST
 	game._left_press(Hud.SHIFT_UPGRADE_RECT.get_center())
@@ -1363,11 +1364,20 @@ func _test_difficulty() -> void:
 		and apprentice.cast_delay.x > adept.cast_delay.x and adept.cast_delay.x > archmage.cast_delay.x,
 		"easier levels cast more slowly and less accurately")
 
-	# Start screen: a duel opens on the hat choice, which sets the opponent level.
+	# Use a fresh save and reload it in a separate game instance.
+	var progress_path := "user://difficulty_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
 	var game = load("res://main.tscn").instantiate()
+	game.difficulty_progress_path = progress_path
 	add_child(game)
-	check(game.phase == game.Phase.DIFFICULTY and game.enemy.ai_level == Difficulty.ARCHMAGE,
-		"a new game opens on the difficulty screen, archmage by default")
+	check(game.phase == game.Phase.DIFFICULTY and game.enemy.ai_level == Difficulty.APPRENTICE
+		and game.is_difficulty_unlocked(Difficulty.APPRENTICE), "a fresh profile starts with apprentice")
+	game._left_press(Hud.difficulty_rect(Difficulty.ADEPT).get_center())
+	check(game.phase == game.Phase.DIFFICULTY, "clicking a locked hat cannot start a duel")
+	var key := InputEventKey.new()
+	key.pressed = true
+	key.keycode = KEY_3
+	game._unhandled_input(key)
+	check(game.phase == game.Phase.DIFFICULTY, "the keyboard cannot select a locked difficulty")
 	game._left_press(Hud.difficulty_rect(Difficulty.APPRENTICE).get_center())
 	check(game.phase == game.Phase.PACK and game.enemy.ai_level == Difficulty.APPRENTICE
 		and game.player.creatures.is_empty(), "clicking the apprentice hat selects it and opens pack choice")
@@ -1377,12 +1387,20 @@ func _test_difficulty() -> void:
 	game.battle = Battle.new()
 	game.add_child(game.battle)
 	game._finish_round()
-	check(game.phase == game.Phase.OVER, "duel reaches game over")
+	check(game.phase == game.Phase.OVER and not game.is_difficulty_unlocked(Difficulty.ADEPT)
+		and game.hud.victory._particles.is_empty(), "a defeat does not unlock a level or start the celebration")
 	game._left_press(Hud.RESTART_POS)
 	check(game.phase == game.Phase.DIFFICULTY and game.enemy.ai_level == Difficulty.APPRENTICE,
 		"replaying returns to the difficulty screen and remembers the last level")
-	var key := InputEventKey.new()
-	key.pressed = true
+	game.choose_difficulty(Difficulty.APPRENTICE)
+	game.choose_pack(0)
+	_finish_test_difficulty_win(game)
+	check(game.newly_unlocked_difficulty == Difficulty.ADEPT and game.is_difficulty_unlocked(Difficulty.ADEPT)
+		and not game.is_difficulty_unlocked(Difficulty.ARCHMAGE), "winning as apprentice unlocks only adept")
+	check(not game.hud.victory._particles.is_empty(), "a duel victory starts the celebration")
+	game.new_duel()
+	check(game.newly_unlocked_difficulty == -1 and game.hud.victory._particles.is_empty(),
+		"replay clears the celebration and the unlock announcement")
 	key.keycode = KEY_2
 	game._unhandled_input(key)
 	check(game.phase == game.Phase.PACK and game.enemy.ai_level == Difficulty.ADEPT, "number keys pick a hat")
@@ -1392,7 +1410,16 @@ func _test_difficulty() -> void:
 	check(hat_battle.ai_levels[1] == Difficulty.ADEPT and hat_battle._ai_delay[1] >= adept.first_delay.x,
 		"combat uses the opponent level for its casting delays")
 	hat_battle.free()
+	game.choose_pack(0)
+	_finish_test_difficulty_win(game)
+	check(game.newly_unlocked_difficulty == Difficulty.ARCHMAGE, "winning as adept unlocks archmage")
 	game.free()
+	game = load("res://main.tscn").instantiate()
+	game.difficulty_progress_path = progress_path
+	add_child(game)
+	check(game.is_difficulty_unlocked(Difficulty.ARCHMAGE), "the unlocked levels survive a reload")
+	game.free()
+	DirAccess.remove_absolute(progress_path)
 
 	# Apprentice shopping never buys the upgrade, locks, or sells a fielded creature.
 	var rng := RandomNumberGenerator.new()
@@ -1425,6 +1452,14 @@ func _test_difficulty() -> void:
 		picks[EnemyAI.random_cast_target(b)] = true
 	check(picks.size() == 1 and picks.has(ally), "clumsy casts only pick creatures that can be shapeshifted")
 	b.free()
+
+
+func _finish_test_difficulty_win(game: Node) -> void:
+	game.enemy.hp = 0.5
+	game.battle = Battle.new()
+	game.add_child(game.battle)
+	game._on_battle_ended({"winner": 0, "survivors": 1})
+	game._finish_round()
 
 
 func _simulate_duels() -> void:

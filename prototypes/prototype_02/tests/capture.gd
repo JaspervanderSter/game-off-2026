@@ -18,7 +18,7 @@ func _ready() -> void:
 	get_viewport().warp_mouse(Hud.difficulty_rect(Difficulty.ADEPT).get_center())
 	await _frames(4)
 	await _shot("00_difficulty")
-	game.choose_difficulty(Difficulty.ARCHMAGE)
+	game.choose_difficulty(Difficulty.APPRENTICE)
 	await _frames(4)
 	await _shot("01_pack")
 	game.choose_pack(0)

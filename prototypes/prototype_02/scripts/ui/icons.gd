@@ -309,8 +309,9 @@ static func merge_progress(ci: CanvasItem, center: Vector2, copies: int, stars: 
 			ci.draw_circle(p, 2.3, GOLD)
 
 
-static func padlock(ci: CanvasItem, p: Vector2) -> void:
-	ci.draw_arc(p + Vector2(0, -4), 6, PI, TAU, 12, GOLD, 3.0, true)
+static func padlock(ci: CanvasItem, p: Vector2, opened := false) -> void:
+	var shackle := p + (Vector2(4, -9) if opened else Vector2(0, -4))
+	ci.draw_arc(shackle, 6, PI, TAU + (PI / 2.0 if opened else 0.0), 16, GOLD, 3.0, true)
 	ci.draw_rect(Rect2(p + Vector2(-8, -4), Vector2(16, 13)), GOLD)
 	ci.draw_circle(p + Vector2(0, 1), 2, DARK)
 
@@ -513,17 +514,9 @@ static func swords(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
 	ci.draw_line(p + Vector2(r * 0.75, r * 0.35), p + Vector2(r * 0.35, r * 0.75), col, r * 0.2, true)
 
 
-static func wand(ci: CanvasItem, p: Vector2, r: float, crossed: bool) -> void:
+static func wand(ci: CanvasItem, p: Vector2, r: float) -> void:
 	ci.draw_line(p + Vector2(-r * 0.7, r * 0.7), p + Vector2(r * 0.4, -r * 0.4), Color(0.55, 0.35, 0.2), r * 0.18, true)
 	star(ci, p + Vector2(r * 0.5, -r * 0.5), r * 0.42, MAGIC.lightened(0.3))
-	if crossed:
-		ci.draw_arc(p, r, 0, TAU, 24, Color(1, 0.3, 0.3), r * 0.14, true)
-		ci.draw_line(p + Vector2(-r * 0.7, -r * 0.7), p + Vector2(r * 0.7, r * 0.7), Color(1, 0.3, 0.3), r * 0.14, true)
-
-
-static func fast_forward(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
-	for dx in [-r * 0.5, r * 0.35]:
-		ci.draw_colored_polygon(PackedVector2Array([p + Vector2(dx - r * 0.4, -r * 0.6), p + Vector2(dx + r * 0.45, 0), p + Vector2(dx - r * 0.4, r * 0.6)]), col)
 
 
 static func crown(ci: CanvasItem, p: Vector2, r: float) -> void:
@@ -591,6 +584,35 @@ static func stat_icon(ci: CanvasItem, key: String, p: Vector2, r: float) -> void
 			ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.5, -r * 0.8), p + Vector2(r * 0.1, -r * 0.8), p + Vector2(r * 0.1, r * 0.3), p + Vector2(r * 0.9, r * 0.4), p + Vector2(r * 0.9, r * 0.8), p + Vector2(-r * 0.5, r * 0.8)]), Color(0.65, 0.45, 0.3))
 		"armour":
 			ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.8, -r * 0.8), p + Vector2(r * 0.8, -r * 0.8), p + Vector2(r * 0.8, 0), p + Vector2(0, r * 0.95), p + Vector2(-r * 0.8, 0)]), Color(0.55, 0.65, 0.85))
+
+
+## Small crests for the starting cards, using the same motifs as the creatures.
+static func pack_emblem(ci: CanvasItem, kind: String, p: Vector2, highlighted: bool) -> void:
+	var rim := Color(0.62, 0.45, 0.26)
+	if highlighted:
+		rim = rim.lerp(GOLD, 0.45)
+	for side in [-1, 1]:
+		ci.draw_line(p + Vector2(26 * side, 0), p + Vector2(59 * side, 0), Color(rim, 0.65), 1.0, true)
+		ci.draw_circle(p + Vector2(59 * side, 0), 1.5, rim, true)
+	ci.draw_circle(p + Vector2(0, 2), 22, DARK, true)
+	ci.draw_circle(p, 21, Color(0.22, 0.16, 0.12), true)
+	ci.draw_circle(p, 21, rim, false, 1.5, true)
+	match kind:
+		"frost_shield":
+			var shield := [Vector2(-0.8, -0.8), Vector2(0.8, -0.8), Vector2(0.8, 0.23),
+				Vector2(0, 1.0), Vector2(-0.8, 0.23)]
+			_poly(ci, p, 15, shield, Color(0.25, 0.4, 0.75))
+			ci.draw_polyline(_pts(p, 15, shield + [shield[0]]), Color(0.78, 0.86, 0.95), 1.5, true)
+			_snowflake(ci, p + Vector2(0, -2), 6, Color(0.85, 0.97, 1.0))
+		"song":
+			note_shadowed(ci, p + Vector2(7, 2), 10, Color(1.0, 0.6, 0.9))
+			note_shadowed(ci, p + Vector2(-5, -2), 14, GOLD)
+		"spear":
+			var shaft := Color(0.77, 0.49, 0.27)
+			ci.draw_line(p + Vector2(-12, 12), p + Vector2(8, -8), shaft, 3, true)
+			ci.draw_line(p + Vector2(-14, 2), p + Vector2(-7, -5), Color(shaft, 0.8), 2, true)
+			ci.draw_line(p + Vector2(0, 13), p + Vector2(7, 6), Color(shaft, 0.8), 2, true)
+			_poly(ci, p, 1, [Vector2(3, -9), Vector2(14, -14), Vector2(9, -3)], Color(0.85, 0.87, 0.9))
 
 
 # --- Difficulty hats ------------------------------------------------------------

@@ -103,11 +103,11 @@ const FORMS := {
 
 # All three packs are offered. Bonus gold is granted once, before the first shop.
 const PACKS := [
-	{"name": "Control", "plan": "Protect your backline",
+	{"name": "Control", "emblem": "frost_shield",
 		"forms": ["guardian", "frost_mage", "peasant"], "bonus_gold": 1},
-	{"name": "Tempo", "plan": "Build around the song",
+	{"name": "Tempo", "emblem": "song",
 		"forms": ["duelist", "archer", "bard"], "bonus_gold": 0},
-	{"name": "Breakthrough", "plan": "Hunt enemy backliners",
+	{"name": "Breakthrough", "emblem": "spear",
 		"forms": ["berserker", "assassin", "spearman"], "bonus_gold": 1},
 ]
 

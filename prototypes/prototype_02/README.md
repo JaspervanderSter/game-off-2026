@@ -17,7 +17,7 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 
 | Action | Control |
 | --- | --- |
-| Pick the opponent's difficulty | Left-click one of the three hats (or press 1 / 2 / 3); shown at the start of every duel, replays included |
+| Pick the opponent's difficulty | Left-click an unlocked hat or press its number (1 / 2 / 3) |
 | Pick a starting pack | Left-click one of the three cards |
 | Buy a creature | Click and release a shop card for the bench, or drag it directly to a board cell / reserve slot |
 | Reroll shop | Click the circular-arrow button below the offers (1 gold) |
@@ -30,7 +30,6 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 | Toggle fullscreen | Alt+Enter |
 | Shapeshift | Left-click (or tap) any living creature during combat, friend or foe |
 | Inspect | Hover a creature: its three possible outcomes with their chances, plus stat bars. In combat, a reticle previews the cast: cyan blessing circle on your creatures, violet hex fangs on enemies, grey when no charge is ready or the target is immune |
-| Experiment toggles | Wand: no-spell mode for both wizards (outside combat). Double chevron: combat speed x2 |
 
 Reading the board: blue ring = yours, red ring = the AI's. The opponent's panel
 shows the hat of the chosen difficulty. Purple orbs = spell
@@ -52,7 +51,8 @@ All confirmed rules and delegated defaults of the design note, notably:
 
 - Duel loop: free starting pack, then every round shop + preparation, real-time
   combat, resolution; until a wizard has 0 of 10 health.
-- The three starting cards show their game plan and first-shop budget. The AI
+- The three starting cards show a themed crest, the creatures and one coin per
+  gold available in the first shop. The AI
   picks one of the same packs at random. Both sides receive their pack's bonus
   once, on top of the first round's 3 gold.
 
@@ -190,12 +190,12 @@ dedicated voice. Music has faded out during resolution and stays silent at game 
 Answers given by the user while scoping the implementation:
 
 - Procedural shapes and icons only, as little text as possible (rule for all prototypes).
-- Top-down camera, synthesized sound effects, English as the (rare) UI language.
+- Top-down camera, synthesized sound effects, icon-based interface.
 - All 24 abilities implemented; short combats (~20-30 s); visible homing projectiles.
 - Hover shows the three outcomes with chances (no outcome-stat comparison).
 - Three thematic starting packs. The AI evaluates purchases and transformations
   using combat value (see below).
-- Tools: no-spell toggle, x2 combat speed, headless tests.
+- Tools: headless tests.
 
 Assistant-authored values (all adjustable in `scripts/data/creature_db.gd` and
 `scripts/core/rules.gd`):
@@ -312,6 +312,11 @@ sparks. Hovering a card lifts it, bobs its hat and previews that hat in the
 opponent's panel, where the chosen hat stays as a reminder for the whole duel.
 The restart button returns to this screen; the last choice is kept as the
 opponent's hat until a new one is picked.
+
+Only Apprentice is available on a fresh profile. Winning a duel against
+Apprentice unlocks Adept, and winning against Adept unlocks Archmage. The game
+saves unlocked difficulties locally. The victory screen shows the newly
+unlocked hat with an open padlock.
 
 - **Archmage** uses the full-strength AI strategy, including budget-driven shop rerolls.
 - **Adept** and **Apprentice** follow the same rules, gold and spell charges as

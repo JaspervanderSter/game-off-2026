@@ -12,6 +12,11 @@ normal verification.
 
 Write shared project documentation in English. Conversation with the user may remain in French.
 
+## In-game interface
+
+Use icons and animation for in-game labels, controls, and announcements. Display
+numbers where they communicate game values.
+
 ## Git push authorization
 
 On 3 November 2026, the user explicitly granted standing authorization to push this project's changes to the `main` branch of `https://github.com/JaspervanderSter/game-off-2026.git` (`origin`). The user stated that this authorization applies to all chats for this project.

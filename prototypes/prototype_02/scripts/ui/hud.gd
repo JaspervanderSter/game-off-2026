@@ -4,11 +4,10 @@ extends Node2D
 
 const ENEMY_BLOCK := Rect2(24, 84, 300, 140)
 const PLAYER_BLOCK := Rect2(24, 376, 300, 156)
-const TOGGLE_NOSPELL := Vector2(78, 300)
-const TOGGLE_FAST := Vector2(158, 300)
-const ROUND_POS := Vector2(270, 300)
-const TOGGLE_R := 26.0
+const ROUND_POS := Vector2(174, 300)
 const RESTART_POS := Vector2(640, 420)
+const VICTORY_POS := Vector2(640, 255)
+const VictoryFx := preload("res://scripts/ui/victory_fx.gd")
 const OFFER_SIZE := Vector2(288, 112)
 const REROLL_RECT := Rect2(1000, 458, 224, 42)
 const SHIFT_UPGRADE_RECT := Rect2(976, 636, 272, 54)
@@ -35,6 +34,7 @@ var reward_time := 0.0
 var harvest_time := 0.0
 var harvest_sources: Array[Dictionary] = []
 var harvest_coins: Array[Dictionary] = []
+var victory := VictoryFx.new()
 
 
 func _ready() -> void:
@@ -44,6 +44,16 @@ func _ready() -> void:
 func _process(dt: float) -> void:
 	advance_loss_rewards(dt)
 	advance_harvest(dt)
+	if game.phase == game.Phase.OVER:
+		victory.advance(dt)
+
+
+func begin_victory() -> void:
+	victory.start(VICTORY_POS)
+
+
+func clear_victory() -> void:
+	victory.clear()
 
 
 func clear_harvest() -> void:
@@ -201,13 +211,13 @@ static func difficulty_rect(i: int) -> Rect2:
 func shown_difficulty() -> int:
 	if game.phase == game.Phase.DIFFICULTY:
 		for i in Difficulty.COUNT:
-			if difficulty_rect(i).has_point(get_global_mouse_position()):
+			if game.is_difficulty_unlocked(i) and difficulty_rect(i).has_point(get_global_mouse_position()):
 				return i
 	return game.enemy.ai_level
 
 
 static func pack_token_pos(i: int, j: int) -> Vector2:
-	return pack_rect(i).position + Vector2(34 + j * 54, 68)
+	return pack_rect(i).position + Vector2(34 + j * 54, 88)
 
 
 static func charge_pos(i: int) -> Vector2:
@@ -219,7 +229,7 @@ static func charge_pos(i: int) -> Vector2:
 func _draw() -> void:
 	_draw_wizard(game.enemy, ENEMY_BLOCK)
 	_draw_wizard(game.player, PLAYER_BLOCK)
-	_draw_toggles()
+	_draw_round_counter()
 	match game.phase:
 		game.Phase.DIFFICULTY:
 			_draw_difficulty_choice()
@@ -299,9 +309,7 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 		var prog := 0.0
 		if spell and i == spell.charges:
 			prog = spell.progress()
-		Icons.charge_orb(self, p, 12, filled and not game.no_spells, prog)
-	if game.no_spells:
-		Icons.wand(self, block.position + Vector2(230, 84), 14, true)
+		Icons.charge_orb(self, p, 12, filled, prog)
 	Icons.coin(self, gold_pos(team), 15 * (1.0 + coin_pulse * 0.45))
 	draw_string(font, block.position + Vector2(66, 135 - coin_pulse * 5), str(displayed_gold(state)), HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Icons.GOLD.lerp(Color.WHITE, coin_pulse))
 	if team == 0 and game.phase != game.Phase.PACK:
@@ -416,15 +424,7 @@ func _spinning_coin(p: Vector2, r: float, spin: float) -> void:
 	draw_circle(p + Vector2(-r * 0.3, -r * 0.35), r * 0.18, Color(1, 1, 0.9, 0.8))
 
 
-func _draw_toggles() -> void:
-	var editable: bool = game.phase != game.Phase.COMBAT and game.phase != game.Phase.RESOLVE
-	draw_circle(TOGGLE_NOSPELL, TOGGLE_R, Color(0.2, 0.12, 0.25) if game.no_spells else Color(0.15, 0.1, 0.1))
-	draw_arc(TOGGLE_NOSPELL, TOGGLE_R, 0, TAU, 24, Color(0.6, 0.45, 0.8, 1.0 if editable else 0.35), 2.0, true)
-	Icons.wand(self, TOGGLE_NOSPELL, 16, game.no_spells)
-	draw_circle(TOGGLE_FAST, TOGGLE_R, Color(0.3, 0.25, 0.08) if game.fast else Color(0.15, 0.1, 0.1))
-	draw_arc(TOGGLE_FAST, TOGGLE_R, 0, TAU, 24, Color(1.0, 0.85, 0.3), 2.0, true)
-	Icons.fast_forward(self, TOGGLE_FAST, 14, Color(1.0, 0.85, 0.3) if game.fast else Color(0.6, 0.55, 0.4))
-	# Round counter.
+func _draw_round_counter() -> void:
 	draw_circle(ROUND_POS, 22, Color(0.15, 0.1, 0.1))
 	draw_arc(ROUND_POS, 22, 0, TAU, 24, Color(0.6, 0.5, 0.4), 2.0, true)
 	draw_string(font, ROUND_POS + Vector2(-20, 8), str(maxi(1, game.round_num)), HORIZONTAL_ALIGNMENT_CENTER, 40, 22, Color(0.9, 0.85, 0.75))
@@ -500,7 +500,7 @@ func _draw_shift_upgrade() -> void:
 	var available: bool = game.player.can_upgrade_shift_recharge()
 	_panel(SHIFT_UPGRADE_RECT, Color(0.12, 0.23, 0.16) if owned else Color(0.18, 0.11, 0.24))
 	var p := SHIFT_UPGRADE_RECT.position
-	Icons.wand(self, p + Vector2(28, 27), 16, false)
+	Icons.wand(self, p + Vector2(28, 27), 16)
 	Icons.restart(self, p + Vector2(67, 27), 12, Icons.MAGIC)
 	if owned:
 		var check := p + Vector2(175, 27)
@@ -555,9 +555,7 @@ func _draw_combat_hud() -> void:
 	var spell: ShiftSpell = b.spells[0]
 	for i in Rules.MAX_CHARGES:
 		var prog: float = spell.progress() if i == spell.charges else 0.0
-		Icons.charge_orb(self, charge_pos(i), 24, spell.charges > i and b.casting_enabled, prog)
-	if not b.casting_enabled:
-		Icons.wand(self, charge_pos(1), 30, true)
+		Icons.charge_orb(self, charge_pos(i), 24, spell.charges > i, prog)
 
 
 func _draw_frenzy(b: Battle, bar: Rect2, color: Color) -> void:
@@ -566,7 +564,7 @@ func _draw_frenzy(b: Battle, bar: Rect2, color: Color) -> void:
 	var outline := Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE).grow(3.0)
 	draw_rect(outline, Color(color, 0.45 + flash * 0.55), false, 2.0 + flash * 3.0)
 	var bonus := roundi((b.frenzy_multiplier() - 1.0) * 100.0)
-	draw_string(font, bar.position + Vector2(0, -7), "FRENZY +%d%%" % bonus,
+	draw_string(font, bar.position + Vector2(0, -7), "+%d%%" % bonus,
 		HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, 18, Color(1.0, 0.65, 0.35).lerp(Color.WHITE, flash))
 
 
@@ -589,14 +587,15 @@ func _draw_difficulty_choice() -> void:
 	var mouse := get_global_mouse_position()
 	for i in Difficulty.COUNT:
 		var r := difficulty_rect(i)
-		var hovered := r.has_point(mouse)
+		var unlocked: bool = game.is_difficulty_unlocked(i)
+		var hovered := unlocked and r.has_point(mouse)
 		var card := Rect2(r.position + Vector2(0, -6 if hovered else 0), r.size)
 		_panel(card, Color(0.22, 0.16, 0.1) if hovered else Color(0.14, 0.1, 0.08))
 		if hovered:
 			draw_rect(card.grow(3), Icons.GOLD, false, 3.0)
 		var hat_scale: float = [46.0, 48.0, 54.0][i] * (1.06 if hovered else 1.0)
 		var bob := sin(t * 4.0) * 3.0 if hovered else 0.0
-		var centre := card.position + Vector2(card.size.x * 0.5, card.size.y * 0.54)
+		var centre := card.get_center() + Vector2(0, -9)
 		# Soft pool of light under each hat, brighter for stronger opponents.
 		var glow: Color = [Color(0.85, 0.65, 0.4), Color(0.4, 0.6, 1.0), Icons.MAGIC][i]
 		for k in 5:
@@ -605,35 +604,52 @@ func _draw_difficulty_choice() -> void:
 			draw_circle(Vector2.ZERO, w, Color(glow, (0.05 + i * 0.025) * (1.4 if hovered else 1.0)))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		Icons.difficulty_hat(self, i, centre + Vector2(0, bob), hat_scale, t)
+		if not unlocked:
+			draw_rect(card.grow(-2), Color(0.06, 0.04, 0.06, 0.65))
+			var lock_pos := Vector2(centre.x, card.end.y - 40)
+			draw_circle(lock_pos, 19, Color(0.13, 0.09, 0.08), true)
+			Icons.padlock(self, lock_pos)
 
 
 func _draw_pack_choice() -> void:
 	var dim := Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE)
 	draw_rect(dim, Color(0, 0, 0, 0.45))
+	var mouse := get_global_mouse_position()
 	for i in CreatureDB.PACKS.size():
 		var pack: Dictionary = CreatureDB.PACKS[i]
 		var r := pack_rect(i)
-		var hovered := r.has_point(get_global_mouse_position())
+		var hovered := r.has_point(mouse)
 		_panel(r, Color(0.22, 0.16, 0.1) if hovered else Color(0.14, 0.1, 0.08))
 		if hovered:
 			draw_rect(r.grow(3), Icons.GOLD, false, 3.0)
-		draw_string(font, r.position + Vector2(0, 30), pack.name,
-			HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 22, Color(0.96, 0.88, 0.75))
+		var emblem_pos := Vector2(r.get_center().x, r.position.y + 31)
+		Icons.pack_emblem(self, pack.emblem, emblem_pos, hovered)
 		for j in pack.forms.size():
 			Icons.token(self, pack.forms[j], pack_token_pos(i, j), 24, 0)
-		draw_string(font, r.position + Vector2(0, 115), pack.plan,
-			HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 14, Color(0.84, 0.76, 0.68))
-		Icons.coin(self, r.position + Vector2(32, 143), 9)
+		var coin_row := Vector2(emblem_pos.x, r.end.y - 24)
+		var divider := Color(0.45, 0.32, 0.2, 0.65)
+		draw_line(coin_row + Vector2(-66, -17), coin_row + Vector2(66, -17), divider, 1.0)
 		var starting_gold := Rules.income(1) + int(pack.bonus_gold)
-		draw_string(font, r.position + Vector2(47, 148), "%d starting gold" % starting_gold,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Icons.GOLD)
+		for j in starting_gold:
+			Icons.coin(self, coin_row + Vector2((j - (starting_gold - 1) * 0.5) * 21, 0), 8)
 
 
 func _draw_game_over() -> void:
 	draw_rect(Rect2(Vector2.ZERO, Vector2(1280, 720)), Color(0, 0, 0, 0.6))
 	var won: bool = game.player.hp > 0
 	if won:
-		Icons.crown(self, Vector2(640, 280), 90)
+		victory.draw(self)
+		var pop := 1.0 + 0.35 * sin(victory.age * 16.0) * exp(-5.5 * victory.age)
+		Icons.crown(self, VICTORY_POS, 90 * pop)
+		var unlocked: int = game.newly_unlocked_difficulty
+		if unlocked >= 0:
+			var badge := Vector2(640, 345)
+			draw_circle(badge, 29, Color(0.14, 0.09, 0.08), true)
+			draw_arc(badge, 29, 0, TAU, 32, Icons.GOLD, 2.0, true)
+			Icons.difficulty_hat(self, unlocked, badge + Vector2(0, 1), 22, victory.age)
+			var lock_pos := badge + Vector2(24, 13)
+			draw_circle(lock_pos, 13, Color(0.14, 0.09, 0.08), true)
+			Icons.padlock(self, lock_pos, true)
 	else:
 		Icons.skull(self, Vector2(640, 280), 95)
 	var hovered := RESTART_POS.distance_to(get_global_mouse_position()) < 46

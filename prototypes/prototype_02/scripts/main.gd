@@ -20,11 +20,12 @@ var player: WizardState
 var enemy: WizardState
 var states: Array[WizardState] = []
 var round_num := 0
-var difficulty := Difficulty.ARCHMAGE # last chosen opponent level
+var difficulty := Difficulty.APPRENTICE
+var unlocked_difficulty := Difficulty.APPRENTICE
+var newly_unlocked_difficulty := -1
+var difficulty_progress_path := "user://difficulty_progress.cfg"
 var battle: Battle = null
 var rng := RandomNumberGenerator.new()
-var no_spells := false # experiment toggle: disables casting for both wizards
-var fast := false # combat speed x2
 var drag: OwnedCreature = null
 var shop_drag_index := -1
 var shop_drag_origin := Vector2.ZERO
@@ -67,6 +68,7 @@ func _ready() -> void:
 	hud.game = self
 	hud.z_index = 20
 	add_child(hud)
+	_load_difficulty_progress()
 	new_duel()
 
 
@@ -88,18 +90,50 @@ func new_duel() -> void:
 	last_result = {}
 	last_damage = 0
 	last_damage_team = -1
+	newly_unlocked_difficulty = -1
 	hud.clear_loss_rewards()
 	hud.clear_harvest()
+	hud.clear_victory()
 	phase = Phase.DIFFICULTY
 	music.transition_to("prep")
 
 
 ## Every duel starts by picking the opponent's hat; the level holds for the duel.
 func choose_difficulty(level: int) -> void:
-	difficulty = clampi(level, 0, Difficulty.COUNT - 1)
+	if phase != Phase.DIFFICULTY:
+		return
+	if not is_difficulty_unlocked(level):
+		Sfx.play("fail")
+		return
+	difficulty = level
 	enemy.ai_level = difficulty
 	phase = Phase.PACK
 	Sfx.play("click")
+
+
+func is_difficulty_unlocked(level: int) -> bool:
+	return level >= Difficulty.APPRENTICE and level <= unlocked_difficulty
+
+
+func _load_difficulty_progress() -> void:
+	var config := ConfigFile.new()
+	if config.load(difficulty_progress_path) == OK:
+		var saved = config.get_value("progress", "unlocked_difficulty", Difficulty.APPRENTICE)
+		if saved is int:
+			unlocked_difficulty = clampi(saved, Difficulty.APPRENTICE, Difficulty.COUNT - 1)
+
+
+func _unlock_next_difficulty() -> void:
+	var next := difficulty + 1
+	if next <= unlocked_difficulty or next >= Difficulty.COUNT:
+		return
+	unlocked_difficulty = next
+	newly_unlocked_difficulty = next
+	var config := ConfigFile.new()
+	config.set_value("progress", "unlocked_difficulty", unlocked_difficulty)
+	var error := config.save(difficulty_progress_path)
+	if error != OK:
+		push_warning("Could not save difficulty progress: %s" % error_string(error))
 
 
 func choose_pack(index: int) -> void:
@@ -134,7 +168,6 @@ func start_combat() -> void:
 	battle.position = Rules.BOARD_POS
 	add_child(battle)
 	move_child(battle, board_view.get_index() + 1)
-	battle.casting_enabled = not no_spells
 	battle.setup(states)
 	battle.unit_died.connect(_on_unit_died)
 	battle.unit_transformed.connect(_on_unit_transformed)
@@ -160,8 +193,6 @@ func _physics_process(dt: float) -> void:
 			_advance_enemy_preparation(dt)
 		Phase.COMBAT:
 			battle.step(dt)
-			if fast and phase == Phase.COMBAT:
-				battle.step(dt)
 		Phase.RESOLVE:
 			_resolve_t -= dt
 			if _resolve_t <= 0.0:
@@ -197,6 +228,9 @@ func _finish_round() -> void:
 		enemy.hp = maxf(0, enemy.hp)
 		phase = Phase.OVER
 		music.transition_to("")
+		if player.hp > 0:
+			_unlock_next_difficulty()
+			hud.begin_victory()
 		Sfx.play("lose" if player.hp == 0 else "win")
 	else:
 		start_round()
@@ -380,17 +414,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _left_press(pos: Vector2) -> void:
-	if pos.distance_to(Hud.TOGGLE_FAST) < Hud.TOGGLE_R:
-		fast = not fast
-		Sfx.play("click")
-		return
-	if pos.distance_to(Hud.TOGGLE_NOSPELL) < Hud.TOGGLE_R:
-		if phase != Phase.COMBAT and phase != Phase.RESOLVE:
-			no_spells = not no_spells
-			Sfx.play("click")
-		else:
-			Sfx.play("fail")
-		return
 	match phase:
 		Phase.DIFFICULTY:
 			for i in Difficulty.COUNT:
