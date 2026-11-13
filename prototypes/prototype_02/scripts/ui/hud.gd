@@ -15,6 +15,10 @@ const OFFER_SIZE := Vector2(288, 112)
 const REROLL_RECT := Rect2(1000, 458, 224, 42)
 const SHIFT_UPGRADE_RECT := Rect2(976, 636, 272, 54)
 const PACK_TOP := 222.0
+const PACK_CARD_SIZE := Vector2i(176, 168)
+const DIFFICULTY_CARD_SIZE := Vector2i(168, 260)
+const CHOICE_HALO_MARGIN := 12
+const CHOICE_HALO_FADE := 0.16
 const SHOP_SLIDE := 360.0 # pushes the whole shop column past the right edge
 const HEART_STAGGER := 0.26
 const HEART_BURST := 0.20
@@ -40,10 +44,16 @@ var harvest_coins: Array[Dictionary] = []
 var victory := VictoryFx.new()
 var unlock_level := -1
 var unlock_time := 0.0
+var difficulty_halo: Texture2D
+var pack_halo: Texture2D
+var choice_hover := PackedFloat32Array()
+var choice_phase := -1
 
 
 func _ready() -> void:
 	font = ThemeDB.fallback_font
+	difficulty_halo = _make_choice_halo(DIFFICULTY_CARD_SIZE)
+	pack_halo = _make_choice_halo(PACK_CARD_SIZE)
 
 
 func _process(dt: float) -> void:
@@ -53,6 +63,25 @@ func _process(dt: float) -> void:
 		victory.advance(dt)
 	elif game.phase == game.Phase.DIFFICULTY:
 		advance_difficulty_unlock(dt)
+	if game.phase == game.Phase.DIFFICULTY or game.phase == game.Phase.PACK:
+		_advance_choice_hover(dt)
+	else:
+		choice_phase = -1
+
+
+func _advance_choice_hover(dt: float) -> void:
+	var picking_difficulty: bool = game.phase == game.Phase.DIFFICULTY
+	var card_count := Difficulty.COUNT if picking_difficulty else CreatureDB.PACKS.size()
+	if choice_phase != game.phase:
+		choice_phase = game.phase
+		choice_hover.resize(card_count)
+		choice_hover.fill(0.0)
+	var mouse := get_global_mouse_position()
+	for i in card_count:
+		var rect := difficulty_rect(i) if picking_difficulty else pack_rect(i)
+		var selectable: bool = not picking_difficulty or (game.is_difficulty_unlocked(i) and not unlock_animation_active())
+		var target := 1.0 if selectable and rect.has_point(mouse) else 0.0
+		choice_hover[i] = move_toward(choice_hover[i], target, dt / CHOICE_HALO_FADE)
 
 
 func begin_difficulty_unlock(level: int) -> void:
@@ -227,11 +256,11 @@ static func offer_rect(i: int) -> Rect2:
 
 
 static func pack_rect(i: int) -> Rect2:
-	return Rect2(Vector2(364 + i * 188, PACK_TOP), Vector2(176, 168))
+	return Rect2(Vector2(364 + i * 188, PACK_TOP), Vector2(PACK_CARD_SIZE))
 
 
 static func difficulty_rect(i: int) -> Rect2:
-	return Rect2(Vector2(372 + i * 184, 170), Vector2(168, 260))
+	return Rect2(Vector2(372 + i * 184, 170), Vector2(DIFFICULTY_CARD_SIZE))
 
 
 ## Opponent hat shown in the enemy panel: the hovered card previews its level.
@@ -258,10 +287,12 @@ func _draw() -> void:
 	_draw_wizard(game.player, PLAYER_BLOCK)
 	_draw_round_counter()
 	match game.phase:
-		game.Phase.DIFFICULTY:
-			_draw_difficulty_choice()
-		game.Phase.PACK:
-			_draw_pack_choice()
+		game.Phase.DIFFICULTY, game.Phase.PACK:
+			draw_rect(get_viewport_rect(), Color(0, 0, 0, 0.45))
+			if game.phase == game.Phase.DIFFICULTY:
+				_draw_difficulty_choice()
+			else:
+				_draw_pack_choice()
 		game.Phase.COMBAT:
 			_draw_combat_hud()
 		game.Phase.RESOLVE:
@@ -524,11 +555,18 @@ func _draw_fight_button() -> void:
 
 func _draw_shift_upgrade() -> void:
 	var owned: bool = game.player.shift_recharge_upgraded
-	var available: bool = game.player.can_upgrade_shift_recharge()
-	_panel(SHIFT_UPGRADE_RECT, Color(0.12, 0.23, 0.16) if owned else Color(0.18, 0.11, 0.24))
+	var available: bool = game.phase == game.Phase.PREP and game.player.can_upgrade_shift_recharge()
+	var fill := Color(0.18, 0.11, 0.24)
+	if owned:
+		fill = Color(0.12, 0.23, 0.16)
+	elif available:
+		fill = Color(0.35, 0.19, 0.48)
+	_panel(SHIFT_UPGRADE_RECT, fill)
+	if available:
+		draw_rect(SHIFT_UPGRADE_RECT, Icons.GOLD, false, 3.0)
 	var p := SHIFT_UPGRADE_RECT.position
 	Icons.wand(self, p + Vector2(28, 27), 16)
-	Icons.restart(self, p + Vector2(67, 27), 12, Icons.MAGIC)
+	Icons.restart(self, p + Vector2(67, 27), 12, Icons.MAGIC.lightened(0.4) if available else Icons.MAGIC)
 	if owned:
 		var check := p + Vector2(175, 27)
 		draw_line(check + Vector2(-10, 0), check + Vector2(-2, 8), Color(0.5, 1, 0.65), 3, true)
@@ -607,9 +645,29 @@ func _draw_result() -> void:
 			Icons.draw_mark(self, c, 40)
 
 
+## Precompute the alpha falloff from the edge of a card, including its corners.
+static func _make_choice_halo(card_size: Vector2i) -> Texture2D:
+	var margin := CHOICE_HALO_MARGIN
+	var size := card_size + Vector2i.ONE * (margin * 2)
+	var image := Image.create_empty(size.x, size.y, false, Image.FORMAT_RGBA8)
+	for y in size.y:
+		var dy := maxf(margin - (y + 0.5), y + 0.5 - (size.y - margin))
+		for x in size.x:
+			var dx := maxf(margin - (x + 0.5), x + 0.5 - (size.x - margin))
+			var distance := Vector2(maxf(dx, 0.0), maxf(dy, 0.0)).length()
+			var alpha := 1.0 - smoothstep(0.0, float(margin), distance)
+			image.set_pixel(x, y, Color(1, 1, 1, alpha))
+	return ImageTexture.create_from_image(image)
+
+
+func _draw_choice_halo(card: Rect2, texture: Texture2D, index: int) -> void:
+	var hover := choice_hover[index] if choice_phase == game.phase else 0.0
+	var opacity := lerpf(0.26, 0.78, smoothstep(0.0, 1.0, hover))
+	draw_texture_rect(texture, card.grow(CHOICE_HALO_MARGIN), false, Color(Color.WHITE, opacity))
+
+
 ## Three opponent hats, from the modest apprentice to the glowing archmage.
 func _draw_difficulty_choice() -> void:
-	draw_rect(Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE), Color(0, 0, 0, 0.45))
 	var t := Time.get_ticks_msec() / 1000.0
 	var mouse := get_global_mouse_position()
 	for i in Difficulty.COUNT:
@@ -622,9 +680,9 @@ func _draw_difficulty_choice() -> void:
 		var pulse := sin(PI * smoothstep(0.0, 0.58, reveal_age)) if revealing else 0.0
 		var lift := 6.0 if hovered else pulse * 9.0
 		var card := Rect2(r.position - Vector2(0, lift), r.size)
+		if unlocked and not revealing:
+			_draw_choice_halo(card, difficulty_halo, i)
 		_panel(card, Color(0.22, 0.16, 0.1) if hovered else Color(0.14, 0.1, 0.08))
-		if hovered:
-			draw_rect(card.grow(3), Icons.GOLD, false, 3.0)
 		var hat_scale: float = [46.0, 48.0, 54.0][i] * (1.06 if hovered else 1.0)
 		var bob := sin(t * 4.0) * 3.0 if hovered else 0.0
 		var centre := card.get_center() + Vector2(0, -9)
@@ -666,16 +724,13 @@ func _draw_difficulty_unlock(card: Rect2, lock_pos: Vector2, opening: float, age
 
 
 func _draw_pack_choice() -> void:
-	var dim := Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE)
-	draw_rect(dim, Color(0, 0, 0, 0.45))
 	var mouse := get_global_mouse_position()
 	for i in CreatureDB.PACKS.size():
 		var pack: Dictionary = CreatureDB.PACKS[i]
 		var r := pack_rect(i)
 		var hovered := r.has_point(mouse)
+		_draw_choice_halo(r, pack_halo, i)
 		_panel(r, Color(0.22, 0.16, 0.1) if hovered else Color(0.14, 0.1, 0.08))
-		if hovered:
-			draw_rect(r.grow(3), Icons.GOLD, false, 3.0)
 		var emblem_pos := Vector2(r.get_center().x, r.position.y + 31)
 		Icons.pack_emblem(self, pack.emblem, emblem_pos, hovered)
 		for j in pack.forms.size():
