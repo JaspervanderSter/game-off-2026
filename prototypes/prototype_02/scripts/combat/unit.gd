@@ -170,7 +170,10 @@ func add_status(key: String, duration: float, value: float, positive: bool) -> v
 
 
 func heal(amount: float) -> void:
+	var before := hp
 	hp = minf(max_hp, hp + amount)
+	if battle != null and hp > before:
+		battle.healing_received[team] += hp - before
 
 
 # --- Simulation -----------------------------------------------------------

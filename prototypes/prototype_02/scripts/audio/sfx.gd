@@ -4,7 +4,12 @@ extends Node
 
 const RATE := 22050
 const VOICES := 10
+## Command-line user argument (after `--`) that silences all game audio.
+const NO_SOUND_ARG := "--no-sound"
 
+## False when launched with --no-sound: nothing is synthesised or played and
+## the master bus is muted (music included).
+var enabled := true
 var _streams := {}
 var _players: Array[AudioStreamPlayer] = []
 var _next := 0
@@ -21,6 +26,10 @@ func _ready() -> void:
 		p.volume_db = -8.0
 		add_child(p)
 		_players.append(p)
+	if NO_SOUND_ARG in OS.get_cmdline_user_args():
+		enabled = false
+		AudioServer.set_bus_mute(0, true)
+		return
 	_streams.shift = _make(0.45, func(t, k): return _sweep(t, 300.0, 1400.0, k) * 0.5 + sin(t * TAU * 2400.0 * (1.0 + k)) * 0.15 * (1.0 - k))
 	_streams.hit = _make(0.09, func(t, k): return (randf() * 2.0 - 1.0) * (1.0 - k) * 0.7 + sin(t * TAU * 120.0) * (1.0 - k) * 0.5)
 	_streams.shoot = _make(0.08, func(t, k): return sin(t * TAU * lerpf(900.0, 500.0, k)) * (1.0 - k) * 0.35)
@@ -40,7 +49,7 @@ func _ready() -> void:
 
 
 func play(name: String, pitch_jitter := 0.08) -> void:
-	if not _streams.has(name):
+	if not enabled or not _streams.has(name):
 		return
 	# Avoid machine-gun stacking of identical sounds in the same instant.
 	var now := Time.get_ticks_msec()

@@ -226,6 +226,13 @@ round reset, several
 abilities, then simulates 20 AI-vs-AI duels with and without casting and prints
 the average combat and duel lengths.
 
+Pass `-- --no-sound` after any Godot command line (game included) to mute all
+audio, music included.
+
+A separate, on-demand balance suite (parallel 1v1 duels between all forms, CSV/JSON
+rankings) lives in [`balance/`](balance/README.md). It is not part of these tests
+and runs only on explicit request.
+
 `res://tests/capture.tscn` (not headless) plays a scripted sequence of the real game
 and saves screenshots to `user://captures/`.
 

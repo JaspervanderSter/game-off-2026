@@ -6,3 +6,6 @@
 
 # Local exports
 export/
+
+# Balance suite outputs (generated on demand)
+prototypes/prototype_02/balance/results/

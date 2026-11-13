@@ -23,6 +23,12 @@ var finished := false
 var result := {}
 var rng := RandomNumberGenerator.new()
 var casts := [0, 0] # successful casts per team, for tests and tuning
+# Per-team combat statistics (indexed by the team that received the effect),
+# read by the balance suite. Damage counts HP actually lost (after armour,
+# capped by remaining HP); healing counts HP actually restored.
+var damage_taken := [0.0, 0.0]
+var healing_received := [0.0, 0.0]
+var parries := [0, 0]
 
 var _ai_delay := [0.0, 0.0]
 var _projectile_layer: Node2D
@@ -146,10 +152,13 @@ func damage(src: Unit, dst: Unit, amount: float, kind: String, pierce := false) 
 	if (kind == "melee" or kind == "ranged") and dst.parry_ready:
 		dst.parry_ready = false
 		dst.ability_timer = dst.data.cd
+		parries[dst.team] += 1
 		emit_fx("parry", dst.position)
 		return
 	var reduction := 0.0 if pierce else dst.armour() / 100.0
-	dst.hp -= amount * (1.0 - reduction)
+	var dealt := amount * (1.0 - reduction)
+	damage_taken[dst.team] += clampf(dealt, 0.0, dst.hp)
+	dst.hp -= dealt
 	dst.last_hurt = time
 	if kind != "dot":
 		dst.flash_t = 0.12

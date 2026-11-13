@@ -1,5 +1,13 @@
 # Project instructions
 
+## Balance suite: on demand only
+
+`prototypes/prototype_02/balance/` holds an on-demand balance suite (thousands of
+simulated duels). It is not a regression test. Do not run it after code or data
+changes, during verification, or as part of `tests/`. Run it only when the user
+explicitly asks for a balance run or balance data. Use `tests/run_tests.tscn` for
+normal verification.
+
 ## Language
 
 Write shared project documentation in English. Conversation with the user may remain in French.
