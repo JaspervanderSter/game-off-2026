@@ -1,19 +1,21 @@
 extends Node2D
 ## Prototype 02 game controller: the duel loop
-## pack choice -> (shop + preparation -> combat -> resolution) x N -> game over.
+## difficulty -> pack choice -> (shop + preparation -> combat -> resolution) x N
+## -> game over -> difficulty again.
 
-enum Phase { PACK, PREP, COMBAT, RESOLVE, OVER }
+enum Phase { DIFFICULTY, PACK, PREP, COMBAT, RESOLVE, OVER }
 
 const RESOLVE_TIME := 2.4
 const ENEMY_ACTION_TIME := 0.55
 const ENEMY_MOVE_TIME := 0.42
 const SHOP_DRAG_DISTANCE := 8.0
 
-var phase := Phase.PACK
+var phase := Phase.DIFFICULTY
 var player: WizardState
 var enemy: WizardState
 var states: Array[WizardState] = []
 var round_num := 0
+var difficulty := Difficulty.ARCHMAGE # last chosen opponent level
 var battle: Battle = null
 var rng := RandomNumberGenerator.new()
 var no_spells := false # experiment toggle: disables casting for both wizards
@@ -67,6 +69,7 @@ func new_duel() -> void:
 		battle = null
 	player = WizardState.new(0)
 	enemy = WizardState.new(1)
+	enemy.ai_level = difficulty
 	states = [player, enemy]
 	round_num = 0
 	drag = null
@@ -79,8 +82,16 @@ func new_duel() -> void:
 	last_damage = 0
 	last_damage_team = -1
 	hud.clear_loss_rewards()
-	phase = Phase.PACK
+	phase = Phase.DIFFICULTY
 	music.transition_to("prep")
+
+
+## Every duel starts by picking the opponent's hat; the level holds for the duel.
+func choose_difficulty(level: int) -> void:
+	difficulty = clampi(level, 0, Difficulty.COUNT - 1)
+	enemy.ai_level = difficulty
+	phase = Phase.PACK
+	Sfx.play("click")
 
 
 func choose_pack(index: int) -> void:
@@ -330,6 +341,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_SPACE and phase == Phase.PREP:
 			start_combat()
+		elif phase == Phase.DIFFICULTY and event.keycode >= KEY_1 and event.keycode < KEY_1 + Difficulty.COUNT:
+			choose_difficulty(event.keycode - KEY_1)
 
 
 func _left_press(pos: Vector2) -> void:
@@ -345,6 +358,11 @@ func _left_press(pos: Vector2) -> void:
 			Sfx.play("fail")
 		return
 	match phase:
+		Phase.DIFFICULTY:
+			for i in Difficulty.COUNT:
+				if Hud.difficulty_rect(i).has_point(pos):
+					choose_difficulty(i)
+					return
 		Phase.PACK:
 			for i in CreatureDB.PACKS.size():
 				if Hud.pack_rect(i).has_point(pos):

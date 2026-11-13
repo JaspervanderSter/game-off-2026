@@ -19,6 +19,8 @@ var blizzards: Array[Dictionary] = []
 var spells: Array[ShiftSpell] = [ShiftSpell.new(), ShiftSpell.new()]
 var ai_casting: Array[bool] = [false, true]
 var ai_profiles: Array[Dictionary] = [EnemyAI.DEFAULT_PROFILE, EnemyAI.DEFAULT_PROFILE]
+# Casting difficulty per team, copied from WizardState.ai_level in setup().
+var ai_levels: Array[int] = [Difficulty.ARCHMAGE, Difficulty.ARCHMAGE]
 var casting_enabled := true
 var time := 0.0
 var frenzy_level := 0
@@ -50,11 +52,13 @@ func setup(teams: Array[WizardState], seed_value: int = -1) -> void:
 	else:
 		rng.randomize()
 	for state in teams:
+		ai_levels[state.team] = state.ai_level
 		spells[state.team].recharge_time = state.shift_recharge_time()
 		for c in state.fielded():
 			spawn(state.team, c.form_id, Rules.cell_center(c.cell), c.uid, c.stars, c.merge_copies)
 	for t in 2:
-		_ai_delay[t] = rng.randf_range(1.0, 2.0)
+		var first: Vector2 = Difficulty.profile(ai_levels[t]).first_delay
+		_ai_delay[t] = rng.randf_range(first.x, first.y)
 
 
 func spawn(team: int, form: String, pos: Vector2, uid: int = 0, stars: int = 0, copies: int = 1) -> Unit:
@@ -121,11 +125,16 @@ func _ai_cast(team: int, dt: float) -> void:
 	_ai_delay[team] -= dt
 	if _ai_delay[team] > 0.0:
 		return
-	var choice := EnemyAI.choose_cast(self, team, ai_profiles[team])
+	var profile := Difficulty.profile(ai_levels[team])
+	var choice := EnemyAI.choose_cast(self, team, ai_profiles[team], profile.threshold)
+	# Easier wizards sometimes spend a well-timed charge on the wrong creature.
+	if choice != null and profile.blunder > 0.0 and rng.randf() < profile.blunder:
+		choice = EnemyAI.random_cast_target(self)
 	if choice != null and cast(team, choice):
-		_ai_delay[team] = rng.randf_range(0.6, 1.6)
+		var delay: Vector2 = profile.cast_delay
+		_ai_delay[team] = rng.randf_range(delay.x, delay.y)
 	else:
-		_ai_delay[team] = 0.3
+		_ai_delay[team] = profile.retry_delay
 
 
 func _check_end() -> void:

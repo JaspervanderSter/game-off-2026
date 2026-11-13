@@ -2,6 +2,8 @@ class_name EnemyAI
 extends RefCounted
 ## Opponent wizard: combat-value purchases, merges, paid rerolls, permanent
 ## upgrades and expected-value casting. It follows the same rules as the player.
+## `WizardState.ai_level` selects a `Difficulty` profile: easier levels make
+## noisier, more limited decisions but never receive or lose resources.
 
 # Target share of each role in a full team.
 const ROLE_TARGET := {"front": 0.45, "mid": 0.15, "back": 0.25, "support": 0.15}
@@ -86,6 +88,7 @@ static func _weakest_fielded(state: WizardState, profile: Dictionary) -> OwnedCr
 
 
 static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: Dictionary = DEFAULT_PROFILE) -> Dictionary:
+	var difficulty := Difficulty.profile(state.ai_level)
 	var targets := state.creatures.duplicate()
 	targets.sort_custom(func(a, b): return a.is_fielded() and not b.is_fielded())
 	for target in targets:
@@ -126,7 +129,7 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 				can_build = true
 		var replace := false
 		if full and target == null and (bench_full or not can_build):
-			if value + need * 20 < replacement_value:
+			if not difficulty.replace or value + need * 20 < replacement_value:
 				continue
 			replace = true
 		var price: int = CreatureDB.get_form(id).price
@@ -142,15 +145,17 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 			state.locked[i] = false
 			continue
 		var plan: Dictionary = plans[id]
-		state.locked[i] = plan.duplicate and plan.price > state.gold
+		state.locked[i] = difficulty.lock and plan.duplicate and plan.price > state.gold
 		if plan.price > state.gold:
 			continue
-		var score: float = plan.score + rng.randf() * 0.05
+		var score: float = plan.score + rng.randf() * difficulty.shop_noise
 		if score > best_score:
 			best_score = score
 			best = i
 	# One permanent investment, paid from the same gold as the player's.
-	if state.field_count() >= profile.upgrade_field and state.can_upgrade_shift_recharge() and (best < 0 or state.gold >= profile.upgrade_gold):
+	var upgrade_gold: int = difficulty.get("upgrade_gold", profile.upgrade_gold)
+	var upgrade_ok: bool = upgrade_gold >= 0 and (best < 0 or state.gold >= upgrade_gold)
+	if upgrade_ok and state.field_count() >= profile.upgrade_field and state.can_upgrade_shift_recharge():
 		state.upgrade_shift_recharge()
 		return {"kind": "upgrade", "cost": Rules.SHIFT_RECHARGE_COST}
 	if best >= 0:
@@ -178,7 +183,8 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 			return {"kind": "buy", "uid": bought.uid, "cost": plan.price}
 	# Keep enough gold for an eligible offer after paying for the refresh.
 	var remaining := state.gold - Rules.REROLL_COST
-	if (profile.rerolls < 0 or state.ai_rerolls < profile.rerolls) and remaining >= profile.reroll_reserve and state.can_reroll():
+	var within_difficulty_cap: bool = difficulty.max_rerolls < 0 or state.ai_rerolls < difficulty.max_rerolls
+	if within_difficulty_cap and (profile.rerolls < 0 or state.ai_rerolls < profile.rerolls) and remaining >= profile.reroll_reserve and state.can_reroll():
 		for plan in plans.values():
 			if plan.price <= remaining:
 				state.reroll(rng)
@@ -193,7 +199,8 @@ static func arrange(state: WizardState, profile: Dictionary = DEFAULT_PROFILE) -
 	var sorted := state.creatures.duplicate()
 	sorted.sort_custom(func(a, b): return form_value(a.form_id, a.stars, profile) > form_value(b.form_id, b.stars, profile))
 	var selected: Array[OwnedCreature] = []
-	for role in ["front", "back"]:
+	var roles: Array = ["front", "back"] if Difficulty.profile(state.ai_level).smart_field else []
+	for role in roles:
 		for c in sorted:
 			if CreatureDB.get_form(c.form_id).role == role:
 				selected.append(c)
@@ -245,10 +252,10 @@ static func _cheapest(state: WizardState) -> OwnedCreature:
 
 ## Evaluate expected form value using the same visible 55/30/15 distribution
 ## as the player. Never inspect the next random roll or grant free resources.
-static func choose_cast(battle: Battle, team: int, profile: Dictionary = DEFAULT_PROFILE) -> Unit:
+static func choose_cast(battle: Battle, team: int, profile: Dictionary = DEFAULT_PROFILE, extra_threshold := 0.0) -> Unit:
 	var full := battle.spells[team].charges >= Rules.MAX_CHARGES
 	var best: Unit = null
-	var best_score: float = profile.full_cast_threshold if full else profile.cast_threshold
+	var best_score: float = (profile.full_cast_threshold if full else profile.cast_threshold) + extra_threshold
 	for u in battle.units:
 		if not u.alive or u.immune_t > 0.0:
 			continue
@@ -288,3 +295,12 @@ static func choose_cast(battle: Battle, team: int, profile: Dictionary = DEFAULT
 			best_score = score
 			best = u
 	return best
+
+
+## Clumsy cast of easier wizards: any living creature that can be shapeshifted.
+static func random_cast_target(battle: Battle) -> Unit:
+	var targets: Array[Unit] = []
+	for u in battle.units:
+		if u.alive and u.immune_t <= 0.0:
+			targets.append(u)
+	return null if targets.is_empty() else targets[battle.rng.randi_range(0, targets.size() - 1)]

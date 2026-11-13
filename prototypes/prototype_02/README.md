@@ -17,6 +17,7 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 
 | Action | Control |
 | --- | --- |
+| Pick the opponent's difficulty | Left-click one of the three hats (or press 1 / 2 / 3); shown at the start of every duel, replays included |
 | Pick a starting pack | Left-click one of the three cards |
 | Buy a creature | Click and release a shop card for the bench, or drag it directly to a board cell / reserve slot |
 | Reroll shop | Click the circular-arrow button below the offers (1 gold) |
@@ -31,7 +32,8 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 | Inspect | Hover a creature: its three possible outcomes with their chances, plus stat bars. In combat, a reticle previews the cast: cyan blessing circle on your creatures, violet hex fangs on enemies, grey when no charge is ready or the target is immune |
 | Experiment toggles | Wand: no-spell mode for both wizards (outside combat). Double chevron: combat speed x2 |
 
-Reading the board: blue ring = yours, red ring = the AI's. Purple orbs = spell
+Reading the board: blue ring = yours, red ring = the AI's. The opponent's panel
+shows the hat of the chosen difficulty. Purple orbs = spell
 charges (the arc shows recharge). Base creatures have no stars. Gold stars (1–3) show permanent merge upgrades.
 Three small circles show progress towards the next star: a single copy fills one,
 a manually combined pair fills two. A pair has no combat-stat bonus.
@@ -287,6 +289,38 @@ The cycle with seed 84000 played 1,216 duels. The selected profile won 80 of
 other finalists combined. It values pyromancer and frost mage more highly,
 accounts for fireball and burn scaling with stars, and prioritises
 interrupting enemy casts.
+
+## Difficulty levels (13 November 2026)
+
+Each duel opens on a difficulty screen with three hats, from modest to impressive:
+a patched brown apprentice cap, a blue adept hat with a gold band and star, and a
+glowing purple archmage hat with a curled tip, moon, stars, jewel and orbiting
+sparks. Hovering a card lifts it, bobs its hat and previews that hat in the
+opponent's panel, where the chosen hat stays as a reminder for the whole duel.
+The restart button returns to this screen; the last choice is kept as the
+opponent's hat until a new one is picked.
+
+- **Archmage** uses the full-strength AI strategy, including budget-driven shop rerolls.
+- **Adept** and **Apprentice** follow the same rules, gold and spell charges as
+  the player. They only decide worse: noisier shop scoring, fewer rerolls, a later
+  (adept) or no (apprentice) recharge upgrade, no locks, no selling to replace
+  (apprentice), naive field selection (apprentice), and slower, less selective
+  casting that sometimes targets a random creature (15% adept, 40% apprentice).
+
+Difficulty settings live in `scripts/core/difficulty.gd`. Before the combat
+and AI updates above, calibration against Archmage in AI-vs-AI duels
+(alternating sides, live casting loop, 400 duels per
+level on fresh seeds): Apprentice wins about 6%, Adept about 28%, Archmage mirror
+about 50%. Archmage wins against the Apprentice with about 7.3 hearts left on
+average, against the Adept with about 5.6. These measure relative strength, not
+expected win rates against a human player.
+
+```bash
+godot --headless --path prototypes/prototype_02 res://tests/difficulty_benchmark.tscn -- --level=0 --duels=100 --seed=1
+```
+
+Run this benchmark separately from the regression tests. `--set=key=value` overrides
+one profile key of the tested level for tuning experiments.
 
 ## Tests
 

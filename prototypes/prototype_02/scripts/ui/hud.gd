@@ -106,6 +106,19 @@ static func pack_rect(i: int) -> Rect2:
 	return Rect2(Vector2(364 + i * 188, PACK_TOP), Vector2(176, 168))
 
 
+static func difficulty_rect(i: int) -> Rect2:
+	return Rect2(Vector2(372 + i * 184, 170), Vector2(168, 260))
+
+
+## Opponent hat shown in the enemy panel: the hovered card previews its level.
+func shown_difficulty() -> int:
+	if game.phase == game.Phase.DIFFICULTY:
+		for i in Difficulty.COUNT:
+			if difficulty_rect(i).has_point(get_global_mouse_position()):
+				return i
+	return game.enemy.ai_level
+
+
 static func pack_token_pos(i: int, j: int) -> Vector2:
 	return pack_rect(i).position + Vector2(34 + j * 54, 68)
 
@@ -121,6 +134,8 @@ func _draw() -> void:
 	_draw_wizard(game.player, PLAYER_BLOCK)
 	_draw_toggles()
 	match game.phase:
+		game.Phase.DIFFICULTY:
+			_draw_difficulty_choice()
 		game.Phase.PACK:
 			_draw_pack_choice()
 		game.Phase.PREP:
@@ -172,7 +187,14 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 	if impact > 0.0:
 		draw_rect(block, Color(1.0, 0.15, 0.2, 0.23 * impact))
 	var shake := Vector2(sin(reward_time * 95.0) * 5.0, cos(reward_time * 80.0) * 2.0) * impact
-	Icons.wizard_hat(self, block.position + Vector2(42, 48) + shake, 26 * (1.0 + impact * 0.12), team)
+	var hat_pos := block.position + Vector2(42, 48) + shake
+	if team == 1:
+		# The opponent wears the hat of the chosen difficulty, over its red team glow.
+		draw_circle(hat_pos, 31, Color(Icons.team_color(1), 0.2))
+		draw_arc(hat_pos, 31, 0, TAU, 32, Color(Icons.team_color(1), 0.55), 2.0, true)
+		Icons.difficulty_hat(self, shown_difficulty(), hat_pos + Vector2(0, 5), 22 * (1.0 + impact * 0.12), Time.get_ticks_msec() / 1000.0)
+	else:
+		Icons.wizard_hat(self, hat_pos, 26 * (1.0 + impact * 0.12), team)
 	var shown_hp := displayed_hp(state)
 	for i in Rules.WIZARD_HP:
 		var p := block.position + Vector2(92 + i * 20.5, 36)
@@ -393,6 +415,31 @@ func _draw_result() -> void:
 			Icons.skull(self, c, 50)
 		_:
 			Icons.draw_mark(self, c, 40)
+
+
+## Three opponent hats, from the modest apprentice to the glowing archmage.
+func _draw_difficulty_choice() -> void:
+	draw_rect(Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE), Color(0, 0, 0, 0.45))
+	var t := Time.get_ticks_msec() / 1000.0
+	var mouse := get_global_mouse_position()
+	for i in Difficulty.COUNT:
+		var r := difficulty_rect(i)
+		var hovered := r.has_point(mouse)
+		var card := Rect2(r.position + Vector2(0, -6 if hovered else 0), r.size)
+		_panel(card, Color(0.22, 0.16, 0.1) if hovered else Color(0.14, 0.1, 0.08))
+		if hovered:
+			draw_rect(card.grow(3), Icons.GOLD, false, 3.0)
+		var hat_scale: float = [46.0, 48.0, 54.0][i] * (1.06 if hovered else 1.0)
+		var bob := sin(t * 4.0) * 3.0 if hovered else 0.0
+		var centre := card.position + Vector2(card.size.x * 0.5, card.size.y * 0.54)
+		# Soft pool of light under each hat, brighter for stronger opponents.
+		var glow: Color = [Color(0.85, 0.65, 0.4), Color(0.4, 0.6, 1.0), Icons.MAGIC][i]
+		for k in 5:
+			var w := 70.0 - k * 11.0
+			draw_set_transform(centre + Vector2(0, hat_scale * 0.62), 0.0, Vector2(1.0, 0.28))
+			draw_circle(Vector2.ZERO, w, Color(glow, (0.05 + i * 0.025) * (1.4 if hovered else 1.0)))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		Icons.difficulty_hat(self, i, centre + Vector2(0, bob), hat_scale, t)
 
 
 func _draw_pack_choice() -> void:
