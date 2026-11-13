@@ -71,7 +71,7 @@ func _process(dt: float) -> void:
 
 func _advance_choice_hover(dt: float) -> void:
 	var picking_difficulty: bool = game.phase == game.Phase.DIFFICULTY
-	var card_count := Difficulty.COUNT if picking_difficulty else CreatureDB.PACKS.size()
+	var card_count: int = Difficulty.COUNT if picking_difficulty else game.offered_packs.size()
 	if choice_phase != game.phase:
 		choice_phase = game.phase
 		choice_hover.resize(card_count)
