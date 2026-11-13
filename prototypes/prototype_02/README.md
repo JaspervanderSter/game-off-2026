@@ -181,9 +181,15 @@ playtesting is still needed to judge each form's situational value.
 
 - Frost mage: 115 HP, 7 basic damage; every 9 s, casts a stationary 3x3-cell
   blizzard for 3 s on an enemy cluster within range. First cast starts at 2 s.
-  The area deals 6 damage/s before armour, reduces movement by 45%, and increases
-  attack intervals by 45%. Allies and enemies outside the square are unaffected.
+  The area deals 6 damage/s before armour and chills enemies inside. Basic shots
+  chill on hit for 1 s. Chill halves movement and basic attack speed, and repeated
+  hits refresh it.
   Storms persist after caster death or transformation, then expire normally.
+- Pyromancer: basic shots deal area damage and burn enemies for 5 damage/s before
+  armour for 4 s. The pyromancer switches targets between shots when another enemy
+  is in range, preferring the shortest remaining burn. A separate homing fireball
+  travels at 3.5 cells/s, deals 120 damage through armour to one enemy, and applies
+  the same burn. It is ready after 6 s at the start of combat, then every 15 s.
 - Assassin purchase price is now 2 gold.
 - AI no longer stops improving once six creatures are fielded. It buys useful
   duplicates, completes stars, replaces weaker units based on combat value,

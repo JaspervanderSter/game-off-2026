@@ -62,8 +62,10 @@ const FORMS := {
 	"spearman": {"family": "fantasy", "hp": 110, "dmg": 9, "interval": 1.1, "range": 1.3, "speed": 1.5, "armour": 10, "price": 1, "role": "mid", "attack": "melee", "ability": ""},
 	"archer": {"family": "fantasy", "hp": 85, "dmg": 7, "interval": 0.8, "range": 4.5, "speed": 1.8, "armour": 0, "price": 1, "role": "back", "attack": "arrow", "ability": "kite"},
 	"crossbowman": {"family": "fantasy", "hp": 105, "dmg": 26, "interval": 2.2, "range": 5.0, "speed": 1.2, "armour": 0, "price": 3, "role": "back", "attack": "bolt", "ability": "pierce"},
-	"pyromancer": {"family": "fantasy", "hp": 90, "dmg": 12, "interval": 1.7, "range": 4.0, "speed": 1.3, "armour": 0, "price": 3, "role": "back", "attack": "fire", "ability": "splash", "radius": 1.0},
-	"frost_mage": {"family": "fantasy", "hp": 115, "dmg": 7, "interval": 1.3, "range": 4.0, "speed": 1.3, "armour": 0, "price": 2, "role": "back", "attack": "frost", "ability": "blizzard", "cd": 9.0, "cd_start": 2.0, "duration": 3.0, "power": 0.45, "storm_dps": 6.0},
+	"pyromancer": {"family": "fantasy", "hp": 90, "dmg": 12, "interval": 1.7, "range": 4.0, "speed": 1.3, "armour": 0, "price": 3, "role": "back", "attack": "fire", "ability": "fireball",
+		"splash_radius": 1.0, "burn_duration": 4.0, "burn_dps": 5.0, "cd": 15.0, "cd_start": 6.0, "power": 120.0, "fireball_speed": 3.5},
+	"frost_mage": {"family": "fantasy", "hp": 115, "dmg": 7, "interval": 1.3, "range": 4.0, "speed": 1.3, "armour": 0, "price": 2, "role": "back", "attack": "frost", "ability": "blizzard",
+		"cd": 9.0, "cd_start": 2.0, "duration": 3.0, "chill_slow": 0.5, "chill_duration": 1.0, "storm_dps": 6.0},
 	"cleric": {"family": "fantasy", "hp": 110, "dmg": 5, "interval": 1.4, "range": 3.0, "speed": 1.4, "armour": 10, "price": 2, "role": "support", "attack": "holy", "ability": "heal", "cd": 3.5, "cd_start": 2.0, "radius": 3.5, "power": 22.0},
 	"bard": {"family": "fantasy", "hp": 105, "dmg": 5, "interval": 1.2, "range": 3.0, "speed": 1.4, "armour": 0, "price": 2, "role": "support", "attack": "note", "ability": "inspire", "radius": 2.2, "power": 0.35},
 	# --- Animals (transformation outcomes only; price = rough value for AI) ---

@@ -146,15 +146,15 @@ func _reap() -> void:
 # --- Damage -----------------------------------------------------------------
 
 ## kind: "melee" / "ranged" (basic attacks), "ability", "splash", "dot", "thorns".
-func damage(src: Unit, dst: Unit, amount: float, kind: String, pierce := false) -> void:
+func damage(src: Unit, dst: Unit, amount: float, kind: String, pierce := false) -> bool:
 	if dst == null or not dst.alive:
-		return
+		return false
 	if (kind == "melee" or kind == "ranged") and dst.parry_ready:
 		dst.parry_ready = false
 		dst.ability_timer = dst.data.cd
 		parries[dst.team] += 1
 		emit_fx("parry", dst.position)
-		return
+		return false
 	var reduction := 0.0 if pierce else dst.armour() / 100.0
 	var dealt := amount * (1.0 - reduction)
 	damage_taken[dst.team] += clampf(dealt, 0.0, dst.hp)
@@ -167,22 +167,27 @@ func damage(src: Unit, dst: Unit, amount: float, kind: String, pierce := false) 
 	if dst.hp <= 0.0:
 		dst.hp = 0.0
 		dst.alive = false
+	return true
 
 
 # --- Projectiles --------------------------------------------------------------
 
-func spawn_projectile(src: Unit, t: Unit) -> void:
+func spawn_projectile(src: Unit, t: Unit, fireball := false) -> void:
 	projectiles.append({
 		"pos": src.position,
 		"target": t,
 		"aim": t.position,
 		"team": src.team,
-		"kind": src.data.attack,
-		"dmg": src.attack_damage(),
+		"kind": "fireball" if fireball else src.data.attack,
+		"dmg": src.data.power if fireball else src.attack_damage(),
 		"src": src,
-		"pierce": src.data.ability == "pierce",
-		"splash": src.data.radius * CELL if src.data.ability == "splash" else 0.0,
-		"chill": [src.data.duration, src.data.power] if src.data.ability == "chill" else [],
+		"speed": src.data.fireball_speed * CELL if fireball else PROJECTILE_SPEED,
+		"pierce": fireball or src.data.ability == "pierce",
+		"splash": 0.0 if fireball else src.data.get("splash_radius", 0.0) * CELL,
+		"chill_slow": src.data.get("chill_slow", 0.0),
+		"chill_duration": src.data.get("chill_duration", 0.0),
+		"burn_dps": src.data.get("burn_dps", 0.0),
+		"burn_duration": src.data.get("burn_duration", 0.0),
 	})
 	Sfx.play("shoot")
 
@@ -190,10 +195,13 @@ func spawn_projectile(src: Unit, t: Unit) -> void:
 func _update_projectiles(dt: float) -> void:
 	for p in projectiles.duplicate():
 		var t: Unit = p.target if is_instance_valid(p.target) else null
+		if p.kind == "fireball" and (t == null or not t.alive):
+			t = _nearest_enemy_from(p.team, p.pos)
+			p.target = t
 		if t != null and t.alive:
 			p.aim = t.position
 		var to: Vector2 = p.aim - p.pos
-		var travel := PROJECTILE_SPEED * dt
+		var travel: float = p.speed * dt
 		if to.length() > travel:
 			p.pos += to.normalized() * travel
 			continue
@@ -201,12 +209,22 @@ func _update_projectiles(dt: float) -> void:
 		var src: Unit = p.src if is_instance_valid(p.src) else null
 		if p.splash > 0.0:
 			for e in enemies_of_team_near(p.team, p.aim, p.splash):
-				damage(src, e, p.dmg, "ranged" if e == t else "splash")
+				_projectile_hit(p, src, e, "ranged" if e == t else "splash")
 			emit_fx("blast", p.aim, {"radius": p.splash})
 		elif t != null and t.alive:
-			damage(src, t, p.dmg, "ranged", p.pierce)
-			if not p.chill.is_empty() and t.alive:
-				t.add_status("chilled", p.chill[0], p.chill[1], false)
+			_projectile_hit(p, src, t, "ability" if p.kind == "fireball" else "ranged")
+			if p.kind == "fireball":
+				emit_fx("blast", p.aim, {"radius": CELL * 0.8})
+				Sfx.play("hit")
+
+
+func _projectile_hit(p: Dictionary, src: Unit, dst: Unit, kind: String) -> void:
+	if not damage(src, dst, p.dmg, kind, p.pierce) or not dst.alive:
+		return
+	if p.chill_duration > 0.0:
+		dst.add_status("chilled", p.chill_duration, p.chill_slow, false)
+	if p.burn_duration > 0.0:
+		dst.add_status("burning", p.burn_duration, p.burn_dps, false)
 
 
 func _draw_projectiles() -> void:
@@ -240,7 +258,7 @@ func best_blizzard_center(src: Unit) -> Vector2:
 func add_blizzard(src: Unit, centre: Vector2) -> void:
 	blizzards.append({"rect": Rect2(centre - Vector2.ONE * CELL * 1.5, Vector2.ONE * CELL * 3.0),
 		"team": src.team, "src": src, "t": 0.0, "remaining": src.data.duration,
-		"dps": src.data.storm_dps, "slow": src.data.power})
+		"dps": src.data.storm_dps, "slow": src.data.chill_slow})
 
 
 func _tick_blizzards(dt: float) -> void:
@@ -322,11 +340,15 @@ func allies_near(of: Unit, pos: Vector2, radius: float) -> Array[Unit]:
 
 
 func nearest_enemy(of: Unit) -> Unit:
+	return _nearest_enemy_from(of.team, of.position)
+
+
+func _nearest_enemy_from(team: int, pos: Vector2) -> Unit:
 	var best: Unit = null
 	var best_d := INF
 	for u in units:
-		if u.alive and u.team != of.team:
-			var d := of.position.distance_squared_to(u.position)
+		if u.alive and u.team != team:
+			var d := pos.distance_squared_to(u.position)
 			if d < best_d:
 				best_d = d
 				best = u

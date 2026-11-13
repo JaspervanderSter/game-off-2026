@@ -18,7 +18,7 @@ var max_hp := 1.0
 var hp := 1.0
 var alive := true
 
-var attack_timer := 0.0 # time until the basic attack is ready
+var attack_timer := 0.0 # time until the basic attack is ready at full speed
 var ability_timer := 0.0 # one cooldown, kept across form changes
 var immune_t := 0.0 # shapeshift immunity
 var target: Unit = null
@@ -32,6 +32,7 @@ var dive_target: Unit = null
 var parry_ready := false
 var hunted := false
 var hunt_retarget := 0.0
+var last_burn_target_id := 0
 var dash_vel := Vector2.ZERO
 var dash_t := 0.0
 var jump_t := 0.0
@@ -92,6 +93,7 @@ func transform_to(new_form: String, gain_level: bool) -> void:
 	dive_target = null
 	parry_ready = false
 	hunted = false
+	last_burn_target_id = 0
 	jump_t = 0.0
 	jump_target = null
 	immune_t = Rules.TARGET_IMMUNITY
@@ -113,6 +115,10 @@ func attack_damage() -> float:
 
 
 func attack_interval() -> float:
+	return _unchilled_attack_interval() / _chill_speed_multiplier()
+
+
+func _unchilled_attack_interval() -> float:
 	var interval: float = data.interval
 	if data.ability == "berserk":
 		interval *= 1.0 - data.power * (1.0 - hp / max_hp)
@@ -124,8 +130,6 @@ func attack_interval() -> float:
 	interval /= 1.0 + bonus
 	if statuses.has("dazzled"):
 		interval *= statuses.dazzled.v
-	if statuses.has("chilled"):
-		interval *= 1.0 + statuses.chilled.v
 	return interval
 
 
@@ -139,10 +143,13 @@ func armour() -> float:
 
 
 func move_speed() -> float:
-	var s: float = data.speed * CELL
+	return data.speed * CELL * _chill_speed_multiplier()
+
+
+func _chill_speed_multiplier() -> float:
 	if statuses.has("chilled"):
-		s *= 1.0 - statuses.chilled.v
-	return s
+		return 1.0 - statuses.chilled.v
+	return 1.0
 
 
 func range_px() -> float:
@@ -182,10 +189,13 @@ func tick(dt: float) -> void:
 	if not alive:
 		return
 	immune_t = maxf(0.0, immune_t - dt)
+	var attack_progress := dt
+	if statuses.has("chilled"):
+		attack_progress -= minf(dt, statuses.chilled.t) * statuses.chilled.v
 	_tick_statuses(dt)
 	if not alive:
 		return
-	attack_timer = maxf(0.0, attack_timer - dt)
+	attack_timer = maxf(0.0, attack_timer - attack_progress)
 	ability_timer = maxf(0.0, ability_timer - dt)
 	_tick_visuals(dt)
 	if jump_t > 0.0:
@@ -214,6 +224,8 @@ func tick(dt: float) -> void:
 	_choose_target(dt)
 	if target == null:
 		return
+	if data.ability == "fireball" and attack_timer <= 0.0:
+		_choose_burn_target()
 	if data.ability == "kite" and _kite(dt):
 		return
 	if edge_dist(target) > range_px():
@@ -226,7 +238,7 @@ func _tick_statuses(dt: float) -> void:
 	for key in statuses.keys():
 		var s: Dictionary = statuses[key]
 		var step := minf(dt, s.t)
-		if key == "poisoned":
+		if key == "poisoned" or key == "burning":
 			battle.damage(null, self, s.v * step, "dot")
 		elif key == "regen":
 			heal(s.v * step)
@@ -275,9 +287,25 @@ func _move_towards(point: Vector2, speed: float, dt: float) -> void:
 	battle.clamp_to_board(self)
 
 
+func _choose_burn_target() -> void:
+	var best: Unit = null
+	var shortest_burn := INF
+	for enemy in battle.living(1 - team):
+		if enemy.get_instance_id() == last_burn_target_id or edge_dist(enemy) > range_px():
+			continue
+		var remaining: float = enemy.statuses.get("burning", {}).get("t", 0.0)
+		if remaining < shortest_burn:
+			best = enemy
+			shortest_burn = remaining
+	if best != null:
+		target = best
+
+
 func _attack(t: Unit) -> void:
-	attack_timer = attack_interval()
+	attack_timer = _unchilled_attack_interval()
 	if not is_melee():
+		if data.ability == "fireball":
+			last_burn_target_id = t.get_instance_id()
 		battle.spawn_projectile(self, t)
 		return
 	lunge_dir = (t.position - position).normalized()
@@ -330,6 +358,12 @@ func _tick_ability() -> void:
 					battle.add_blizzard(self, centre)
 					ability_timer = data.cd
 					Sfx.play("blizzard")
+		"fireball":
+			if ability_timer <= 0.0:
+				var prey := battle.nearest_enemy(self)
+				if prey != null and edge_dist(prey) <= range_px():
+					battle.spawn_projectile(self, prey, true)
+					ability_timer = data.cd
 		"spray":
 			if ability_timer <= 0.0:
 				var hit := battle.enemies_near(self, position, data.radius * CELL)
@@ -399,7 +433,7 @@ func _tick_charge(dt: float) -> void:
 	_move_towards(target.position, 5.0 * CELL, dt)
 	if edge_dist(target) <= range_px():
 		charging = false
-		attack_timer = attack_interval()
+		attack_timer = _unchilled_attack_interval()
 		lunge_dir = (target.position - position).normalized()
 		lunge_t = 0.25
 		battle.damage(self, target, attack_damage() * data.power, "ability")
@@ -412,7 +446,7 @@ func _tick_charge(dt: float) -> void:
 
 ## Archers step away from melee attackers while reloading.
 func _kite(dt: float) -> bool:
-	if attack_timer < 0.3:
+	if attack_timer < 0.3 * _chill_speed_multiplier():
 		return false
 	for e in battle.enemies_near(self, position, (2.0 * Rules.BODY_RADIUS + 0.5) * CELL):
 		if e.is_melee():

@@ -22,6 +22,7 @@ func _ready() -> void:
 	_test_round_reset_and_damage()
 	_test_abilities()
 	_test_animal_roles()
+	_test_mage_attacks()
 	_test_blizzard_and_recharge_upgrade()
 	_test_ai_strategy()
 	_simulate_duels()
@@ -777,6 +778,62 @@ func _test_animal_roles() -> void:
 	b.free()
 
 
+func _test_mage_attacks() -> void:
+	var b := _new_battle()
+	var frost := b.spawn(0, "frost_mage", Vector2(200, 300))
+	var guard := b.spawn(1, "guardian", Vector2(200, 170))
+	var speed := guard.move_speed()
+	var interval := guard.attack_interval()
+	guard.attack_timer = interval
+	frost._attack(guard)
+	b._update_projectiles(1.0)
+	check(is_equal_approx(guard.move_speed(), speed * 0.5) and is_equal_approx(guard.attack_interval(), interval * 2.0),
+		"frost shot halves movement and basic attack rates")
+	guard.tick(0.4)
+	check(is_equal_approx(guard.attack_timer, interval - 0.2), "chill slows a basic attack already recharging")
+	guard.tick(0.8)
+	check(is_equal_approx(guard.attack_timer, interval - 0.7) and is_equal_approx(guard.move_speed(), speed),
+		"attack recharge returns to full speed when chill expires mid-tick")
+	b.free()
+
+	b = _new_battle()
+	var fire := b.spawn(0, "pyromancer", Vector2(240, 300))
+	guard = b.spawn(1, "guardian", Vector2(240, 140))
+	var neighbour := b.spawn(1, "turtle", Vector2(280, 140))
+	var unburned := b.spawn(1, "guardian", Vector2(410, 300))
+	fire._tick_ability()
+	check(b.projectiles.is_empty(), "fireball has an initial cooldown")
+	fire._attack(guard)
+	b._update_projectiles(1.0)
+	check(guard.statuses.has("burning") and neighbour.statuses.has("burning") and not unburned.statuses.has("burning"),
+		"basic fire shot burns its target and enemies in splash range")
+	var hp := guard.hp
+	guard._tick_statuses(0.5)
+	check(is_equal_approx(hp - guard.hp, 1.5), "burn ticks for damage reduced by armour")
+	fire.target = guard
+	fire.attack_timer = 0.0
+	fire.tick(0.0)
+	check(fire.target == unburned, "pyromancer switches to an unburned enemy when the next shot is ready")
+	b._update_projectiles(1.0)
+
+	fire.ability_timer = 0.0
+	fire._tick_ability()
+	fire._tick_ability()
+	check(b.projectiles.size() == 1 and fire.ability_timer == 15.0,
+		"fireball starts its own long cooldown at launch")
+	var projectile := b.projectiles[0]
+	guard.position += Vector2(12, -20)
+	b._update_projectiles(0.1)
+	check(projectile.aim == guard.position and is_equal_approx(fire.position.distance_to(projectile.pos), 0.35 * Rules.CELL),
+		"fireball follows a moving enemy at its slower travel speed")
+	b.damage(null, guard, guard.max_hp, "ability", true)
+	b._reap()
+	hp = neighbour.hp
+	b._update_projectiles(2.0)
+	check(is_equal_approx(hp - neighbour.hp, 120.0), "fireball retargets after a kill and ignores armour")
+	b.free()
+
+
 # --- Simulations ------------------------------------------------------------------------
 
 ## Plays AI-vs-AI duels to check the loop terminates and to report pacing.
@@ -799,8 +856,8 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 		"blizzard damages multiple enemies inside square")
 	check(outside.hp == outside.max_hp and friend.hp == friend.max_hp,
 		"blizzard spares allies and enemies outside square")
-	check(victim.move_speed() < speed and victim.attack_interval() > interval,
-		"blizzard slows movement and attacks")
+	check(is_equal_approx(victim.move_speed(), speed * 0.5) and is_equal_approx(victim.attack_interval(), interval * 2.0),
+		"blizzard halves movement and basic attack rates")
 	mage.transform_to("peacock", false)
 	b._tick_blizzards(10.0)
 	check(b.blizzards.is_empty() and absf(victim.max_hp - victim.hp - 18.0) < 0.01,

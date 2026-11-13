@@ -337,6 +337,9 @@ static func status(ci: CanvasItem, key: String, p: Vector2, r: float) -> void:
 			ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.5, 1.0), p + Vector2(r * 0.5, 1.0), p + Vector2(0, -r * 0.8)]), Color(0.5, 1.0, 0.3))
 		"chilled":
 			_snowflake(ci, p, r * 0.8, Color(0.7, 0.9, 1.0))
+		"burning":
+			ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.65, r * 0.25), p + Vector2(r * 0.15, -r * 0.9), p + Vector2(r * 0.65, r * 0.25)]), Color(1.0, 0.45, 0.1))
+			ci.draw_circle(p + Vector2(0, r * 0.25), r * 0.5, Color(1.0, 0.7, 0.2))
 		"exposed":
 			ci.draw_rect(Rect2(p - Vector2(r * 0.5, r * 0.6), Vector2(r, r * 1.2)), Color(0.75, 0.75, 0.8))
 			ci.draw_line(p + Vector2(-r * 0.6, -r * 0.6), p + Vector2(r * 0.6, r * 0.6), Color(1, 0.3, 0.3), 2.0)
@@ -367,10 +370,11 @@ static func projectile(ci: CanvasItem, kind: String, p: Vector2, dir: Vector2) -
 		"bolt":
 			ci.draw_line(p - dir * 10.0, p, Color(0.35, 0.3, 0.3), 4.5, true)
 			ci.draw_circle(p, 3.5, Color(0.9, 0.9, 0.95))
-		"fire":
-			ci.draw_circle(p - dir * 6.0, 5.0, Color(1.0, 0.4, 0.1, 0.5))
-			ci.draw_circle(p, 6.5, Color(1.0, 0.5, 0.1))
-			ci.draw_circle(p, 3.5, Color(1.0, 0.95, 0.4))
+		"fire", "fireball":
+			var size := 2.2 if kind == "fireball" else 1.0
+			ci.draw_circle(p - dir * 6.0 * size, 5.0 * size, Color(1.0, 0.4, 0.1, 0.5))
+			ci.draw_circle(p, 6.5 * size, Color(1.0, 0.5, 0.1))
+			ci.draw_circle(p, 3.5 * size, Color(1.0, 0.95, 0.4))
 		"frost":
 			_snowflake(ci, p, 6.0, Color(0.75, 0.95, 1.0))
 		"holy":
