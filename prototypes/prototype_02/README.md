@@ -114,7 +114,15 @@ All confirmed rules and delegated defaults of the design note, notably:
   bursts with a shock ring, crackles, dark smoke and a descending growl. Both flash
   the creature and briefly shake the board (stronger for a hex).
 - Ability cooldowns carry over across forms; a form never gets an instant ability
-  just by being entered, except the rabbit's defining immediate backline leap.
+  just by being entered.
+- Positive post-transformation effects (`ally_shift` in `creature_db.gd`) trigger
+  only when a wizard shapeshifts one of its own creatures, never on an enemy hex:
+  - Rabbit: its backline leap is ready at once.
+  - Skunk: enemies within 2.5 cells are feared for 2 s. They stop attacking and
+    using abilities, interrupt a charge, dive or shell, and flee from the skunk
+    in sharp zigzags at 130% speed. A green stink cloud with a violet ring bursts
+    from the skunk; feared creatures tremble under a violet exclamation mark.
+    Fear is a negative status, so a shapeshift cleanses it.
 - Death: the entity is removed; a visual-only copy is rocketed off the board.
 
 ## Music
@@ -169,7 +177,8 @@ roster or guaranteed upgrades in every situation. The shared transformation,
 health-percentage and level rules remain the same.
 
 - Rabbit: now 135 base HP and 10 damage every 0.65 s; immediately leaps behind
-  the deepest enemy in 0.5 s, then attacks that target. It can leap again after
+  the deepest enemy in 0.5 s, then attacks that target (on entering combat as a
+  rabbit, or after an ally shapeshift; an enemy hex keeps the normal cooldown). It can leap again after
   an 8-second cooldown when the enemy backline is out of reach.
 - Deer: 155 HP, a larger healing aura and 5 HP/s regeneration for nearby allies.
 - Peacock: 140 HP, a larger area and a stronger, longer attack-speed debuff.

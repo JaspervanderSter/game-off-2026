@@ -369,6 +369,17 @@ static func parry_mark(ci: CanvasItem, p: Vector2, r: float) -> void:
 	ci.draw_line(p + Vector2(-r, -r), p + Vector2(r, r), Color(0.9, 0.95, 1.0), 2.5, true)
 
 
+## Fear above a fleeing creature: a wobbling purple exclamation mark with a
+## dark outline so it reads on the light board.
+static func fear_mark(ci: CanvasItem, p: Vector2, r: float, t: float) -> void:
+	var q := p + Vector2(sin(t * 30.0) * 1.5, 0)
+	for pass_i in 2:
+		var col := Color(0.12, 0.05, 0.15) if pass_i == 0 else Color(0.85, 0.55, 1.0)
+		var w := 6.0 if pass_i == 0 else 3.5
+		ci.draw_line(q + Vector2(0, -r), q + Vector2(0, r * 0.35), col, w, true)
+		ci.draw_circle(q + Vector2(0, r * 0.9), w * 0.5, col)
+
+
 ## Small status pip: negative effects use a dark red rim, positive a green rim.
 static func status(ci: CanvasItem, key: String, p: Vector2, r: float) -> void:
 	var good := key in ["inspired", "regen", "pack"]
@@ -389,6 +400,9 @@ static func status(ci: CanvasItem, key: String, p: Vector2, r: float) -> void:
 		"dazzled":
 			ci.draw_arc(p, r * 0.6, 0, TAU, 10, Color(0.4, 0.6, 1.0), 2.0)
 			ci.draw_circle(p, r * 0.25, GOLD)
+		"feared":
+			ci.draw_line(p + Vector2(0, -r * 0.7), p + Vector2(0, r * 0.2), Color(0.85, 0.55, 1.0), 2.5)
+			ci.draw_circle(p + Vector2(0, r * 0.6), 1.4, Color(0.85, 0.55, 1.0))
 		"inspired":
 			note(ci, p, r * 0.9, GOLD)
 		"regen":

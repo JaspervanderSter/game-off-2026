@@ -45,6 +45,12 @@ func add(kind: String, pos: Vector2, extra: Dictionary = {}) -> void:
 			item.life = 0.7
 		"blast", "spray", "display":
 			item.life = 0.45
+		"fear":
+			# Skunk blessing: a stink cloud bursts out to the fear radius.
+			item.life = 0.7
+			for i in 12:
+				var dir := Vector2.from_angle(TAU * i / 12.0 + randf_range(-0.2, 0.2))
+				add("puff", pos + dir * 12.0, {"vel": dir * randf_range(110, 170), "col": Color(0.55, 0.75, 0.2, 0.75), "size": randf_range(8.0, 12.0), "life_override": 0.7})
 		"fizzle":
 			item.life = 0.35
 		"song":
@@ -165,6 +171,10 @@ func _draw() -> void:
 				draw_arc(p, item.get("radius", 40.0) * (0.4 + 0.6 * k), 0, TAU, 24, Color(1.0, 0.85, 0.3, 1.0 - k), 3.0, true)
 			"spray":
 				draw_circle(p, item.radius * (0.5 + 0.5 * k), Color(0.55, 0.8, 0.2, 0.35 * (1.0 - k)))
+			"fear":
+				var e := 1.0 - (1.0 - k) * (1.0 - k)
+				draw_circle(p, item.radius * e, Color(0.5, 0.7, 0.15, 0.3 * (1.0 - k)))
+				draw_arc(p, item.radius * e, 0, TAU, 40, Color(0.75, 0.45, 0.95, 1.0 - k), 5.0 * (1.0 - k) + 1.0, true)
 			"display":
 				for i in 3:
 					draw_arc(p, item.radius * (0.3 + 0.7 * k) - i * 6.0, 0, TAU, 32, Color(0.3, 0.6, 1.0, 0.8 * (1.0 - k)), 3.0, true)

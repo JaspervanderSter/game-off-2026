@@ -53,7 +53,9 @@ func _ready() -> void:
 	_streams.shift_hex = _make(0.5, func(t, k): return (_sweep(t, 420.0, 90.0, k) * (0.7 + 0.3 * sin(t * TAU * 18.0)) * 0.5 + (randf() * 2.0 - 1.0) * 0.18 * exp(-k * 3.0)) * (1.0 - k))
 	_streams.note =_make(0.45, func(t, k): return (sin(t * TAU * 523.25) + sin(t * TAU * 1046.5) * 0.35 + sin(t * TAU * 1569.75) * 0.12) * exp(-k * 6.0) * 0.45)
 	_streams.hop =_make(0.24, func(t, k): return sin(t * TAU * lerpf(250.0, 1100.0, k)) * sin(k * PI) * 0.3)
-	_streams.blizzard = _make(0.55, func(t, k): return ((randf() * 2.0 - 1.0) * 0.2 + sin(t * TAU * 880.0) * 0.08) * sin(k * PI))
+	# Skunk fear burst: a hissing gas puff under a wobbling, rising squeal.
+	_streams.fear = _make(0.5, func(t, k): return ((randf() * 2.0 - 1.0) * 0.3 * exp(-k * 4.0) + sin(t * TAU * lerpf(500.0, 1300.0, k) + sin(t * TAU * 22.0) * 3.0) * 0.22 * sin(k * PI)) * (1.0 - k * 0.5))
+	_streams.blizzard =_make(0.55, func(t, k): return ((randf() * 2.0 - 1.0) * 0.2 + sin(t * TAU * 880.0) * 0.08) * sin(k * PI))
 
 
 func play(name: String, pitch_jitter := 0.08) -> void:

@@ -167,6 +167,56 @@ func _test_transformation_rules() -> void:
 	b.cast(0, fresh)
 	check(fresh.ability_timer == (0.0 if fresh.data.ability == "hop" else float(fresh.data.get("cd", 0.0))), "rabbit leap is immediate; other ability cooldowns carry over")
 	b.queue_free()
+	_test_ally_shift_effects()
+
+
+## Positive post-transformation effects trigger only on a shapeshift by the
+## creature's own wizard.
+func _test_ally_shift_effects() -> void:
+	var b := _new_battle()
+	var blessed := b.spawn(0, "peasant", Vector2(100, 400))
+	blessed.ability_timer = 0.0
+	blessed.transform_to("rabbit", true)
+	check(blessed.ability_timer == 0.0, "ally shift into rabbit readies its leap at once")
+	var hexed := b.spawn(1, "peasant", Vector2(500, 40))
+	hexed.ability_timer = 0.0
+	hexed.transform_to("rabbit", false)
+	check(is_equal_approx(hexed.ability_timer, CreatureDB.get_form("rabbit").cd), "enemy shift into rabbit gives no immediate leap")
+	b.free()
+
+	# Skunk: nearby enemies stop attacking and flee in a zigzag for 2 s.
+	b = _new_battle()
+	var skunk := b.spawn(0, "spearman", Vector2(300, 300))
+	var near := b.spawn(1, "guardian", Vector2(300, 250))
+	var far := b.spawn(1, "archer", Vector2(300, 30))
+	var friend := b.spawn(0, "peasant", Vector2(340, 300))
+	skunk.transform_to("skunk", true)
+	check(near.statuses.has("feared") and is_equal_approx(near.statuses.feared.t, 2.0), "ally shift into skunk fears a nearby enemy for 2 s")
+	check(not far.statuses.has("feared") and not friend.statuses.has("feared"), "skunk fear spares distant enemies and allies")
+	near.attack_timer = 0.0
+	var start_d := near.position.distance_to(skunk.position)
+	var hp_before := skunk.hp
+	var xs: Array[float] = []
+	for i in 30:
+		near.tick(1.0 / 60.0)
+		xs.append(near.position.x)
+	check(near.position.distance_to(skunk.position) > start_d and skunk.hp == hp_before and near.attack_timer == 0.0,
+		"feared enemy runs away without attacking")
+	var turns := 0
+	for i in range(2, xs.size()):
+		if signf(xs[i] - xs[i - 1]) != signf(xs[i - 1] - xs[i - 2]):
+			turns += 1
+	check(turns >= 1, "feared enemy flees in a zigzag")
+	near._tick_statuses(1.6)
+	check(not near.statuses.has("feared"), "fear expires after 2 s")
+	b.free()
+
+	b = _new_battle()
+	var cursed := b.spawn(1, "spearman", Vector2(300, 300))
+	var bystander := b.spawn(0, "guardian", Vector2(300, 350))
+	cursed.transform_to("skunk", false)
+	check(not bystander.statuses.has("feared"), "enemy shift into skunk causes no fear")
+	b.free()
 
 
 func _test_immunity_and_invalid_casts() -> void:

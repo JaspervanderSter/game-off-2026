@@ -40,6 +40,8 @@ var jump_start := Vector2.ZERO
 var jump_end := Vector2.ZERO
 var jump_target: Unit = null
 var last_hurt := -99.0
+var fear_from := Vector2.ZERO # point a feared creature flees from
+var fear_phase := 0.0 # zigzag progress in legs, starting at a random offset
 
 # Visual-only state.
 var lunge_dir := Vector2.ZERO
@@ -53,6 +55,9 @@ var beat_len := 0.28
 var song_step := 0 # bard melody position, one note per beat
 
 const BEAT_TIME := 0.28
+const FEAR_SPEED_MULT := 1.3 # panic: feared creatures run faster than they walk
+const FEAR_ZIGZAG_RATE := 3.0 # zigzag legs per second (direction flips at each leg)
+const FEAR_ZIGZAG_ANGLE := 0.8 # radians each leg deviates from straight away
 
 
 func setup(b: Battle, uid: int, team_id: int, form: String, pos: Vector2) -> void:
@@ -74,11 +79,13 @@ func _set_form(form: String) -> void:
 
 # --- Shapeshifting --------------------------------------------------------
 
-## Applies the shared transformation rules of Prototype 02.
-func transform_to(new_form: String, gain_level: bool) -> void:
+## Applies the shared transformation rules of Prototype 02. ally_cast is true
+## when the creature's own wizard cast the spell: it grants +1 level and
+## triggers the new form's positive post-transformation effect, if any.
+func transform_to(new_form: String, ally_cast: bool) -> void:
 	var ratio := hp / max_hp
 	_set_form(new_form)
-	if gain_level:
+	if ally_cast:
 		level += 1
 	max_hp = data.hp * stat_mult()
 	hp = minf(max_hp, ratio * max_hp + Rules.SHIFT_HEAL * max_hp)
@@ -90,9 +97,6 @@ func transform_to(new_form: String, gain_level: bool) -> void:
 	# immediately ready ability.
 	if ability_timer <= 0.0:
 		ability_timer = data.get("cd", 0.0)
-	# Rabbit's defining entry action is an immediate backline leap.
-	if data.ability == "hop":
-		ability_timer = 0.0
 	shell_t = 0.0
 	charging = false
 	dive_target = null
@@ -103,6 +107,36 @@ func transform_to(new_form: String, gain_level: bool) -> void:
 	jump_target = null
 	immune_t = Rules.TARGET_IMMUNITY
 	pop_t = 0.45
+	if ally_cast:
+		_ally_shift_effect()
+
+
+## Positive post-transformation effect of the new form. Only a shapeshift by
+## the creature's own wizard triggers it; an enemy hex never does.
+func _ally_shift_effect() -> void:
+	match data.get("ally_shift", ""):
+		"leap":
+			# Rabbit: its defining entry action is an immediate backline leap.
+			ability_timer = 0.0
+		"fear":
+			# Skunk: nearby enemies stop attacking and flee in a zigzag.
+			var radius: float = data.fear_radius * CELL
+			for e in battle.enemies_near(self, position, radius):
+				e.scare(position, data.fear_duration)
+			battle.emit_fx("fear", position, {"radius": radius})
+			Sfx.play("fear")
+
+
+## Fear: the creature stops attacking and using abilities, and flees from
+## `from` in a zigzag until the status expires. It interrupts a charge, a dive
+## or a shell; an ongoing leap or knockback finishes first.
+func scare(from: Vector2, duration: float) -> void:
+	add_status("feared", duration, 1.0, false)
+	fear_from = from
+	fear_phase = battle.rng.randf() * 2.0
+	charging = false
+	dive_target = null
+	shell_t = 0.0
 
 
 # --- Derived statistics ---------------------------------------------------
@@ -211,6 +245,9 @@ func tick(dt: float) -> void:
 		dash_t -= dt
 		position += dash_vel * dt
 		battle.clamp_to_board(self)
+		return
+	if statuses.has("feared"):
+		_flee(dt)
 		return
 	if shell_t > 0.0:
 		shell_t -= dt
@@ -471,6 +508,18 @@ func _kite(dt: float) -> bool:
 	return false
 
 
+## Feared creatures run away from the fear source in sharp zigzag legs.
+func _flee(dt: float) -> void:
+	var away := position - fear_from
+	if away.length() < 0.5:
+		away = Vector2.DOWN if team == 0 else Vector2.UP # back towards its own side
+	fear_phase += dt * FEAR_ZIGZAG_RATE
+	var side := 1.0 if fposmod(fear_phase, 2.0) < 1.0 else -1.0
+	var dir := away.normalized().rotated(side * FEAR_ZIGZAG_ANGLE)
+	position += dir * move_speed() * FEAR_SPEED_MULT * dt
+	battle.clamp_to_board(self)
+
+
 func _ally_near(radius: float) -> bool:
 	for a in battle.allies_near(self, position, radius):
 		if a != self:
@@ -491,6 +540,9 @@ func _draw() -> void:
 	var scale_k := 1.0 + 0.35 * sin(pop_t / 0.45 * PI)
 	var bob := Vector2(0, sin(anim_t * 6.0) * 1.2)
 	var p := offset + bob
+	if statuses.has("feared"):
+		# Feared creatures tremble while they run.
+		p += Vector2(sin(anim_t * 55.0) * 1.8, cos(anim_t * 41.0) * 1.0)
 	# Song beat: a quick hop (and a bigger squash-and-stretch on the bard).
 	var beat_k := sin(beat_t / beat_len * PI) if beat_t > 0.0 else 0.0
 	var is_singer: bool = data.ability == "song"
@@ -520,6 +572,8 @@ func _draw() -> void:
 		draw_arc(p, image_r * 1.15, 0, TAU, 32, Color(0.5, 1.0, 0.6, 0.9), 4.0, true)
 	if parry_ready:
 		Icons.parry_mark(self, p + Vector2(image_r * 0.95, -image_r * 0.6), 7.0)
+	if statuses.has("feared"):
+		Icons.fear_mark(self, p + Vector2(0, -image_r - 14.0), 8.0, anim_t)
 	if flash_t > 0.0:
 		draw_circle(p, image_r * 1.05, Color(1, 1, 1, flash_t / 0.12 * 0.6))
 	if immune_t > 0.0:
