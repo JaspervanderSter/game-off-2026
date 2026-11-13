@@ -347,7 +347,7 @@ static func status(ci: CanvasItem, key: String, p: Vector2, r: float) -> void:
 			ci.draw_arc(p, r * 0.6, 0, TAU, 10, Color(0.4, 0.6, 1.0), 2.0)
 			ci.draw_circle(p, r * 0.25, GOLD)
 		"inspired":
-			_note(ci, p, r * 0.9, GOLD)
+			note(ci, p, r * 0.9, GOLD)
 		"regen":
 			ci.draw_line(p + Vector2(-r * 0.6, 0), p + Vector2(r * 0.6, 0), Color(0.5, 1.0, 0.5), 2.5)
 			ci.draw_line(p + Vector2(0, -r * 0.6), p + Vector2(0, r * 0.6), Color(0.5, 1.0, 0.5), 2.5)
@@ -356,10 +356,16 @@ static func status(ci: CanvasItem, key: String, p: Vector2, r: float) -> void:
 			ci.draw_circle(p + Vector2(r * 0.3, 0), r * 0.35, Color(0.8, 0.8, 0.85))
 
 
-static func _note(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
+static func note(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
 	ci.draw_circle(p + Vector2(-r * 0.3, r * 0.45), r * 0.35, col)
 	ci.draw_line(p + Vector2(r * 0.02, r * 0.45), p + Vector2(r * 0.02, -r * 0.7), col, 2.0)
 	ci.draw_line(p + Vector2(r * 0.02, -r * 0.7), p + Vector2(r * 0.6, -r * 0.4), col, 2.0)
+
+
+## Note with a dark drop shadow so it stays readable on the light board.
+static func note_shadowed(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
+	note(ci, p + Vector2(1.5, 1.5), r, Color(0.15, 0.1, 0.05, col.a * 0.7))
+	note(ci, p, r, col)
 
 
 static func projectile(ci: CanvasItem, kind: String, p: Vector2, dir: Vector2) -> void:
@@ -380,7 +386,7 @@ static func projectile(ci: CanvasItem, kind: String, p: Vector2, dir: Vector2) -
 		"holy":
 			ci.draw_circle(p, 5.0, Color(1.0, 0.95, 0.6))
 		"note":
-			_note(ci, p, 7.0, Color(1.0, 0.6, 0.9))
+			note(ci, p, 7.0, Color(1.0, 0.6, 0.9))
 		_:
 			ci.draw_circle(p, 4.0, Color.WHITE)
 

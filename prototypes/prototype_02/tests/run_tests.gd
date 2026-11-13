@@ -23,6 +23,7 @@ func _ready() -> void:
 	_test_abilities()
 	_test_animal_roles()
 	_test_mage_attacks()
+	_test_bard_song()
 	_test_blizzard_and_recharge_upgrade()
 	_test_ai_strategy()
 	_simulate_duels()
@@ -775,6 +776,30 @@ func _test_animal_roles() -> void:
 	var interval := guardian.attack_interval()
 	peacock.tick(0.01)
 	check(guardian.attack_interval() > interval, "peacock slows enemy attacks")
+	b.free()
+
+
+func _test_bard_song() -> void:
+	var b := _new_battle()
+	var bard := b.spawn(0, "bard", Vector2(40, 400))
+	var far := b.spawn(0, "duelist", Vector2(540, 40)) # opposite corner of the board
+	var foe := b.spawn(1, "guardian", Vector2(300, 60))
+	var interval := far.attack_interval()
+	bard._tick_ability()
+	check(bard.ability_timer > 0.0 and not far.statuses.has("inspired"), "song waits for its first beat")
+	bard.ability_timer = 0.0
+	bard._tick_ability()
+	check(far.statuses.has("inspired") and bard.statuses.has("inspired") and not foe.statuses.has("inspired"),
+		"one beat inspires every ally on the battlefield, the bard included, and no enemy")
+	check(is_equal_approx(far.statuses.inspired.t, 3.0) and is_equal_approx(bard.ability_timer, 1.0),
+		"song beats every second and inspires for three seconds")
+	check(is_equal_approx(far.attack_interval(), interval / 1.35), "inspired allies attack 35% faster")
+	b.damage(null, bard, bard.max_hp, "ability")
+	b._reap()
+	far._tick_statuses(2.9)
+	check(far.statuses.has("inspired"), "inspiration outlasts the bard's death until it expires")
+	far._tick_statuses(0.2)
+	check(not far.statuses.has("inspired"), "inspiration expires three seconds after the last beat")
 	b.free()
 
 

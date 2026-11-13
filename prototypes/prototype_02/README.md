@@ -193,6 +193,12 @@ playtesting is still needed to judge each form's situational value.
   Unlike other ability magnitudes, fireball and burn damage scale with stars and
   temporary levels exactly like basic damage (the values above are for 0 stars,
   level 1).
+- Bard: sings a song instead of a local aura. Every second, a beat inspires every
+  ally on the battlefield, the bard included, for 3 s: +35% basic attack speed.
+  Inspiration outlasts the bard's death until it expires. Each beat plays one note
+  of a looping pentatonic melody. A golden sound wave leaves the bard and a note
+  flies to every ally, bursting in a golden ring. The bard hops on the beat;
+  inspired creatures hop with it, stand on a golden light and are circled by a note.
 - Assassin purchase price is now 2 gold.
 - AI no longer stops improving once six creatures are fielded. It buys useful
   duplicates, completes stars, replaces weaker units based on combat value,

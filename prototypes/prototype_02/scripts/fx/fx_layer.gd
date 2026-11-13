@@ -29,6 +29,17 @@ func add(kind: String, pos: Vector2, extra: Dictionary = {}) -> void:
 			item.life = 0.45
 		"fizzle":
 			item.life = 0.35
+		"song":
+			# Beat ring on the bard, plus one note flying to every ally it inspires.
+			item.life = 0.6
+			var source: Variant = extra.get("source")
+			for target in extra.get("targets", []):
+				if target != source and is_instance_valid(target):
+					add("song_note", pos, {"unit": target, "to": target.position, "step": extra.get("step", 0)})
+			item.erase("targets")
+			item.erase("source")
+		"song_note":
+			item.life = 0.6
 	items.append(item)
 
 
@@ -45,6 +56,11 @@ func _process(dt: float) -> void:
 					add("puff", item.pos, {"vel": -item.vel * 0.05, "col": Color(0.85, 0.85, 0.85, 0.7), "size": 7.0})
 			"puff":
 				item.pos += item.get("vel", Vector2.ZERO) * dt
+			"song_note":
+				# Home in on the ally while it moves; keep the last spot if it dies.
+				var unit: Variant = item.unit
+				if is_instance_valid(unit) and unit.alive:
+					item.to = unit.position
 		if item.t >= item.life:
 			items.erase(item)
 	queue_redraw()
@@ -95,6 +111,32 @@ func _draw() -> void:
 				Icons.parry_mark(self, p + Vector2(0, -10), 10.0 + 6.0 * k)
 			"impact", "charge", "dive", "hop", "shell":
 				draw_arc(p, 12.0 + 30.0 * k, 0, TAU, 24, Color(1, 1, 1, 1.0 - k), 3.0, true)
+			"song":
+				# Two golden sound waves and a small fan of notes above the bard.
+				for i in 2:
+					var wave := clampf(k * 1.4 - i * 0.3, 0.0, 1.0)
+					if wave > 0.0 and wave < 1.0:
+						draw_arc(p, 14.0 + 52.0 * wave, 0, TAU, 32, Color(1.0, 0.85, 0.3, 0.8 * (1.0 - wave)), 3.0 * (1.0 - wave) + 1.0, true)
+				for i in 3:
+					var drift := Vector2((i - 1) * 16.0 * k, -26.0 - 26.0 * k)
+					var c := Icons.GOLD
+					c.a = 1.0 - k
+					Icons.note_shadowed(self, p + drift, 10.0, c)
+			"song_note":
+				var to: Vector2 = item.to
+				if k < 0.6:
+					# Flight: an arc from the bard to the ally, slightly overhead.
+					var e := k / 0.6
+					e = e * e * (3.0 - 2.0 * e)
+					var q := p.lerp(to, e) + Vector2(0, -sin(e * PI) * 34.0 - 18.0 * e)
+					Icons.note_shadowed(self, q, 11.0, Icons.GOLD)
+				else:
+					# Arrival: a golden ring burst and a note popping above the ally.
+					var e := (k - 0.6) / 0.4
+					draw_arc(to, 14.0 + 26.0 * e, 0, TAU, 24, Color(1.0, 0.85, 0.3, 1.0 - e), 4.0 * (1.0 - e) + 1.0, true)
+					var c := Icons.GOLD
+					c.a = 1.0 - e
+					Icons.note_shadowed(self, to + Vector2(0, -18.0 - 14.0 * e), 10.0 + 5.0 * sin(e * PI), c)
 			"fizzle":
 				var c := Color(0.7, 0.7, 0.75, 1.0 - k)
 				draw_line(p + Vector2(-8, -8), p + Vector2(8, 8), c, 3.0)

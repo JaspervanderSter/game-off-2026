@@ -4,6 +4,10 @@ extends Node
 
 const RATE := 22050
 const VOICES := 10
+const VOICE_DB := -8.0
+const NOTE_DB := -13.0 # the song plays every second: keep it under the effects
+## Bard melody in semitones above C5 (pentatonic: do re mi sol la sol mi re).
+const SONG_MELODY := [0, 2, 4, 7, 9, 7, 4, 2]
 ## Command-line user argument (after `--`) that silences all game audio.
 const NO_SOUND_ARG := "--no-sound"
 
@@ -44,7 +48,8 @@ func _ready() -> void:
 	_streams.coin_gain = _make(0.24, func(t, k): return (sin(t * TAU * 1568.0) + sin(t * TAU * 2352.0) * 0.35) * exp(-k * 7.0) * 0.45)
 	_streams.combine = _make(0.16, func(t, k): return sin(t * TAU * lerpf(440.0, 740.0, k)) * sin(k * PI) * 0.35)
 	_streams.merge = _make(0.55, func(t, k): return (sin(t * TAU * [523.0, 659.0, 784.0][mini(2, int(k * 3))]) + sin(t * TAU * 1047.0) * 0.3) * sin(k * PI) * 0.4)
-	_streams.hop = _make(0.24, func(t, k): return sin(t * TAU * lerpf(250.0, 1100.0, k)) * sin(k * PI) * 0.3)
+	_streams.note = _make(0.45, func(t, k): return (sin(t * TAU * 523.25) + sin(t * TAU * 1046.5) * 0.35 + sin(t * TAU * 1569.75) * 0.12) * exp(-k * 6.0) * 0.45)
+	_streams.hop =_make(0.24, func(t, k): return sin(t * TAU * lerpf(250.0, 1100.0, k)) * sin(k * PI) * 0.3)
 	_streams.blizzard = _make(0.55, func(t, k): return ((randf() * 2.0 - 1.0) * 0.2 + sin(t * TAU * 880.0) * 0.08) * sin(k * PI))
 
 
@@ -64,7 +69,21 @@ func play(name: String, pitch_jitter := 0.08) -> void:
 	var p := _players[_next]
 	_next = (_next + 1) % VOICES
 	p.stream = _streams[name]
+	p.volume_db = VOICE_DB
 	p.pitch_scale = 1.0 + randf_range(-pitch_jitter, pitch_jitter)
+	p.play()
+
+
+## One note of the bard's song: a plucked bell walking a pentatonic melody,
+## one step per beat, so a singing bard is heard as a little tune.
+func play_note(step: int) -> void:
+	if not enabled or not _streams.has("note"):
+		return
+	var p := _players[_next]
+	_next = (_next + 1) % VOICES
+	p.stream = _streams.note
+	p.volume_db = NOTE_DB
+	p.pitch_scale = pow(2.0, SONG_MELODY[posmod(step, SONG_MELODY.size())] / 12.0)
 	p.play()
 
 

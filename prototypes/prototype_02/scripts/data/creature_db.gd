@@ -67,7 +67,9 @@ const FORMS := {
 	"frost_mage": {"family": "fantasy", "hp": 115, "dmg": 7, "interval": 1.3, "range": 4.0, "speed": 1.3, "armour": 0, "price": 2, "role": "back", "attack": "frost", "ability": "blizzard",
 		"cd": 9.0, "cd_start": 2.0, "duration": 3.0, "chill_slow": 0.5, "chill_duration": 1.0, "storm_dps": 6.0},
 	"cleric": {"family": "fantasy", "hp": 110, "dmg": 5, "interval": 1.4, "range": 3.0, "speed": 1.4, "armour": 10, "price": 2, "role": "support", "attack": "holy", "ability": "heal", "cd": 3.5, "cd_start": 2.0, "radius": 3.5, "power": 22.0},
-	"bard": {"family": "fantasy", "hp": 105, "dmg": 5, "interval": 1.2, "range": 3.0, "speed": 1.4, "armour": 0, "price": 2, "role": "support", "attack": "note", "ability": "inspire", "radius": 2.2, "power": 0.35},
+	# Song: every cd seconds, one beat inspires every ally on the battlefield
+	# (bard included) for duration seconds: +power basic attack speed.
+	"bard": {"family": "fantasy", "hp": 105, "dmg": 5, "interval": 1.2, "range": 3.0, "speed": 1.4, "armour": 0, "price": 2, "role": "support", "attack": "note", "ability": "song", "cd": 1.0, "cd_start": 0.5, "duration": 3.0, "power": 0.35},
 	# --- Animals (transformation outcomes only; price = rough value for AI) ---
 	# Sidegrades with distinct combat niches, not a weaker roster. Rabbit trades
 	# durability for high DPS and a leap directly onto the enemy backline.

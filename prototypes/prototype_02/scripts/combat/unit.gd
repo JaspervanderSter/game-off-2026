@@ -48,6 +48,11 @@ var flash_t := 0.0
 var pop_t := 0.0
 var hovered := false
 var anim_t := 0.0
+var beat_t := 0.0 # hop on each song beat (bard and inspired allies)
+var beat_len := 0.28
+var song_step := 0 # bard melody position, one note per beat
+
+const BEAT_TIME := 0.28
 
 
 func setup(b: Battle, uid: int, team_id: int, form: String, pos: Vector2) -> void:
@@ -252,6 +257,7 @@ func _tick_visuals(dt: float) -> void:
 	lunge_t = maxf(0.0, lunge_t - dt)
 	flash_t = maxf(0.0, flash_t - dt)
 	pop_t = maxf(0.0, pop_t - dt)
+	beat_t = maxf(0.0, beat_t - dt)
 
 
 func _choose_target(dt: float) -> void:
@@ -394,10 +400,19 @@ func _tick_ability() -> void:
 					ally.heal(data.power)
 					ability_timer = data.cd
 					battle.emit_fx("heal", ally.position, {"from": position})
-		"inspire":
-			for a in battle.allies_near(self, position, data.radius * CELL):
-				if a != self:
-					a.add_status("inspired", 0.35, data.power, true)
+		"song":
+			if ability_timer <= 0.0:
+				ability_timer = data.cd
+				var allies := battle.living(team)
+				for a in allies:
+					a.add_status("inspired", data.duration, data.power, true)
+					a.beat_t = BEAT_TIME
+					a.beat_len = BEAT_TIME
+				beat_t = BEAT_TIME * 1.6
+				beat_len = beat_t
+				battle.emit_fx("song", position, {"targets": allies, "source": self, "step": song_step})
+				Sfx.play_note(song_step)
+				song_step += 1
 		"graze":
 			for a in battle.allies_near(self, position, data.radius * CELL):
 				a.add_status("regen", 0.35, data.power, true)
@@ -476,10 +491,22 @@ func _draw() -> void:
 	var scale_k := 1.0 + 0.35 * sin(pop_t / 0.45 * PI)
 	var bob := Vector2(0, sin(anim_t * 6.0) * 1.2)
 	var p := offset + bob
+	# Song beat: a quick hop (and a bigger squash-and-stretch on the bard).
+	var beat_k := sin(beat_t / beat_len * PI) if beat_t > 0.0 else 0.0
+	var is_singer: bool = data.ability == "song"
+	p += Vector2(0, -beat_k * (9.0 if is_singer else 6.0))
+	scale_k += beat_k * (0.16 if is_singer else 0.06)
+	var inspired := statuses.has("inspired")
 
 	# Ground shadow and team base.
 	draw_circle(Vector2(0, r * 0.75), r * 0.95, Color(0, 0, 0, 0.25))
 	Icons.team_base(self, p, r * scale_k, team, hovered)
+	if inspired:
+		# Golden ring around inspired creatures, flaring on each beat; it fades
+		# during the last second of inspiration.
+		var glow := Icons.GOLD
+		glow.a = (0.55 + 0.45 * beat_k) * clampf(statuses.inspired.t, 0.25, 1.0)
+		draw_arc(p, r * scale_k * (1.12 + 0.12 * beat_k), 0, TAU, 32, glow, 2.5 + 2.5 * beat_k, true)
 	if dive_target != null:
 		p += Vector2(0, -8)
 	if jump_t > 0.0:
@@ -507,3 +534,10 @@ func _draw() -> void:
 		i += 1
 	if pack_active():
 		Icons.status(self, "pack", Vector2(r + 4.0, r - 2.0), 6.0)
+	if inspired:
+		# A note circles inspired creatures; fades out in the last second.
+		var remaining: float = statuses.inspired.t
+		var note_col := Icons.GOLD
+		note_col.a = clampf(remaining, 0.0, 1.0)
+		var orbit := Vector2.from_angle(anim_t * 3.2) * Vector2(image_r * 1.25, image_r * 0.6)
+		Icons.note_shadowed(self, p + orbit + Vector2(0, -image_r * 0.35), 8.0 + 3.0 * beat_k, note_col)
