@@ -14,7 +14,6 @@ var player: WizardState
 var enemy: WizardState
 var states: Array[WizardState] = []
 var round_num := 0
-var pack_choices: Array = []
 var battle: Battle = null
 var rng := RandomNumberGenerator.new()
 var no_spells := false # experiment toggle: disables casting for both wizards
@@ -80,18 +79,15 @@ func new_duel() -> void:
 	last_damage = 0
 	last_damage_team = -1
 	hud.clear_loss_rewards()
-	var packs := CreatureDB.PACKS.duplicate()
-	packs.shuffle()
-	pack_choices = packs.slice(0, 3)
 	phase = Phase.PACK
 	music.transition_to("prep")
 
 
 func choose_pack(index: int) -> void:
-	for id in pack_choices[index]:
-		player.add_creature(id)
-	for id in EnemyAI.choose_pack(rng, CreatureDB.PACKS):
-		enemy.add_creature(id)
+	if phase != Phase.PACK or index < 0 or index >= CreatureDB.PACKS.size():
+		return
+	player.take_starting_pack(CreatureDB.PACKS[index])
+	enemy.take_starting_pack(EnemyAI.choose_pack(rng))
 	Sfx.play("buy")
 	start_round()
 
@@ -124,9 +120,11 @@ func start_combat() -> void:
 	battle.unit_died.connect(_on_unit_died)
 	battle.unit_transformed.connect(_on_unit_transformed)
 	battle.fx_requested.connect(fx.add)
+	battle.frenzy_changed.connect(music.set_frenzy_level)
 	battle.ended.connect(_on_battle_ended)
 	drag = null
 	phase = Phase.COMBAT
+	music.set_frenzy_level(0)
 	music.transition_to("battle")
 	Sfx.play("click")
 
@@ -348,7 +346,7 @@ func _left_press(pos: Vector2) -> void:
 		return
 	match phase:
 		Phase.PACK:
-			for i in pack_choices.size():
+			for i in CreatureDB.PACKS.size():
 				if Hud.pack_rect(i).has_point(pos):
 					choose_pack(i)
 					return
@@ -498,10 +496,11 @@ func _process(dt: float) -> void:
 						if Hud.offer_rect(i).has_point(mouse) and player.offers[i] != "":
 							hover_info = {"form": player.offers[i], "team": 0, "pos": mouse}
 		Phase.PACK:
-			for i in pack_choices.size():
-				for j in pack_choices[i].size():
+			for i in CreatureDB.PACKS.size():
+				var forms: Array = CreatureDB.PACKS[i].forms
+				for j in forms.size():
 					if Hud.pack_token_pos(i, j).distance_to(mouse) < 24:
-						hover_info = {"form": pack_choices[i][j], "team": 0, "pos": mouse}
+						hover_info = {"form": forms[j], "team": 0, "pos": mouse}
 	queue_redraw()
 
 

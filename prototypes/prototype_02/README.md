@@ -50,6 +50,16 @@ All confirmed rules and delegated defaults of the design note, notably:
 
 - Duel loop: free starting pack, then every round shop + preparation, real-time
   combat, resolution; until a wizard has 0 of 10 health.
+- The three starting cards show their game plan and first-shop budget. The AI
+  picks one of the same packs at random. Both sides receive their pack's bonus
+  once, on top of the first round's 3 gold.
+
+  | Pack | Creatures | Bonus gold |
+  | --- | --- | ---: |
+  | Control | Shield Guardian, Frost Mage, Pitchfork Peasant | +1 |
+  | Tempo | Duelist, Archer, Bard | 0 |
+  | Breakthrough | Berserker, Assassin, Spearman | +1 |
+
 - Gold income 3, 4, 5... per round, unspent gold kept. Three random fantasy offers
   per round, each bought once; prices 1-3; selling refunds the price.
 - A shop click buys onto the bench on mouse release. Dragging an offer instead
@@ -83,6 +93,11 @@ All confirmed rules and delegated defaults of the design note, notably:
   Ability magnitudes remain fixed. Selling refunds the combined base-copy value.
 - 8 x 6 board, 8 x 3 half per team; up to 6 fielded creatures and 6 in reserve.
 - Continuous movement, nearest-target default, soft separation, board bounds.
+- At 45 seconds, frenzy increases all damage, basic attack speed and movement
+  speed by 20% for both teams. The bonus grows by 20 percentage points every
+  three seconds, reaching 100% at 57 seconds. The timer and arena outline show
+  the current phase, and battle music speeds up by 5% per level. Shapeshift
+  charges recharge at their normal rate.
 - Loser loses 0.5 health per surviving enemy creature; mutual elimination or
   60-second timeout is a draw with no damage.
 - A surviving loser gains 1 gold per heart lost. A lethal combat grants no gold
@@ -103,9 +118,12 @@ All confirmed rules and delegated defaults of the design note, notably:
   3 s target
   immunity for both wizards; invalid casts consume nothing. Result drawn from the
   eight-stage network, with fixed 55% / 30% / 15% outcome priorities per source
-  form (dominant outcome follows its tactical identity). Keeps health %, heals 10% of new max HP,
-  readies the basic attack, keeps positive / removes negative statuses, ally casts
-  give +1 level (+20% base HP and damage per level), enemy casts preserve level.
+  form (dominant outcome follows its tactical identity). Both casts preserve health
+  percentage. Allied casts then heal 10% of new max HP, ready the basic attack,
+  cleanse negative statuses and grant +1 level (+20% base HP and damage per level).
+  Enemy casts reset the target to temporary level 1, keep its statuses and
+  basic-attack cooldown, and stun it for three seconds. Status effects and
+  cooldowns continue during the stun.
   Combat forms, temporary levels and statuses reset at the end of combat;
   permanent merge stars remain.
   Feedback differs by target. Blessing (own creature): white flash, golden pillar
@@ -119,10 +137,14 @@ All confirmed rules and delegated defaults of the design note, notably:
   only when a wizard shapeshifts one of its own creatures, never on an enemy hex:
   - Rabbit: its backline leap is ready at once.
   - Skunk: enemies within 2.5 cells are feared for 2 s. They stop attacking and
-    using abilities, interrupt a charge, dive or shell, and flee from the skunk
-    in sharp zigzags at 130% speed. A green stink cloud with a violet ring bursts
+    using abilities, interrupt a channel, charge, dive or shell, and flee from
+    the skunk in sharp zigzags at 130% speed. A green stink cloud with a violet ring bursts
     from the skunk; feared creatures tremble under a violet exclamation mark.
-    Fear is a negative status, so a shapeshift cleanses it.
+    An allied shapeshift cleanses fear.
+- The pyromancer and frost mage channel Fireball and Blizzard for one second.
+  An orange or blue ring shows the cast's progress. A shapeshift during the
+  channel cancels the ability and starts its cooldown. A launched fireball
+  or active blizzard continues after the caster changes form.
 - Death: the entity is removed; a visual-only copy is rocketed off the board.
 
 ## Music
@@ -156,8 +178,8 @@ Answers given by the user while scoping the implementation:
 - Top-down camera, synthesized sound effects, English as the (rare) UI language.
 - All 24 abilities implemented; short combats (~20-30 s); visible homing projectiles.
 - Hover shows the three outcomes with chances (no outcome-stat comparison).
-- Three thematic starting packs drawn from six; the current AI evaluates a
-  three-pack sample, purchases and transformations using combat value (see below).
+- Three thematic starting packs. The AI evaluates purchases and transformations
+  using combat value (see below).
 - Tools: no-spell toggle, x2 combat speed, headless tests.
 
 Assistant-authored values (all adjustable in `scripts/data/creature_db.gd` and
@@ -195,7 +217,7 @@ playtesting is still needed to judge each form's situational value.
 
 - Frost mage: 115 HP, 7 basic damage; every 9 s, casts a stationary 3x3-cell
   blizzard for 3 s on an enemy cluster within range. First cast starts at 2 s.
-  The area deals 6 damage/s before armour and chills enemies inside. Basic shots
+  The area deals 7.2 damage/s before armour and chills enemies inside. Basic shots
   chill on hit for 1 s. Chill halves movement and basic attack speed, and repeated
   hits refresh it.
   Storms persist after caster death or transformation, then expire normally.
@@ -218,8 +240,11 @@ playtesting is still needed to judge each form's situational value.
 - Assassin purchase price is now 2 gold.
 - AI no longer stops improving once six creatures are fielded. It buys useful
   duplicates, completes stars, replaces weaker units based on combat value,
-  protects frontline/ranged coverage, and spends on at most two rerolls per
-  preparation. Valuable unaffordable duplicates can be locked for the next round.
+  protects frontline/ranged coverage, and rerolls while it can still afford a
+  useful offer after paying for the refresh. It can buy a copy directly into a
+  matching group when the bench is full and collect copies for fielded units
+  that already have stars. Valuable unaffordable duplicates can be locked for
+  the next round.
   It can buy the recharge upgrade from its own gold. It avoids sacrificing a
   fielded body just to create an unfinished 2/3 group.
 - Placement ranks actual combat power, not resale value (partial groups give no
@@ -236,6 +261,32 @@ the old policy, not expected win rate against a human player.
 ```bash
 godot --headless --path prototypes/prototype_02 res://tests/ai_benchmark.tscn
 ```
+
+## AI self-play
+
+The training cycle plays full duels with the live creature data, shop, combat
+and spell timing. It screens ten strategies, runs a round-robin league with
+the strongest variants and their combinations, then checks the league leader
+against the reference and three finalists on fresh seeds. Each match is played
+from both board sides, with paired shop seeds. Duels still in progress at round
+35 count as draws.
+
+From the repository root, with Python 3 and an imported Godot project:
+
+```powershell
+python prototypes/prototype_02/training/train.py --godot "C:/path/to/godot_console.exe"
+```
+
+The runner writes each duel and the proposed profile to
+`.godot/self-play/` within this prototype. It uses the pre-training strategy
+as its reference and leaves the game's settings alone. The active settings
+are in `EnemyAI.DEFAULT_PROFILE`.
+
+The cycle with seed 84000 played 1,216 duels. The selected profile won 80 of
+100 validation duels against the reference and 168 of 300 against the three
+other finalists combined. It values pyromancer and frost mage more highly,
+accounts for fireball and burn scaling with stars, and prioritises
+interrupting enemy casts.
 
 ## Tests
 

@@ -22,6 +22,10 @@ const SHOP_SIZE := 3
 const REROLL_COST := 1
 const MAX_STARS := 3
 const COMBAT_TIMEOUT := 60.0
+const FRENZY_START := 45.0
+const FRENZY_STEP_SECONDS := 3.0
+const FRENZY_BONUS_PER_STEP := 0.20
+const FRENZY_MAX_LEVEL := 5
 
 # Shapeshift spell.
 const START_CHARGES := 1
@@ -31,6 +35,7 @@ const SHIFT_RECHARGE_COST := 4
 const UPGRADED_RECHARGE_TIME := 2.4
 const TARGET_IMMUNITY := 3.0
 const SHIFT_HEAL := 0.10 # fraction of the new max HP
+const ENEMY_SHIFT_STUN := 3.0
 const LEVEL_VISUAL_GROWTH := 0.15 # additive image scale per temporary level
 const MAX_LEVEL_VISUAL_SCALE := 1.6 # keep crowded fights readable
 const LEVEL_SCALE := 0.20 # max HP and basic damage per level above 1

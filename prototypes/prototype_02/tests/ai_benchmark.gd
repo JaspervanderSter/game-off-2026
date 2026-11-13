@@ -17,9 +17,8 @@ func run() -> void:
 			var generators: Array[RandomNumberGenerator] = [RandomNumberGenerator.new(), RandomNumberGenerator.new()]
 			for team in 2:
 				generators[team].seed = 8100 + seed_id * 2 + (0 if team == new_team else 1)
-				var pack: Array = CreatureDB.PACKS[(seed_id + (0 if team == new_team else 3)) % CreatureDB.PACKS.size()]
-				for id in pack:
-					states[team].add_creature(id)
+				var pack: Dictionary = CreatureDB.PACKS[(seed_id + (0 if team == new_team else 1)) % CreatureDB.PACKS.size()]
+				states[team].take_starting_pack(pack)
 			var rounds := 0
 			while states[0].hp > 0 and states[1].hp > 0 and rounds < 35:
 				rounds += 1

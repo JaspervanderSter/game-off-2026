@@ -44,10 +44,10 @@ requirement to discard the auto-battler foundation after this experiment.
 
 ## Confirmed working rules
 
-- Each round starts with shop access, including the first round. The first shop
-  has special starting conditions. The current starting proposal is a choice of
-  packs containing three creatures; pack contents, price and remaining purchases
-  still need definition.
+- Each round starts with shop access. Before the first shop, choose one of three
+  free creature trios. Control protects its backline, Tempo builds around the
+  bard's song, and Breakthrough pressures enemy backliners. Control and
+  Breakthrough each grant one extra gold at the first shop.
 - Gold is granted each round. Income increases as the duel progresses to help
   accelerate its pace and eventually tip the balance. The income increment is
   +1 gold each round. The working starting value is 3 gold, giving grants of
@@ -155,32 +155,24 @@ the powerful casting rules and temporary level gains specified below. Do not ass
 every creature automatically. The proposed set avoids summons and resurrection
 for now, keeping those interactions outside this candidate design.
 
-### Powerful shapeshifting — selected on 3 November 2026
+### Shapeshifting effects — updated on 13 November 2026
 
-Start deliberately powerful to make the spell's contribution visible; reduce its
-strength later if playtests require it. The latest rules supersede the earlier
-modest allied buff / enemy debuff proposal.
-
-- Preserve current health percentage, then heal 10% of the new maximum health,
-  capped at full health. Working interpretation: 50% becomes 60%, not 55%.
-- Reset the basic attack cooldown: the next attack is ready immediately if a
-  legal target is in range. This is intentionally exploitable for stronger casts.
-- Preserve positive status effects and their remaining durations. Remove negative
-  status effects as a working implementation of the user's cleansing suggestion.
+- Preserve current health percentage for both target teams.
+- An allied cast then heals 10% of the new maximum health, capped at full health,
+  readies the basic attack, and removes negative status effects.
+- An enemy cast preserves the basic-attack cooldown and all status effects. It
+  stuns the target for three seconds while statuses and cooldowns continue to tick.
+- Fireball and Blizzard have a visible one-second channel. Shapeshifting the
+  caster during the channel cancels the ability and starts its cooldown.
+  Released abilities continue independently. Blizzard deals 7.2 damage per
+  second before armour.
 - A status effect means a temporary modifier such as poison, slow, armour
   reduction, regeneration or an attack-speed bonus. A previous form's innate
   ability is replaced by the new form's ability; it is not retained as a bonus.
   Source-dependent auras still require an active eligible source.
-- These health, attack-reset and status rules apply to either target team under
-  the literal general casting rule. **Consequently, transforming an enemy also
-  heals and cleanses it and readies its attack.** This consequence must be visible
-  in testing; no unapproved enemy-only exception is silently introduced.
-- Each creature starts combat at level 1. Casting on an ally grants **+1 level**;
-  casting on an enemy preserves its level. The user's final +1 statement takes
-  precedence over their earlier mention of +2.
-- Levels belong to the creature, not its form. They survive further casts by
-  either wizard until the end of combat; an enemy cast cannot remove earned levels.
-  No level loss or separate generic enemy debuff is added.
+- Each creature starts combat at level 1. Casting on an ally grants **+1 level**.
+  Casting on an enemy resets its temporary level to **1** and preserves its
+  permanent merge stars.
 - Delegated tuning default: each level above 1 adds 20% of the destination form's
   base maximum health and basic attack damage (additive scaling: levels 1/2/3
   use multipliers 1.0/1.2/1.4). Other statistics do not scale initially. No level
@@ -209,7 +201,7 @@ modest allied buff / enemy debuff proposal.
 ### Avoiding immediate cancellation
 
 The user does not want a wizard to easily undo the other wizard's intervention.
-Earned levels and beneficial status effects survive enemy casts. Form connections
+Beneficial status effects survive enemy casts. Form connections
 must not allow a direct reversal; returning to a previous form should require a
 long trip through the graph, rather than repeated back-and-forth transformations.
 
@@ -261,7 +253,7 @@ explicit decisions, as recorded below.
 | Opponent | Single-player against an AI wizard. | Included; enemy casting, preparation and spending behaviour pending. |
 | Battle scale | Board and team sizes are unspecified. | Three-creature starting packs proposed; board, field and reserve capacities pending. |
 | Roster and network | Weighted outcomes depend on current form. | 12 fantasy forms and 12 animal forms, with three outgoing cross-roster outcomes per form. Candidate roster proposed above; individual forms, links and probabilities pending approval. |
-| Form effects | Deliberately powerful first test. | Preserve health percentage, heal 10% maximum HP, ready attack, keep positive effects, cleanse negative effects; +1 allied level, preserve enemy level. See detailed rules. |
+| Form effects | Buff allies and disrupt enemies. | Preserve health percentage. Allied casts heal, ready attacks, cleanse and grant a level. Enemy casts keep basic-attack cooldowns and statuses, reset the target to level 1 and stun it for three seconds. See detailed rules. |
 | Casting limits | One starting charge, capacity three. | One charge recharges every three seconds; retain three-second target immunity as a delegated default. |
 | Information and pace | Outcome inspection is unresolved. | Real-time combat, no gameplay pause; interface details pending. |
 | Preparation | Place creatures before combat. | Included on a grid; dimensions and legal placement zones pending. |

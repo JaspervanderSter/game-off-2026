@@ -17,6 +17,12 @@ func _init(team_id: int) -> void:
 	team = team_id
 
 
+func take_starting_pack(pack: Dictionary) -> void:
+	for id in pack.forms:
+		add_creature(id)
+	gold += pack.bonus_gold
+
+
 ## A surviving loser receives one gold per heart lost. Lethal losses grant none.
 func take_round_damage(survivors: int) -> float:
 	var lost := minf(maxi(survivors, 0) * Rules.DAMAGE_PER_SURVIVOR, hp)

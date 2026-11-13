@@ -5,6 +5,7 @@ extends Node
 
 const FADE_SECONDS := 1.2
 const MUSIC_DB := -16.0 # leave room for combat and reward sound effects
+const FRENZY_SPEED_PER_LEVEL := 0.05
 const TRACKS := {
 	"prep": preload("res://music/cartoon_magic.ogg"),
 	"battle": preload("res://music/marching_beat.ogg"),
@@ -33,6 +34,11 @@ func transition_to(id: String) -> void:
 	current = id
 	if id != "" and not players[id].playing:
 		players[id].play()
+
+
+func set_frenzy_level(level: int) -> void:
+	var player: AudioStreamPlayer = players["battle"]
+	player.pitch_scale = 1.0 + level * FRENZY_SPEED_PER_LEVEL
 
 
 func _process(dt: float) -> void:

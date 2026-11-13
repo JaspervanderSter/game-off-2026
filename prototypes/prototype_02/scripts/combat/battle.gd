@@ -7,6 +7,7 @@ extends Node2D
 signal unit_died(unit: Unit)
 signal unit_transformed(unit: Unit, caster_team: int, from_form: String)
 signal fx_requested(kind: String, pos: Vector2, extra: Dictionary)
+signal frenzy_changed(level: int)
 signal ended(result: Dictionary)
 
 const CELL := Rules.CELL
@@ -17,8 +18,10 @@ var projectiles: Array[Dictionary] = []
 var blizzards: Array[Dictionary] = []
 var spells: Array[ShiftSpell] = [ShiftSpell.new(), ShiftSpell.new()]
 var ai_casting: Array[bool] = [false, true]
+var ai_profiles: Array[Dictionary] = [EnemyAI.DEFAULT_PROFILE, EnemyAI.DEFAULT_PROFILE]
 var casting_enabled := true
 var time := 0.0
+var frenzy_level := 0
 var finished := false
 var result := {}
 var rng := RandomNumberGenerator.new()
@@ -70,6 +73,7 @@ func step(dt: float) -> void:
 	if finished:
 		return
 	time += dt
+	_update_frenzy()
 	for t in 2:
 		spells[t].tick(dt)
 		if casting_enabled and ai_casting[t]:
@@ -83,6 +87,18 @@ func step(dt: float) -> void:
 	_check_end()
 	if _projectile_layer:
 		_projectile_layer.queue_redraw()
+
+
+func frenzy_multiplier() -> float:
+	return 1.0 + frenzy_level * Rules.FRENZY_BONUS_PER_STEP
+
+
+func _update_frenzy() -> void:
+	var elapsed := time - Rules.FRENZY_START + 1e-9 # Allow for accumulated frame rounding.
+	var level := clampi(1 + floori(elapsed / Rules.FRENZY_STEP_SECONDS), 0, Rules.FRENZY_MAX_LEVEL)
+	if level != frenzy_level:
+		frenzy_level = level
+		frenzy_changed.emit(level)
 
 
 ## Casts the shapeshift spell for a team. Invalid casts consume nothing.
@@ -105,7 +121,7 @@ func _ai_cast(team: int, dt: float) -> void:
 	_ai_delay[team] -= dt
 	if _ai_delay[team] > 0.0:
 		return
-	var choice := EnemyAI.choose_cast(self, team)
+	var choice := EnemyAI.choose_cast(self, team, ai_profiles[team])
 	if choice != null and cast(team, choice):
 		_ai_delay[team] = rng.randf_range(0.6, 1.6)
 	else:
@@ -156,7 +172,7 @@ func damage(src: Unit, dst: Unit, amount: float, kind: String, pierce := false) 
 		emit_fx("parry", dst.position)
 		return false
 	var reduction := 0.0 if pierce else dst.armour() / 100.0
-	var dealt := amount * (1.0 - reduction)
+	var dealt := amount * frenzy_multiplier() * (1.0 - reduction)
 	damage_taken[dst.team] += clampf(dealt, 0.0, dst.hp)
 	dst.hp -= dealt
 	dst.last_hurt = time

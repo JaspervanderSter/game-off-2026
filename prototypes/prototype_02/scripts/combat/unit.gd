@@ -21,11 +21,15 @@ var alive := true
 var attack_timer := 0.0 # time until the basic attack is ready at full speed
 var ability_timer := 0.0 # one cooldown, kept across form changes
 var immune_t := 0.0 # shapeshift immunity
+var stun_t := 0.0
 var target: Unit = null
 ## name -> {"t": remaining s, "v": magnitude, "positive": bool}
 var statuses := {}
 
 # Form-specific state, reset by a transformation.
+var channel_t := 0.0
+var channel_target: Unit = null
+var channel_centre := Vector2.ZERO
 var shell_t := 0.0
 var charging := false
 var dive_target: Unit = null
@@ -84,15 +88,19 @@ func _set_form(form: String) -> void:
 ## triggers the new form's positive post-transformation effect, if any.
 func transform_to(new_form: String, ally_cast: bool) -> void:
 	var ratio := hp / max_hp
+	_interrupt_channel()
 	_set_form(new_form)
-	if ally_cast:
-		level += 1
+	level = level + 1 if ally_cast else 1
 	max_hp = data.hp * stat_mult()
-	hp = minf(max_hp, ratio * max_hp + Rules.SHIFT_HEAL * max_hp)
-	attack_timer = 0.0
-	for key in statuses.keys():
-		if not statuses[key].positive:
-			statuses.erase(key)
+	hp = ratio * max_hp
+	if ally_cast:
+		hp = minf(max_hp, hp + Rules.SHIFT_HEAL * max_hp)
+		attack_timer = 0.0
+		for key in statuses.keys():
+			if not statuses[key].positive:
+				statuses.erase(key)
+	else:
+		stun_t = Rules.ENEMY_SHIFT_STUN
 	# The remaining cooldown carries over; entering a form never grants an
 	# immediately ready ability.
 	if ability_timer <= 0.0:
@@ -128,15 +136,23 @@ func _ally_shift_effect() -> void:
 
 
 ## Fear: the creature stops attacking and using abilities, and flees from
-## `from` in a zigzag until the status expires. It interrupts a charge, a dive
-## or a shell; an ongoing leap or knockback finishes first.
+## `from` in a zigzag until the status expires. It interrupts a channel, charge,
+## dive or shell. An ongoing leap or knockback finishes first.
 func scare(from: Vector2, duration: float) -> void:
 	add_status("feared", duration, 1.0, false)
 	fear_from = from
 	fear_phase = battle.rng.randf() * 2.0
+	_interrupt_channel()
 	charging = false
 	dive_target = null
 	shell_t = 0.0
+
+
+func _interrupt_channel() -> void:
+	if channel_t > 0.0:
+		ability_timer = data.cd
+		channel_t = 0.0
+		channel_target = null
 
 
 # --- Derived statistics ---------------------------------------------------
@@ -154,7 +170,7 @@ func attack_damage() -> float:
 
 
 func attack_interval() -> float:
-	return _unchilled_attack_interval() / _chill_speed_multiplier()
+	return _unchilled_attack_interval() / (_chill_speed_multiplier() * battle.frenzy_multiplier())
 
 
 func _unchilled_attack_interval() -> float:
@@ -182,7 +198,7 @@ func armour() -> float:
 
 
 func move_speed() -> float:
-	return data.speed * CELL * _chill_speed_multiplier()
+	return data.speed * CELL * _chill_speed_multiplier() * battle.frenzy_multiplier()
 
 
 func _chill_speed_multiplier() -> float:
@@ -234,9 +250,18 @@ func tick(dt: float) -> void:
 	_tick_statuses(dt)
 	if not alive:
 		return
-	attack_timer = maxf(0.0, attack_timer - attack_progress)
+	attack_timer = maxf(0.0, attack_timer - attack_progress * battle.frenzy_multiplier())
 	ability_timer = maxf(0.0, ability_timer - dt)
 	_tick_visuals(dt)
+	if stun_t > 0.0:
+		var stunned_step := minf(stun_t, dt)
+		stun_t -= stunned_step
+		dt -= stunned_step
+		if dt <= 0.0:
+			return
+	if channel_t > 0.0:
+		_tick_channel(dt)
+		return
 	if jump_t > 0.0:
 		_tick_jump(dt)
 		return
@@ -260,7 +285,7 @@ func tick(dt: float) -> void:
 		return
 
 	_tick_ability()
-	if shell_t > 0.0 or dive_target != null or charging or dash_t > 0.0 or jump_t > 0.0:
+	if channel_t > 0.0 or shell_t > 0.0 or dive_target != null or charging or dash_t > 0.0 or jump_t > 0.0:
 		return
 
 	_choose_target(dt)
@@ -395,18 +420,17 @@ func _tick_ability() -> void:
 					battle.emit_fx("hop", position)
 					Sfx.play("hop")
 		"blizzard":
-			if ability_timer <= 0.0:
+			if ability_timer <= 0.0 and channel_t <= 0.0:
 				var centre := battle.best_blizzard_center(self)
 				if centre.is_finite():
-					battle.add_blizzard(self, centre)
-					ability_timer = data.cd
-					Sfx.play("blizzard")
+					channel_centre = centre
+					channel_t = data.channel_duration
 		"fireball":
-			if ability_timer <= 0.0:
+			if ability_timer <= 0.0 and channel_t <= 0.0:
 				var prey := battle.nearest_enemy(self)
 				if prey != null and edge_dist(prey) <= range_px():
-					battle.spawn_projectile(self, prey, true)
-					ability_timer = data.cd
+					channel_target = prey
+					channel_t = data.channel_duration
 		"spray":
 			if ability_timer <= 0.0:
 				var hit := battle.enemies_near(self, position, data.radius * CELL)
@@ -455,8 +479,26 @@ func _tick_ability() -> void:
 				a.add_status("regen", 0.35, data.power, true)
 
 
+func _tick_channel(dt: float) -> void:
+	channel_t = maxf(0.0, channel_t - dt)
+	if channel_t > 0.0:
+		return
+	ability_timer = data.cd
+	if data.ability == "blizzard":
+		battle.add_blizzard(self, channel_centre)
+		Sfx.play("blizzard")
+	else:
+		var prey := channel_target
+		channel_target = null
+		if not is_instance_valid(prey) or not prey.alive:
+			prey = battle.nearest_enemy(self)
+			if prey == null or edge_dist(prey) > range_px():
+				return
+		battle.spawn_projectile(self, prey, true)
+
+
 func _tick_jump(dt: float) -> void:
-	jump_t = maxf(0.0, jump_t - dt)
+	jump_t = maxf(0.0, jump_t - dt * battle.frenzy_multiplier())
 	position = jump_start.lerp(jump_end, 1.0 - jump_t / 0.5)
 	if jump_t == 0.0:
 		target = jump_target if is_instance_valid(jump_target) and jump_target.alive else null
@@ -469,7 +511,7 @@ func _tick_dive(dt: float) -> void:
 	if not dive_target.alive:
 		dive_target = null
 		return
-	_move_towards(dive_target.position, 9.0 * CELL, dt)
+	_move_towards(dive_target.position, 9.0 * CELL * battle.frenzy_multiplier(), dt)
 	if edge_dist(dive_target) <= 2.0:
 		battle.damage(self, dive_target, data.power, "ability")
 		battle.emit_fx("impact", dive_target.position)
@@ -482,7 +524,7 @@ func _tick_charge(dt: float) -> void:
 	if target == null or not target.alive:
 		charging = false
 		return
-	_move_towards(target.position, 5.0 * CELL, dt)
+	_move_towards(target.position, 5.0 * CELL * battle.frenzy_multiplier(), dt)
 	if edge_dist(target) <= range_px():
 		charging = false
 		attack_timer = _unchilled_attack_interval()
@@ -498,7 +540,7 @@ func _tick_charge(dt: float) -> void:
 
 ## Archers step away from melee attackers while reloading.
 func _kite(dt: float) -> bool:
-	if attack_timer < 0.3 * _chill_speed_multiplier():
+	if attack_timer < 0.3 * _chill_speed_multiplier() * battle.frenzy_multiplier():
 		return false
 	for e in battle.enemies_near(self, position, (2.0 * Rules.BODY_RADIUS + 0.5) * CELL):
 		if e.is_melee():
@@ -583,6 +625,16 @@ func _draw() -> void:
 	var bar_w := r * 2.2
 	var bar_pos := Vector2(-bar_w * 0.5, r + 6.0)
 	Icons.health_bar(self, bar_pos, bar_w, hp / max_hp, team)
+	if channel_t > 0.0:
+		var color := Color(0.55, 0.9, 1.0) if data.ability == "blizzard" else Color(1.0, 0.58, 0.18)
+		var progress := 1.0 - channel_t / float(data.channel_duration)
+		draw_arc(p, image_r * 1.15, 0.0, TAU, 32, color.darkened(0.65), 4.0, true)
+		draw_arc(p, image_r * 1.15, -PI * 0.5, TAU * progress - PI * 0.5, 32, color, 4.0, true)
+	elif stun_t > 0.0:
+		for star in 3:
+			var angle := anim_t * 6.0 + star * TAU / 3.0
+			var orbit := Vector2(cos(angle) * image_r, sin(angle) * 4.0)
+			Icons.star(self, p + Vector2(0, -image_r * 0.8) + orbit, 4.0)
 	Icons.merge_stars(self, Vector2(0, -image_r - 10.0), stars)
 	if hovered:
 		Icons.merge_progress(self, Vector2(0, -image_r - 22.0), merge_copies, stars)

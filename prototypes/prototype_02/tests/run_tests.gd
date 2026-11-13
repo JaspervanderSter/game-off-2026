@@ -14,15 +14,18 @@ func _ready() -> void:
 	_test_immunity_and_invalid_casts()
 	_test_economy()
 	_test_shop_and_merges()
+	_test_starting_packs()
 	_test_preparation_input()
 	_test_loss_gold()
 	_test_shop_drag_and_enemy_preparation()
 	_test_phase_music()
 	_test_result_recordings()
 	_test_round_reset_and_damage()
+	_test_frenzy()
 	_test_abilities()
 	_test_animal_roles()
 	_test_mage_attacks()
+	_test_mage_interruptions()
 	_test_bard_song()
 	_test_overlapping_blizzards()
 	_test_combat_click_casts()
@@ -136,7 +139,7 @@ func _tick(s: ShiftSpell, seconds: float) -> void:
 func _test_transformation_rules() -> void:
 	var b := _new_battle()
 	var ally := b.spawn(0, "guardian", Vector2(100, 300))
-	var foe := b.spawn(1, "peasant", Vector2(400, 50))
+	var foe := b.spawn(1, "archer", Vector2(400, 50), 0, 1)
 	b.spells[0].charges = 3
 	ally.hp = ally.max_hp * 0.5
 	ally.attack_timer = 1.0
@@ -153,13 +156,27 @@ func _test_transformation_rules() -> void:
 	check(ally.statuses.has("inspired"), "positive status kept")
 	check(absf(ally.ability_timer - 2.5) < 0.001, "ability cooldown carried over")
 	check(absf(ally.attack_damage() - ally.data.dmg * 1.2) < 0.01, "level scales basic damage")
-	# Enemy cast preserves the enemy's level, still heals and readies it.
 	foe.level = 3
-	foe.max_hp = foe.data.hp * Rules.level_mult(3)
-	foe.hp = foe.max_hp * 0.95
+	foe.max_hp = foe.data.hp * foe.stat_mult()
+	foe.hp = foe.max_hp * 0.5
+	foe.attack_timer = 1.5
+	foe.add_status("poisoned", 3.0, 5.0, false)
 	check(b.cast(0, foe), "cast on enemy succeeds")
-	check(foe.level == 3, "enemy cast preserves level")
-	check(absf(foe.hp - foe.max_hp) < 0.01, "heal capped at full health")
+	check(foe.level == 1 and foe.stars == 1, "enemy cast resets temporary levels and preserves stars")
+	check(is_equal_approx(foe.max_hp, foe.data.hp * 1.8) and is_equal_approx(foe.attack_damage(), foe.data.dmg * 1.8),
+		"enemy cast recalculates max health and damage at level 1 with stars")
+	check(is_equal_approx(foe.hp / foe.max_hp, 0.5), "enemy cast preserves health percentage without healing")
+	check(foe.attack_timer == 1.5 and foe.statuses.has("poisoned"), "enemy cast preserves attack cooldown and debuffs")
+	check(foe.stun_t == 3.0, "enemy cast stuns for three seconds")
+	var start_pos := foe.position
+	var start_hp := foe.hp
+	foe.tick(0.75)
+	check(foe.position == start_pos and foe.target == null, "stunned enemy cannot move or act")
+	check(foe.attack_timer == 0.75 and foe.hp < start_hp, "attack recharge and poison continue during the stun")
+	foe.tick(2.0)
+	check(foe.stun_t == 0.25 and foe.position == start_pos, "enemy remains still just before three seconds")
+	foe.tick(0.5)
+	check(foe.stun_t == 0.0 and foe.position != start_pos, "enemy resumes movement when the stun expires")
 	# Entering a form with a ready-on-entry cooldown does not get an instant ability.
 	var fresh := b.spawn(0, "peasant", Vector2(200, 300))
 	fresh.ability_timer = 0.0
@@ -188,11 +205,17 @@ func _test_ally_shift_effects() -> void:
 	b = _new_battle()
 	var skunk := b.spawn(0, "spearman", Vector2(300, 300))
 	var near := b.spawn(1, "guardian", Vector2(300, 250))
+	var mage := b.spawn(1, "pyromancer", Vector2(260, 250))
 	var far := b.spawn(1, "archer", Vector2(300, 30))
 	var friend := b.spawn(0, "peasant", Vector2(340, 300))
+	mage.ability_timer = 0.0
+	mage._tick_ability()
+	check(mage.channel_t > 0.0, "pyromancer starts channeling before the skunk shift")
 	skunk.transform_to("skunk", true)
 	check(near.statuses.has("feared") and is_equal_approx(near.statuses.feared.t, 2.0), "ally shift into skunk fears a nearby enemy for 2 s")
 	check(not far.statuses.has("feared") and not friend.statuses.has("feared"), "skunk fear spares distant enemies and allies")
+	check(mage.statuses.has("feared") and mage.channel_t == 0.0 and mage.ability_timer == mage.data.cd,
+		"skunk fear interrupts Fireball and starts its cooldown")
 	near.attack_timer = 0.0
 	var start_d := near.position.distance_to(skunk.position)
 	var hp_before := skunk.hp
@@ -413,6 +436,28 @@ func _test_shop_and_merges() -> void:
 	check(u.stars == 3 and u.level == 1 and u.form_id == "cleric", "next combat resets form and level but keeps stars")
 	check(is_equal_approx(u.visual_scale(), 1.0), "next combat restores normal image size")
 	b.free()
+
+
+func _test_starting_packs() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	for i in CreatureDB.PACKS.size():
+		game.new_duel()
+		var pack: Dictionary = CreatureDB.PACKS[i]
+		game._left_press(Hud.pack_rect(i).get_center())
+		var forms: Array = game.player.fielded().map(func(c: OwnedCreature) -> String: return c.form_id)
+		var gold := Rules.income(1) + int(pack.bonus_gold)
+		check(forms == pack.forms, "%s fields the selected trio" % pack.name)
+		check(game.round_num == 1 and game.player.gold == gold, "%s grants its first shop budget" % pack.name)
+		var enemy_forms: Array = game.enemy.fielded().map(func(c: OwnedCreature) -> String: return c.form_id)
+		var enemy_pack := CreatureDB.PACKS.filter(func(choice: Dictionary) -> bool: return choice.forms == enemy_forms)
+		check(enemy_pack.size() == 1 and game.enemy.gold == Rules.income(1) + enemy_pack[0].bonus_gold,
+			"opponent receives the bonus for its own trio")
+		game.choose_pack(i)
+		check(game.round_num == 1 and game.player.gold == gold, "pack cannot be claimed twice")
+		game.start_round()
+		check(game.player.gold == gold + Rules.income(2), "pack bonus is not granted again in round two")
+	game.free()
 
 
 func _test_preparation_input() -> void:
@@ -664,12 +709,18 @@ func _test_phase_music() -> void:
 	_finish_enemy_preparation(game)
 	game.start_combat()
 	check(game.music.current == "battle", "combat selects battle music")
+	game.battle.time = 56.75
+	game.battle.step(0.25)
+	check(is_equal_approx(game.music.players.battle.pitch_scale, 1.25)
+		and is_equal_approx(game.music.players.prep.pitch_scale, 1.0),
+		"frenzy speeds up only the battle music")
 	game._on_battle_ended({"winner": 1, "survivors": 1})
 	check(game.music.current == "", "resolution fades out battle music for heart and gold effects")
 	game._finish_round()
 	check(game.music.current == "prep", "next round fades preparation music back in")
 	_finish_enemy_preparation(game)
 	game.start_combat()
+	check(is_equal_approx(game.music.players.battle.pitch_scale, 1.0), "next combat starts at normal music speed")
 	game.player.hp = 0.5
 	game._on_battle_ended({"winner": 1, "survivors": 1})
 	game._finish_round()
@@ -756,6 +807,46 @@ func _test_round_reset_and_damage() -> void:
 			break
 	check(d.finished, "timeout ends combat")
 	d.queue_free()
+
+
+func _test_frenzy() -> void:
+	var b := _new_battle()
+	var ally := b.spawn(0, "peasant", Vector2(200, 300))
+	var foe := b.spawn(1, "peasant", Vector2(200, 80))
+	var speed := ally.move_speed()
+	var interval := ally.attack_interval()
+	ally.stun_t = 60.0
+	foe.stun_t = 60.0
+	b.time = 44.5
+	b.step(0.25)
+	check(b.frenzy_level == 0, "combat has no frenzy before 45 seconds")
+
+	ally.attack_timer = interval
+	b.spells[0].charges = 0
+	b.spells[1].charges = 0
+	b.spells[0].recharge = 0.0
+	b.spells[1].recharge = 0.0
+	b.spells[1].recharge_time = Rules.UPGRADED_RECHARGE_TIME
+	b.step(0.25)
+	check(b.frenzy_level == 1 and is_equal_approx(ally.move_speed(), speed * 1.2),
+		"frenzy starts at 45 seconds and boosts movement by 20%")
+	check(is_equal_approx(ally.attack_interval(), interval / 1.2)
+		and is_equal_approx(ally.attack_timer, interval - 0.25 * 1.2),
+		"frenzy speeds up basic attacks already on cooldown")
+	check(is_equal_approx(b.spells[0].recharge, 0.25) and is_equal_approx(b.spells[1].recharge, 0.25)
+		and b.spells[0].recharge_time == Rules.RECHARGE_TIME
+		and b.spells[1].recharge_time == Rules.UPGRADED_RECHARGE_TIME,
+		"frenzy leaves normal and upgraded shapeshift recharge rates intact")
+	b.damage(ally, foe, 10.0, "melee")
+	check(is_equal_approx(foe.hp, foe.max_hp - 12.0), "frenzy boosts damage dealt by 20%")
+
+	for level in range(2, 6):
+		b.step(3.0)
+		check(b.frenzy_level == level, "frenzy gains a level every three seconds")
+	check(is_equal_approx(b.frenzy_multiplier(), 2.0), "frenzy doubles damage and speed at 57 seconds")
+	b.step(3.0)
+	check(b.finished and b.result.winner == -1, "surviving teams still draw at 60 seconds")
+	b.free()
 
 
 func _test_abilities() -> void:
@@ -895,20 +986,41 @@ func _test_mage_attacks() -> void:
 
 	fire.ability_timer = 0.0
 	fire._tick_ability()
-	fire._tick_ability()
+	fire.tick(0.75)
+	check(b.projectiles.is_empty() and fire.channel_t > 0.0, "pyromancer does not attack during its fireball channel")
+	fire.tick(0.25)
 	check(b.projectiles.size() == 1 and fire.ability_timer == 15.0,
 		"fireball starts its own long cooldown at launch")
 	var projectile := b.projectiles[0]
+	check(b.cast(1, fire), "enemy can transform pyromancer after launch")
 	guard.position += Vector2(12, -20)
 	b._update_projectiles(0.1)
 	check(projectile.aim == guard.position and is_equal_approx(fire.position.distance_to(projectile.pos), 0.35 * Rules.CELL),
-		"fireball follows a moving enemy at its slower travel speed")
+		"launched fireball still follows a moving enemy after caster transforms")
 	b.damage(null, guard, guard.max_hp, "ability", true)
 	b._reap()
 	hp = neighbour.hp
 	b._update_projectiles(2.0)
 	check(is_equal_approx(hp - neighbour.hp, 120.0), "fireball retargets after a kill and ignores armour")
 	b.free()
+
+
+func _test_mage_interruptions() -> void:
+	for form in ["pyromancer", "frost_mage"]:
+		var b := _new_battle()
+		var mage := b.spawn(1, form, Vector2(240, 150))
+		b.spawn(0, "guardian", Vector2(240, 300))
+		mage.ability_timer = 0.0
+		mage.tick(0.0)
+		check(mage.channel_t == 1.0 and b.projectiles.is_empty() and b.blizzards.is_empty(),
+			"%s channels before releasing its ability" % form)
+		var cooldown: float = mage.data.cd
+		check(b.cast(0, mage), "channeling mage can be transformed")
+		check(mage.channel_t == 0.0 and mage.ability_timer == cooldown,
+			"%s loses the cast and starts its cooldown on interruption" % form)
+		mage.tick(1.0)
+		check(b.projectiles.is_empty() and b.blizzards.is_empty(), "interrupted ability never fires")
+		b.free()
 
 
 # --- Simulations ------------------------------------------------------------------------
@@ -924,7 +1036,9 @@ func _test_overlapping_blizzards() -> void:
 	b.add_blizzard(other_mage, Vector2(236, 170)) # overlaps the first storm
 	b.add_blizzard(other_mage, Vector2(380, 170))
 	b._tick_blizzards(1.0)
-	check(absf(victim.max_hp - victim.hp - 6.0) < 0.01 and absf(lone.max_hp - lone.hp - 6.0) < 0.01,
+	var single_storm_damage: float = mage.data.storm_dps
+	check(absf(victim.max_hp - victim.hp - single_storm_damage) < 0.01
+		and absf(lone.max_hp - lone.hp - single_storm_damage) < 0.01,
 		"overlapping blizzards deal the damage of one storm, not their sum")
 	check(victim.statuses.has("chilled") and is_equal_approx(victim.statuses.chilled.v, 0.5),
 		"overlapping blizzards still chill once at full strength")
@@ -968,6 +1082,7 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 	var friend := b.spawn(0, "archer", Vector2(200, 170))
 	mage.ability_timer = 0
 	mage._tick_ability()
+	mage.tick(1.0)
 	check(b.blizzards.size() == 1 and b.blizzards[0].rect.size == Vector2.ONE * Rules.CELL * 3,
 		"frost mage casts an exact 3x3 square blizzard")
 	check(mage.ability_timer >= 8, "blizzard has a long cooldown")
@@ -982,7 +1097,7 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 		"blizzard halves movement and basic attack rates")
 	mage.transform_to("peacock", false)
 	b._tick_blizzards(10.0)
-	check(b.blizzards.is_empty() and absf(victim.max_hp - victim.hp - 18.0) < 0.01,
+	check(b.blizzards.is_empty() and absf(victim.max_hp - victim.hp - 21.6) < 0.01,
 		"cast blizzard persists after form change and damage stops at duration")
 	b.free()
 
@@ -1060,6 +1175,42 @@ func _test_ai_strategy() -> void:
 	action = EnemyAI.shop_step(state, rng)
 	check(action.get("kind") == "upgrade" and state.shift_recharge_upgraded and state.gold == 0,
 		"AI buys recharge upgrade from its own gold")
+	state.gold = 10
+	state.ai_rerolls = 2
+	state.offers = ["peasant", "", ""]
+	action = EnemyAI.shop_step(state, rng)
+	check(action.get("kind") == "reroll" and state.gold == 9, "AI keeps looking for improvements after two rerolls")
+	state.gold = Rules.REROLL_COST
+	state.offers = ["peasant", "", ""]
+	check(EnemyAI.shop_step(state, rng).is_empty() and state.gold == Rules.REROLL_COST,
+		"AI keeps its last coin when a reroll would leave nothing for a purchase")
+	state.gold = 2
+	state.offers = ["guardian", "", ""]
+	action = EnemyAI.shop_step(state, rng)
+	check(action.get("kind") == "buy" and state.gold == 0,
+		"AI starts collecting copies towards the next star of a fielded unit")
+
+	state = WizardState.new(1)
+	for id in ["guardian", "berserker", "spearman", "archer", "cleric", "frost_mage"]:
+		state.add_creature(id)
+	for id in ["peasant", "duelist", "assassin", "crossbowman", "pyromancer", "bard"]:
+		state.add_creature(id)
+	guard = state.creatures[0]
+	guard.merge_copies = 2
+	state.gold = 2
+	state.offers = ["guardian", "", ""]
+	action = EnemyAI.shop_step(state, rng)
+	check(action.get("kind") == "merge" and action.get("cost") == 2 and state.gold == 0
+		and guard.stars == 1 and state.free_slot() == -1 and state.field_count() == Rules.FIELD_CAP,
+		"AI pays for a direct promotion even when the field and bench are full")
+	state = WizardState.new(1)
+	for id in ["guardian", "berserker", "spearman", "archer", "cleric", "frost_mage"]:
+		state.add_creature(id).stars = Rules.MAX_STARS
+	state.shift_recharge_upgraded = true
+	state.gold = 10
+	state.offers = ["guardian", "pyromancer", ""]
+	check(EnemyAI.shop_step(state, rng).is_empty() and state.gold == 10,
+		"AI skips rerolls when the shop has no way to improve a max-rank team")
 	var b := _new_battle()
 	var weak_enemy := b.spawn(0, "peasant", Vector2(100, 350))
 	b.spawn(1, "guardian", Vector2(100, 100))
@@ -1079,8 +1230,7 @@ func _simulate_duels() -> void:
 			rng.seed = 1000 + duel
 			var states: Array[WizardState] = [WizardState.new(0), WizardState.new(1)]
 			for s in states:
-				for id in EnemyAI.choose_pack(rng, CreatureDB.PACKS):
-					s.add_creature(id)
+				s.take_starting_pack(EnemyAI.choose_pack(rng))
 			var round_num := 0
 			while states[0].hp > 0 and states[1].hp > 0 and round_num < 40:
 				round_num += 1

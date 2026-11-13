@@ -1,7 +1,6 @@
 class_name Hud
 extends Node2D
-## Side panels, buttons, overlays and the hover card. Icon-only by design:
-## the only text drawn is a few numbers (gold, round).
+## Side panels, buttons, overlays and the hover card.
 
 const ENEMY_BLOCK := Rect2(24, 84, 300, 140)
 const PLAYER_BLOCK := Rect2(24, 376, 300, 156)
@@ -104,11 +103,11 @@ static func offer_rect(i: int) -> Rect2:
 
 
 static func pack_rect(i: int) -> Rect2:
-	return Rect2(Vector2(372 + i * 184, PACK_TOP), Vector2(168, 120))
+	return Rect2(Vector2(364 + i * 188, PACK_TOP), Vector2(176, 168))
 
 
 static func pack_token_pos(i: int, j: int) -> Vector2:
-	return pack_rect(i).position + Vector2(30 + j * 54, 60)
+	return pack_rect(i).position + Vector2(34 + j * 54, 68)
 
 
 static func charge_pos(i: int) -> Vector2:
@@ -194,7 +193,7 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 		Icons.wand(self, block.position + Vector2(230, 84), 14, true)
 	Icons.coin(self, gold_pos(team), 15 * (1.0 + coin_pulse * 0.45))
 	draw_string(font, block.position + Vector2(66, 135 - coin_pulse * 5), str(displayed_gold(state)), HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Icons.GOLD.lerp(Color.WHITE, coin_pulse))
-	if team == 0:
+	if team == 0 and game.phase != game.Phase.PACK:
 		var next_income := Rules.income(game.round_num + 1)
 		Icons.coin(self, block.position + Vector2(150, 124), 9)
 		draw_string(font, block.position + Vector2(163, 132), "+" + str(next_income), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.9, 0.8, 0.5, 0.7))
@@ -359,7 +358,12 @@ func _draw_combat_hud() -> void:
 	var bar := Rect2(Rules.BOARD_POS + Vector2(0, -34), Vector2(Rules.BOARD_SIZE.x, 10))
 	draw_rect(bar, Color(0, 0, 0, 0.5))
 	var left := clampf(1.0 - b.time / Rules.COMBAT_TIMEOUT, 0.0, 1.0)
-	draw_rect(Rect2(bar.position, Vector2(bar.size.x * left, bar.size.y)), Color(0.9, 0.8, 0.5).lerp(Color(1, 0.3, 0.2), 1.0 - left))
+	var timer_color := Color(0.9, 0.8, 0.5).lerp(Color(1, 0.3, 0.2), 1.0 - left)
+	if b.frenzy_level > 0:
+		timer_color = Color(1.0, 0.24, 0.16)
+		if not b.finished:
+			_draw_frenzy(b, bar, timer_color)
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * left, bar.size.y)), timer_color)
 	# Large player charges under the board.
 	var spell: ShiftSpell = b.spells[0]
 	for i in Rules.MAX_CHARGES:
@@ -367,6 +371,16 @@ func _draw_combat_hud() -> void:
 		Icons.charge_orb(self, charge_pos(i), 24, spell.charges > i and b.casting_enabled, prog)
 	if not b.casting_enabled:
 		Icons.wand(self, charge_pos(1), 30, true)
+
+
+func _draw_frenzy(b: Battle, bar: Rect2, color: Color) -> void:
+	var step_start := Rules.FRENZY_START + (b.frenzy_level - 1) * Rules.FRENZY_STEP_SECONDS
+	var flash := clampf(1.0 - (b.time - step_start) / 0.55, 0.0, 1.0)
+	var outline := Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE).grow(3.0)
+	draw_rect(outline, Color(color, 0.45 + flash * 0.55), false, 2.0 + flash * 3.0)
+	var bonus := roundi((b.frenzy_multiplier() - 1.0) * 100.0)
+	draw_string(font, bar.position + Vector2(0, -7), "FRENZY +%d%%" % bonus,
+		HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, 18, Color(1.0, 0.65, 0.35).lerp(Color.WHITE, flash))
 
 
 func _draw_result() -> void:
@@ -384,14 +398,23 @@ func _draw_result() -> void:
 func _draw_pack_choice() -> void:
 	var dim := Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE)
 	draw_rect(dim, Color(0, 0, 0, 0.45))
-	for i in game.pack_choices.size():
+	for i in CreatureDB.PACKS.size():
+		var pack: Dictionary = CreatureDB.PACKS[i]
 		var r := pack_rect(i)
 		var hovered := r.has_point(get_global_mouse_position())
 		_panel(r, Color(0.22, 0.16, 0.1) if hovered else Color(0.14, 0.1, 0.08))
 		if hovered:
 			draw_rect(r.grow(3), Icons.GOLD, false, 3.0)
-		for j in game.pack_choices[i].size():
-			Icons.token(self, game.pack_choices[i][j], pack_token_pos(i, j), 24, 0)
+		draw_string(font, r.position + Vector2(0, 30), pack.name,
+			HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 22, Color(0.96, 0.88, 0.75))
+		for j in pack.forms.size():
+			Icons.token(self, pack.forms[j], pack_token_pos(i, j), 24, 0)
+		draw_string(font, r.position + Vector2(0, 115), pack.plan,
+			HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 14, Color(0.84, 0.76, 0.68))
+		Icons.coin(self, r.position + Vector2(32, 143), 9)
+		var starting_gold := Rules.income(1) + int(pack.bonus_gold)
+		draw_string(font, r.position + Vector2(47, 148), "%d starting gold" % starting_gold,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Icons.GOLD)
 
 
 func _draw_game_over() -> void:

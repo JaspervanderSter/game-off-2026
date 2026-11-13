@@ -54,7 +54,7 @@ duration, radius, trigger); they are behaviours, not an additional shared
 statistic every creature must have. Target priority and melee/projectile attack
 type are also behaviours. No mana, critical chance, dodge chance or wizard upgrade
 systems are introduced by this draft. Temporary combat levels are now selected:
-start at level 1, gain +1 per allied cast, preserve levels on enemy casts, reset
+start at level 1, gain +1 per allied cast, and reset to level 1 on enemy casts or
 between rounds. Delegated scaling default: +20% of the current form's base maximum
 health and basic attack damage per level above 1; all other base stats stay fixed. The Duelist's proposed parry is
 a creature ability, not a universal random dodge statistic.
@@ -95,11 +95,10 @@ by this draft. The grouping and chances remain design proposals.
 
 This structure makes routes easier to understand but groups of three currently
 share identical outgoing options. Test whether this reduces variety too much.
-Health restoration, attack resets, cleansing and retained levels are specified
-in [[Prototype 02]]. Opposing casts cannot remove earned levels. The old generic
-enemy debuff is superseded: enemy targets keep their level, and can still receive
-the general heal, cleanse and attack reset. Evaluate whether targeting enemies
-is useful despite these benefits. Do not silently apply an allied-only exception.
+[[Prototype 02]] defines the shared shapeshift rules. Allied casts heal, ready
+the basic attack, cleanse negative statuses and grant a level. Enemy casts
+preserve health percentage, basic-attack cooldown and statuses, reset the
+target to level 1, and stun it for three seconds.
 
 ## Editing and synchronisation
 
