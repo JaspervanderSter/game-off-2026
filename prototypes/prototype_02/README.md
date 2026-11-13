@@ -328,6 +328,21 @@ difficulty, its padlock opens on the difficulty screen.
   (adept) or no (apprentice) recharge upgrade, no locks, no selling to replace
   (apprentice), naive field selection (apprentice), and slower, less selective
   casting that sometimes targets a random creature (15% adept, 40% apprentice).
+- The **Apprentice** also has whims: at its first shop of a duel it draws a
+  lasting taste for each creature (up to ±120 value, against creature values of
+  about 23-63 unstarred). The taste counts both when buying and when choosing
+  who to field, so it builds odd but consistent teams (three clerics, a field of
+  peasants, a benched starred creature it dislikes) while still merging copies.
+- **Sparring** (`Difficulty.SPARRING`) is never offered in the game. It keeps the
+  Apprentice settings from before whims as a fixed reference for balancing.
+
+Apprentice calibration (13 November 2026, `training/arena.sh`, live rules):
+the Apprentice beats Sparring 23.9% of 1,760 duels (whims ±60: 32%, ±100: 26%,
+±130: 23%). Against the Adept it wins 4.4% of 880 duels, where Sparring wins 13.6%.
+
+```bash
+prototypes/prototype_02/training/arena.sh '{"level":0}' '{"level":3}' 22 80 7
+```
 
 Difficulty settings live in `scripts/core/difficulty.gd`. Before the combat
 and AI updates above, calibration against Archmage in AI-vs-AI duels
@@ -355,7 +370,7 @@ variants against a champion profile. Neither is part of the regression tests.
 prototypes/prototype_02/training/arena.sh '{"level":2}' '{"level":1}' 22 10 1
 ```
 
-A side is `{"level": 0-2, "profile": {EnemyAI key overrides}, "cast": {Difficulty
+A side is `{"level": 0-3 (3 = Sparring), "profile": {EnemyAI key overrides}, "cast": {Difficulty
 casting overrides}}`. With the tuned profile, the Archmage won 220/220 duels
 against the Adept and 220/220 against the Apprentice (previously about 75% and
 96%); the tuning chain beat the previous Archmage strategy about 89% of the time.

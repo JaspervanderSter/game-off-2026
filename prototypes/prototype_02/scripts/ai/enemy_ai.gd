@@ -97,11 +97,23 @@ static func form_value(id: String, stars: int = 0, profile: Dictionary = DEFAULT
 	return value
 
 
-## Fielding value: combat value plus the gold a harvester pays when the fight begins.
+## Fielding value: combat value plus the gold a harvester pays when the fight
+## begins, plus the wizard's whim for that creature (whimsical levels only).
 static func field_value(state: WizardState, form_id: String, stars: int, profile: Dictionary) -> float:
 	# Early harvests pay for more rounds; a wizard low on hearts has fewer left.
 	var weight: float = profile.get("harvest_value", 0.0) * pow(state.hp / Rules.WIZARD_HP, profile.get("harvest_hp_power", 0.0))
-	return form_value(form_id, stars, profile) + weight * Rules.harvest_gold(form_id, stars)
+	return form_value(form_id, stars, profile) + weight * Rules.harvest_gold(form_id, stars) + state.ai_whims.get(form_id, 0.0)
+
+
+## Draw once per duel how much a whimsical wizard likes or dislikes each creature.
+## The taste lasts the whole duel, so its mistakes add up into an odd but
+## consistent team instead of averaging out like per-purchase noise.
+static func draw_whims(state: WizardState, rng: RandomNumberGenerator) -> void:
+	var spread: float = Difficulty.profile(state.ai_level).get("whims", 0.0)
+	if spread <= 0.0 or not state.ai_whims.is_empty():
+		return
+	for id in CreatureDB.shop_ids():
+		state.ai_whims[id] = rng.randf_range(-spread, spread)
 
 
 static func _protected_value(state: WizardState, c: OwnedCreature, profile: Dictionary) -> float:
@@ -128,6 +140,7 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 	if profile.is_empty():
 		profile = profile_for(state.ai_level)
 	var difficulty := Difficulty.profile(state.ai_level)
+	draw_whims(state, rng)
 	var targets := state.creatures.duplicate()
 	targets.sort_custom(func(a, b): return a.is_fielded() and not b.is_fielded())
 	for target in targets:

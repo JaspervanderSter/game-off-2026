@@ -1477,6 +1477,41 @@ func _test_difficulty() -> void:
 	var action := EnemyAI.shop_step(state, rng)
 	check(action.get("kind") != "sell" and state.field_count() == before, "apprentice never sells to replace")
 
+	# Apprentice whims: one taste per creature for the whole duel, used both to
+	# buy and to field. Sparring is the whimless reference kept for balancing.
+	var spread: float = apprentice.get("whims", 0.0)
+	var whims_ok := spread > 0.0 and state.ai_whims.size() == CreatureDB.shop_ids().size()
+	for id in state.ai_whims:
+		whims_ok = whims_ok and absf(state.ai_whims[id]) <= spread
+	var drawn: Dictionary = state.ai_whims.duplicate()
+	EnemyAI.shop_step(state, rng)
+	check(whims_ok and state.ai_whims == drawn, "apprentice draws its whims once per duel")
+	var sparring := Difficulty.profile(Difficulty.SPARRING)
+	check(Difficulty.SPARRING >= Difficulty.COUNT and EnemyAI.profile_for(Difficulty.SPARRING) == EnemyAI.DEFAULT_PROFILE
+		and sparring.get("whims", 0.0) == 0.0 and adept.get("whims", 0.0) == 0.0 and archmage.get("whims", 0.0) == 0.0
+		and sparring.merged({"whims": spread}) == apprentice, "sparring is the apprentice without whims, outside the hat choice")
+	for level in [Difficulty.ADEPT, Difficulty.SPARRING]:
+		var calm := WizardState.new(1)
+		calm.ai_level = level
+		calm.offers = ["", "", ""]
+		EnemyAI.shop_step(calm, rng)
+		check(calm.ai_whims.is_empty(), "level %d has no whims" % level)
+	var fan := WizardState.new(1)
+	fan.ai_level = Difficulty.APPRENTICE
+	fan.ai_whims = {"peasant": 500.0, "pyromancer": -500.0}
+	fan.gold = 3
+	fan.offers = ["pyromancer", "peasant", ""]
+	action = EnemyAI.shop_step(fan, rng)
+	check(action.get("kind") == "buy" and fan.creatures[0].form_id == "peasant", "apprentice buys its favourite creature")
+	fan = WizardState.new(1)
+	fan.ai_level = Difficulty.APPRENTICE
+	fan.ai_whims = {"pyromancer": -500.0}
+	for id in ["pyromancer", "peasant", "peasant", "spearman", "archer", "cleric", "bard"]:
+		fan.add_creature(id)
+	EnemyAI.arrange(fan)
+	check(fan.creatures[0].form_id == "pyromancer" and not fan.creatures[0].is_fielded()
+		and fan.field_count() == Rules.FIELD_CAP, "apprentice benches a creature it dislikes")
+
 	var b := _new_battle()
 	var ally := b.spawn(1, "guardian", Vector2(100, 100))
 	var foe := b.spawn(0, "peasant", Vector2(100, 350))

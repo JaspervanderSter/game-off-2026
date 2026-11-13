@@ -8,6 +8,7 @@ var loss_gold_progress := 0.0 # half-heart compensation carries across rounds
 var shift_recharge_upgraded := false
 var ai_level := Difficulty.ARCHMAGE # opponent strength; the player ignores it
 var ai_rerolls := 0
+var ai_whims := {} # form id -> taste drawn once per duel by whimsical AI levels
 var gold := 0
 var creatures: Array[OwnedCreature] = []
 var offers: Array[String] = [] # "" once bought
