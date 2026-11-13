@@ -179,14 +179,16 @@ func spawn_projectile(src: Unit, t: Unit, fireball := false) -> void:
 		"aim": t.position,
 		"team": src.team,
 		"kind": "fireball" if fireball else src.data.attack,
-		"dmg": src.data.power if fireball else src.attack_damage(),
+		# Fire damage scales with stars and levels like basic damage, so the
+		# pyromancer's ability-based damage keeps pace with merged enemies.
+		"dmg": src.data.power * src.stat_mult() if fireball else src.attack_damage(),
 		"src": src,
 		"speed": src.data.fireball_speed * CELL if fireball else PROJECTILE_SPEED,
 		"pierce": fireball or src.data.ability == "pierce",
 		"splash": 0.0 if fireball else src.data.get("splash_radius", 0.0) * CELL,
 		"chill_slow": src.data.get("chill_slow", 0.0),
 		"chill_duration": src.data.get("chill_duration", 0.0),
-		"burn_dps": src.data.get("burn_dps", 0.0),
+		"burn_dps": src.data.get("burn_dps", 0.0) * src.stat_mult(),
 		"burn_duration": src.data.get("burn_duration", 0.0),
 	})
 	Sfx.play("shoot")

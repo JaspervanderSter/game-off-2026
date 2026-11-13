@@ -190,6 +190,9 @@ playtesting is still needed to judge each form's situational value.
   is in range, preferring the shortest remaining burn. A separate homing fireball
   travels at 3.5 cells/s, deals 120 damage through armour to one enemy, and applies
   the same burn. It is ready after 6 s at the start of combat, then every 15 s.
+  Unlike other ability magnitudes, fireball and burn damage scale with stars and
+  temporary levels exactly like basic damage (the values above are for 0 stars,
+  level 1).
 - Assassin purchase price is now 2 gold.
 - AI no longer stops improving once six creatures are fielded. It buys useful
   duplicates, completes stars, replaces weaker units based on combat value,
