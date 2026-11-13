@@ -90,17 +90,18 @@ func new_duel() -> void:
 	last_result = {}
 	last_damage = 0
 	last_damage_team = -1
-	newly_unlocked_difficulty = -1
 	hud.clear_loss_rewards()
 	hud.clear_harvest()
 	hud.clear_victory()
 	phase = Phase.DIFFICULTY
+	hud.begin_difficulty_unlock(newly_unlocked_difficulty)
+	newly_unlocked_difficulty = -1
 	music.transition_to("prep")
 
 
 ## Every duel starts by picking the opponent's hat; the level holds for the duel.
 func choose_difficulty(level: int) -> void:
-	if phase != Phase.DIFFICULTY:
+	if phase != Phase.DIFFICULTY or hud.unlock_animation_active():
 		return
 	if not is_difficulty_unlocked(level):
 		Sfx.play("fail")

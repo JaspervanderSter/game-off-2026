@@ -1397,11 +1397,22 @@ func _test_difficulty() -> void:
 	_finish_test_difficulty_win(game)
 	check(game.newly_unlocked_difficulty == Difficulty.ADEPT and game.is_difficulty_unlocked(Difficulty.ADEPT)
 		and not game.is_difficulty_unlocked(Difficulty.ARCHMAGE), "winning as apprentice unlocks only adept")
-	check(not game.hud.victory._particles.is_empty(), "a duel victory starts the celebration")
-	game.new_duel()
-	check(game.newly_unlocked_difficulty == -1 and game.hud.victory._particles.is_empty(),
-		"replay clears the celebration and the unlock announcement")
+	check(not game.hud.victory._particles.is_empty() and not game.hud.unlock_animation_active(),
+		"victory celebrates the duel and queues the unlock reveal for replay")
+	game._left_press(Hud.RESTART_POS)
+	check(game.newly_unlocked_difficulty == -1 and game.hud.unlock_level == Difficulty.ADEPT
+		and game.hud.victory._particles.is_empty(), "replay starts the unlock reveal on the difficulty screen")
 	key.keycode = KEY_2
+	game._unhandled_input(key)
+	check(game.phase == game.Phase.DIFFICULTY, "selection waits for the unlock reveal")
+	Sfx._last_played.erase("difficulty_unlock")
+	game.hud.advance_difficulty_unlock(Hud.UNLOCK_CLICK * 0.5)
+	check(not Sfx._last_played.has("difficulty_unlock"), "the closed lock is silent before opening")
+	game.hud.advance_difficulty_unlock(Hud.UNLOCK_CLICK)
+	check(not Sfx.enabled or Sfx._last_played.has("difficulty_unlock"), "the opening plays the unlock sound")
+	game.hud.advance_difficulty_unlock(Hud.UNLOCK_DURATION)
+	game.new_duel()
+	check(not game.hud.unlock_animation_active(), "the unlock reveal plays once")
 	game._unhandled_input(key)
 	check(game.phase == game.Phase.PACK and game.enemy.ai_level == Difficulty.ADEPT, "number keys pick a hat")
 	var hat_battle := Battle.new()

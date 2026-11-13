@@ -315,8 +315,8 @@ opponent's hat until a new one is picked.
 
 Only Apprentice is available on a fresh profile. Winning a duel against
 Apprentice unlocks Adept, and winning against Adept unlocks Archmage. The game
-saves unlocked difficulties locally. The victory screen shows the newly
-unlocked hat with an open padlock.
+saves unlocked difficulties locally. When the player replays after unlocking a
+difficulty, its padlock opens on the difficulty screen.
 
 - **Archmage** uses the full-strength AI strategy, including budget-driven shop rerolls.
 - **Adept** and **Apprentice** follow the same rules, gold and spell charges as

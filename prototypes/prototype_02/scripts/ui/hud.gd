@@ -7,6 +7,9 @@ const PLAYER_BLOCK := Rect2(24, 376, 300, 156)
 const ROUND_POS := Vector2(174, 300)
 const RESTART_POS := Vector2(640, 420)
 const VICTORY_POS := Vector2(640, 255)
+const UNLOCK_CLICK := 0.48
+const UNLOCK_OPEN_TIME := 0.24
+const UNLOCK_DURATION := 1.40
 const VictoryFx := preload("res://scripts/ui/victory_fx.gd")
 const OFFER_SIZE := Vector2(288, 112)
 const REROLL_RECT := Rect2(1000, 458, 224, 42)
@@ -35,6 +38,8 @@ var harvest_time := 0.0
 var harvest_sources: Array[Dictionary] = []
 var harvest_coins: Array[Dictionary] = []
 var victory := VictoryFx.new()
+var unlock_level := -1
+var unlock_time := 0.0
 
 
 func _ready() -> void:
@@ -46,6 +51,28 @@ func _process(dt: float) -> void:
 	advance_harvest(dt)
 	if game.phase == game.Phase.OVER:
 		victory.advance(dt)
+	elif game.phase == game.Phase.DIFFICULTY:
+		advance_difficulty_unlock(dt)
+
+
+func begin_difficulty_unlock(level: int) -> void:
+	unlock_level = level
+	unlock_time = 0.0
+
+
+func unlock_animation_active() -> bool:
+	return unlock_level >= 0
+
+
+func advance_difficulty_unlock(dt: float) -> void:
+	if not unlock_animation_active():
+		return
+	var previous := unlock_time
+	unlock_time += dt
+	if previous < UNLOCK_CLICK and unlock_time >= UNLOCK_CLICK:
+		Sfx.play("difficulty_unlock", 0.0)
+	if unlock_time >= UNLOCK_DURATION:
+		unlock_level = -1
 
 
 func begin_victory() -> void:
@@ -209,7 +236,7 @@ static func difficulty_rect(i: int) -> Rect2:
 
 ## Opponent hat shown in the enemy panel: the hovered card previews its level.
 func shown_difficulty() -> int:
-	if game.phase == game.Phase.DIFFICULTY:
+	if game.phase == game.Phase.DIFFICULTY and not unlock_animation_active():
 		for i in Difficulty.COUNT:
 			if game.is_difficulty_unlocked(i) and difficulty_rect(i).has_point(get_global_mouse_position()):
 				return i
@@ -588,8 +615,13 @@ func _draw_difficulty_choice() -> void:
 	for i in Difficulty.COUNT:
 		var r := difficulty_rect(i)
 		var unlocked: bool = game.is_difficulty_unlocked(i)
-		var hovered := unlocked and r.has_point(mouse)
-		var card := Rect2(r.position + Vector2(0, -6 if hovered else 0), r.size)
+		var revealing := i == unlock_level
+		var hovered := unlocked and not unlock_animation_active() and r.has_point(mouse)
+		var reveal_age := unlock_time - UNLOCK_CLICK
+		var opening := smoothstep(0.0, UNLOCK_OPEN_TIME, reveal_age) if revealing else 0.0
+		var pulse := sin(PI * smoothstep(0.0, 0.58, reveal_age)) if revealing else 0.0
+		var lift := 6.0 if hovered else pulse * 9.0
+		var card := Rect2(r.position - Vector2(0, lift), r.size)
 		_panel(card, Color(0.22, 0.16, 0.1) if hovered else Color(0.14, 0.1, 0.08))
 		if hovered:
 			draw_rect(card.grow(3), Icons.GOLD, false, 3.0)
@@ -604,11 +636,33 @@ func _draw_difficulty_choice() -> void:
 			draw_circle(Vector2.ZERO, w, Color(glow, (0.05 + i * 0.025) * (1.4 if hovered else 1.0)))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		Icons.difficulty_hat(self, i, centre + Vector2(0, bob), hat_scale, t)
-		if not unlocked:
-			draw_rect(card.grow(-2), Color(0.06, 0.04, 0.06, 0.65))
+		if not unlocked or revealing:
+			draw_rect(card.grow(-2), Color(0.06, 0.04, 0.06, 0.65 * (1.0 - opening)))
 			var lock_pos := Vector2(centre.x, card.end.y - 40)
-			draw_circle(lock_pos, 19, Color(0.13, 0.09, 0.08), true)
-			Icons.padlock(self, lock_pos)
+			if revealing:
+				_draw_difficulty_unlock(card, lock_pos, opening, reveal_age)
+			else:
+				draw_circle(lock_pos, 19, Color(0.13, 0.09, 0.08), true)
+				Icons.padlock(self, lock_pos)
+
+
+func _draw_difficulty_unlock(card: Rect2, lock_pos: Vector2, opening: float, age: float) -> void:
+	var anticipation := smoothstep(0.0, UNLOCK_CLICK, unlock_time)
+	var wobble := sin(unlock_time * 46.0) * anticipation * (1.0 - opening) * 3.0
+	var fade := 1.0 - smoothstep(0.40, 0.78, age)
+	var scale_factor := 1.0 + anticipation * 0.25 + opening * 0.18
+	lock_pos += Vector2(wobble, -opening * 8.0)
+	draw_circle(lock_pos, 19.0 * scale_factor, Color(0.13, 0.09, 0.08, fade), true)
+	Icons.padlock(self, lock_pos, opening, scale_factor, fade)
+	var flash := smoothstep(0.0, 0.10, age) * (1.0 - smoothstep(0.17, 0.92, age))
+	draw_rect(card.grow(3), Color(Icons.GOLD, flash), false, 2.5)
+	if age > 0.0 and age < 0.60:
+		var burst := age / 0.60
+		draw_arc(lock_pos, 21.0 + burst * 38.0, 0.0, TAU, 32, Color(Icons.GOLD, 0.75 * (1.0 - burst)), 2.0, true)
+		for i in 10:
+			var direction := Vector2.from_angle(TAU * i / 10.0)
+			var distance := 24.0 + burst * (45.0 + (i % 3) * 12.0)
+			Icons.star(self, lock_pos + direction * distance, 5.0 * (1.0 - burst), Color(Icons.GOLD, 1.0 - burst))
 
 
 func _draw_pack_choice() -> void:
@@ -641,15 +695,6 @@ func _draw_game_over() -> void:
 		victory.draw(self)
 		var pop := 1.0 + 0.35 * sin(victory.age * 16.0) * exp(-5.5 * victory.age)
 		Icons.crown(self, VICTORY_POS, 90 * pop)
-		var unlocked: int = game.newly_unlocked_difficulty
-		if unlocked >= 0:
-			var badge := Vector2(640, 345)
-			draw_circle(badge, 29, Color(0.14, 0.09, 0.08), true)
-			draw_arc(badge, 29, 0, TAU, 32, Icons.GOLD, 2.0, true)
-			Icons.difficulty_hat(self, unlocked, badge + Vector2(0, 1), 22, victory.age)
-			var lock_pos := badge + Vector2(24, 13)
-			draw_circle(lock_pos, 13, Color(0.14, 0.09, 0.08), true)
-			Icons.padlock(self, lock_pos, true)
 	else:
 		Icons.skull(self, Vector2(640, 280), 95)
 	var hovered := RESTART_POS.distance_to(get_global_mouse_position()) < 46

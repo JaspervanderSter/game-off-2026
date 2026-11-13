@@ -309,11 +309,17 @@ static func merge_progress(ci: CanvasItem, center: Vector2, copies: int, stars: 
 			ci.draw_circle(p, 2.3, GOLD)
 
 
-static func padlock(ci: CanvasItem, p: Vector2, opened := false) -> void:
-	var shackle := p + (Vector2(4, -9) if opened else Vector2(0, -4))
-	ci.draw_arc(shackle, 6, PI, TAU + (PI / 2.0 if opened else 0.0), 16, GOLD, 3.0, true)
-	ci.draw_rect(Rect2(p + Vector2(-8, -4), Vector2(16, 13)), GOLD)
-	ci.draw_circle(p + Vector2(0, 1), 2, DARK)
+static func padlock(ci: CanvasItem, p: Vector2, opening := 0.0, scale_factor := 1.0, opacity := 1.0) -> void:
+	var gold := Color(GOLD, opacity)
+	var hinge := Vector2(-6, -4)
+	var shackle := PackedVector2Array()
+	for i in 17:
+		var point := Vector2.from_angle(PI + PI * i / 16.0) * 6.0 + Vector2(0, -4)
+		point = hinge + (point - hinge).rotated(-0.85 * opening) + Vector2(0, -2.0 * opening)
+		shackle.append(p + point * scale_factor)
+	ci.draw_polyline(shackle, gold, 3.0 * scale_factor, true)
+	ci.draw_rect(Rect2(p + Vector2(-8, -4) * scale_factor, Vector2(16, 13) * scale_factor), gold)
+	ci.draw_circle(p + Vector2(0, 1) * scale_factor, 2.0 * scale_factor, Color(DARK, opacity))
 
 
 ## Hover reticle for the shapeshift spell. Ally: a cyan blessing circle with

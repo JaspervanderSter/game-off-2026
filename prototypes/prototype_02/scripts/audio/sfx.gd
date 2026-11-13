@@ -39,6 +39,7 @@ func _ready() -> void:
 	_streams.death = _make(0.5, func(t, k): return _sweep(t, 700.0, 120.0, k) * (1.0 - k) * 0.5 + (randf() * 2.0 - 1.0) * 0.2 * (1.0 - k))
 	_streams.buy = _make(0.25, func(t, k): return (sin(t * TAU * 1320.0) + sin(t * TAU * 1980.0) * 0.5) * exp(-k * 5.0) * 0.4)
 	_streams.click = _make(0.05, func(t, k): return sin(t * TAU * 700.0) * (1.0 - k) * 0.4)
+	_streams.difficulty_unlock = _make(0.25, _unlock_sample)
 	_streams.fail = _make(0.15, func(t, k): return sign(sin(t * TAU * 140.0)) * (1.0 - k) * 0.2)
 	_streams.win = preload("res://sfx/victory.wav")
 	_streams.lose = preload("res://sfx/defeat.wav")
@@ -98,6 +99,14 @@ func _sweep(t: float, f0: float, f1: float, k: float) -> float:
 	# Phase of a linear chirp from f0 to f1 over the sound's duration.
 	var duration := t / maxf(k, 0.0001)
 	return sin(TAU * (f0 * t + (f1 - f0) * t * t / (2.0 * duration)))
+
+
+func _unlock_sample(t: float, _k: float) -> float:
+	var latch := (sin(TAU * 520.0 * t) * 0.48 + sin(TAU * 1630.0 * t) * 0.28
+		+ randf_range(-0.24, 0.24)) * exp(-95.0 * t)
+	var ring_time := maxf(t - 0.045, 0.0)
+	var ring := (sin(TAU * 1318.5 * ring_time) * 0.33 + sin(TAU * 2768.9 * ring_time) * 0.15)
+	return latch + ring * exp(-22.0 * ring_time) * minf(ring_time / 0.006, 1.0)
 
 
 func _make(duration: float, gen: Callable) -> AudioStreamWAV:
