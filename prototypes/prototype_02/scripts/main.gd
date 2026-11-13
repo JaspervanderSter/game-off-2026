@@ -109,14 +109,9 @@ func start_round() -> void:
 	for s in states:
 		s.ai_rerolls = 0
 		s.gold += Rules.income(round_num)
-		var sources: Array[Dictionary] = []
-		for y in s.harvest():
-			sources.append({"uid": y.creature.uid, "pos": Rules.BOARD_POS + Rules.cell_center(y.creature.cell), "gold": y.gold})
-		hud.begin_harvest(s.team, sources)
 		s.refresh_offers(rng)
 	enemy_preparing = true
-	# The opponent shops only once its harvest has visibly landed in its purse.
-	_enemy_wait = maxf(0.3, hud.harvest_remaining(1))
+	_enemy_wait = 0.3
 	enemy_action.clear()
 	enemy_moves.clear()
 	phase = Phase.PREP
@@ -139,6 +134,12 @@ func start_combat() -> void:
 	battle.fx_requested.connect(fx.add)
 	battle.frenzy_changed.connect(music.set_frenzy_level)
 	battle.ended.connect(_on_battle_ended)
+	# Harvest: every peasant fielded when the fight begins pays its gold now.
+	for s in states:
+		var sources: Array[Dictionary] = []
+		for y in s.harvest():
+			sources.append({"uid": y.creature.uid, "pos": Rules.BOARD_POS + Rules.cell_center(y.creature.cell), "gold": y.gold})
+		hud.begin_harvest(s.team, sources)
 	drag = null
 	phase = Phase.COMBAT
 	music.set_frenzy_level(0)
@@ -503,6 +504,15 @@ func _process(dt: float) -> void:
 					other.hovered = other == u
 			if u != null:
 				hover_info = {"form": u.form_id, "team": u.team, "unit": u, "pos": mouse}
+			else:
+				# Bench and shop stay on display (read-only) during the fight.
+				var benched := player.at_slot(_reserve_slot_at(mouse))
+				if benched != null:
+					hover_info = {"form": benched.form_id, "team": 0, "owned": benched, "pos": mouse}
+				else:
+					for i in Rules.SHOP_SIZE:
+						if Hud.offer_rect(i).has_point(mouse) and player.offers[i] != "":
+							hover_info = {"form": player.offers[i], "team": 0, "pos": mouse}
 		Phase.PREP:
 			var c := _owned_at(mouse)
 			if c != null:

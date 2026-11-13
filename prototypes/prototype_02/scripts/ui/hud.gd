@@ -17,8 +17,8 @@ const HEART_STAGGER := 0.26
 const HEART_BURST := 0.20
 const COIN_FLIGHT := 0.62
 const REWARD_TAIL := 0.45
-# Round-start harvest: each harvester hops in turn, its coins burst out in a
-# fan above it, hover a beat, then fly one by one into the wizard's purse.
+# Combat-start harvest: each fielded harvester hops in turn, its coins burst out
+# in a fan above it, hover a beat, then fly one by one into the wizard's purse.
 const HARVEST_DELAY := 0.35
 const HARVEST_STAGGER := 0.26
 const HARVEST_HOP := 0.42
@@ -66,8 +66,8 @@ func begin_harvest(team: int, sources: Array[Dictionary]) -> void:
 		for j in n:
 			var spread := 0.0 if n == 1 else (j - (n - 1) / 2.0) / ((n - 1) / 2.0)
 			var radius := 42.0 + (12.0 if n > 4 and j % 2 == 1 else 0.0)
-			harvest_coins.append({"team": team, "from": from, "index": j, "start": start + j * 0.025,
-				"hover": from + Vector2.from_angle(-PI / 2 + spread * fan) * radius,
+			harvest_coins.append({"team": team, "uid": src.uid, "from": from, "index": j, "start": start + j * 0.025,
+				"offset": Vector2.from_angle(-PI / 2 + spread * fan) * radius,
 				"fly": start + HARVEST_POP + HARVEST_HOVER + j * HARVEST_COIN_STAGGER, "arrived": false})
 
 
@@ -87,6 +87,7 @@ func advance_harvest(dt: float) -> void:
 	for src in harvest_sources:
 		if not src.popped and harvest_time >= src.start:
 			src.popped = true
+			_pop_harvester(src)
 			Sfx.play("coin_pop", 0.04)
 	for coin in harvest_coins:
 		if not coin.arrived and harvest_time >= coin.fly + HARVEST_FLIGHT:
@@ -97,14 +98,21 @@ func advance_harvest(dt: float) -> void:
 	harvest_coins = harvest_coins.filter(func(c): return harvest_time < c.fly + HARVEST_FLIGHT + REWARD_TAIL)
 
 
-## Hop of a harvesting creature (0 at rest, 1 at the top of its jump).
-func harvest_hop(uid: int) -> float:
-	for src in harvest_sources:
-		if src.uid == uid:
-			var k: float = (harvest_time - src.start) / HARVEST_HOP
-			if k >= 0.0 and k < 1.0:
-				return sin(k * PI)
-	return 0.0
+## The harvester's combat unit hops where it now stands, and its coins burst
+## out from there (it may have walked since the fight began).
+func _pop_harvester(src: Dictionary) -> void:
+	var b: Battle = game.battle if game != null else null
+	if b == null:
+		return
+	for u in b.units:
+		if u.alive and u.team == src.team and u.source_uid == src.uid:
+			u.beat_t = HARVEST_HOP
+			u.beat_len = HARVEST_HOP
+			src.pos = Rules.BOARD_POS + u.position
+			for coin in harvest_coins:
+				if coin.team == src.team and coin.uid == src.uid:
+					coin.from = src.pos
+			return
 
 
 func clear_loss_rewards() -> void:
@@ -202,7 +210,8 @@ static func pack_token_pos(i: int, j: int) -> Vector2:
 
 
 static func charge_pos(i: int) -> Vector2:
-	return Vector2(640 + (i - 1) * 64, 584)
+	# Below the bench, which stays visible during the fight.
+	return Vector2(640 + (i - 1) * 64, 664)
 
 
 # --- Drawing ------------------------------------------------------------------------
@@ -221,8 +230,12 @@ func _draw() -> void:
 			_draw_fight_button()
 			_draw_shift_upgrade()
 		game.Phase.COMBAT:
+			_draw_shop()
+			_draw_shift_upgrade()
 			_draw_combat_hud()
 		game.Phase.RESOLVE:
+			_draw_shop()
+			_draw_shift_upgrade()
 			_draw_combat_hud()
 			_draw_result()
 		game.Phase.OVER:
@@ -299,7 +312,10 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 	Icons.coin(self, gold_pos(team), 15 * (1.0 + coin_pulse * 0.45))
 	draw_string(font, block.position + Vector2(66, 135 - coin_pulse * 5), str(displayed_gold(state)), HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Icons.GOLD.lerp(Color.WHITE, coin_pulse))
 	if team == 0 and game.phase != game.Phase.PACK:
-		var next_income := Rules.income(game.round_num + 1) + state.harvest_total()
+		var next_income := Rules.income(game.round_num + 1)
+		if game.phase == game.Phase.PREP:
+			# The current board's harvest is paid when this round's fight begins.
+			next_income += state.harvest_total()
 		Icons.coin(self, block.position + Vector2(150, 124), 9)
 		draw_string(font, block.position + Vector2(163, 132), "+" + str(next_income), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.9, 0.8, 0.5, 0.7))
 
@@ -366,7 +382,7 @@ func _draw_harvest() -> void:
 		if age < 0.0:
 			continue
 		var from: Vector2 = coin.from
-		var hover: Vector2 = coin.hover
+		var hover: Vector2 = from + coin.offset
 		var dest := gold_pos(coin.team)
 		var flight: float = (harvest_time - coin.fly) / HARVEST_FLIGHT
 		var spin: float = harvest_time * 9.0 + coin.index * 0.8
@@ -431,7 +447,8 @@ func _draw_shop() -> void:
 			draw_rect(r, Color(0.35, 0.25, 0.18), false, 2.0)
 			continue
 		var affordable: bool = game.player.gold >= CreatureDB.get_form(id).price
-		var hovered := r.has_point(get_global_mouse_position()) and not selling
+		# Shown read-only during the fight: no purchase highlight.
+		var hovered: bool = r.has_point(get_global_mouse_position()) and not selling and game.phase == game.Phase.PREP
 		_panel(r, Color(0.2, 0.14, 0.1) if hovered and affordable else Color(0.14, 0.1, 0.08))
 		Icons.token(self, id, r.position + Vector2(60, 56), 38, 0, hovered and affordable)
 		var price: int = CreatureDB.get_form(id).price
@@ -602,8 +619,6 @@ func _draw_pack_choice() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 14, Color(0.84, 0.76, 0.68))
 		Icons.coin(self, r.position + Vector2(32, 143), 9)
 		var starting_gold := Rules.income(1) + int(pack.bonus_gold)
-		for id in pack.forms:
-			starting_gold += Rules.harvest_gold(id, 0)
 		draw_string(font, r.position + Vector2(47, 148), "%d starting gold" % starting_gold,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Icons.GOLD)
 

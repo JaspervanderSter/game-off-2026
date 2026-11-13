@@ -450,18 +450,17 @@ func _test_starting_packs() -> void:
 		var pack: Dictionary = CreatureDB.PACKS[i]
 		game._left_press(Hud.pack_rect(i).get_center())
 		var forms: Array = game.player.fielded().map(func(c: OwnedCreature) -> String: return c.form_id)
-		var harvest: int = game.player.harvest_total()
-		var gold := Rules.income(1) + int(pack.bonus_gold) + harvest
+		var gold := Rules.income(1) + int(pack.bonus_gold)
 		check(forms == pack.forms, "%s fields the selected trio" % pack.name)
 		check(game.round_num == 1 and game.player.gold == gold, "%s grants its first shop budget" % pack.name)
 		var enemy_forms: Array = game.enemy.fielded().map(func(c: OwnedCreature) -> String: return c.form_id)
 		var enemy_pack := CreatureDB.PACKS.filter(func(choice: Dictionary) -> bool: return choice.forms == enemy_forms)
-		check(enemy_pack.size() == 1 and game.enemy.gold == Rules.income(1) + enemy_pack[0].bonus_gold + game.enemy.harvest_total(),
+		check(enemy_pack.size() == 1 and game.enemy.gold == Rules.income(1) + enemy_pack[0].bonus_gold,
 			"opponent receives the bonus for its own trio")
 		game.choose_pack(i)
 		check(game.round_num == 1 and game.player.gold == gold, "pack cannot be claimed twice")
 		game.start_round()
-		check(game.player.gold == gold + Rules.income(2) + harvest, "pack bonus is not granted again in round two")
+		check(game.player.gold == gold + Rules.income(2), "pack bonus is not granted again in round two")
 	game.free()
 
 
@@ -538,13 +537,19 @@ func _test_peasant_harvest() -> void:
 	player.creatures.clear()
 	var lone := player.add_creature("peasant")
 	lone.stars = 1
+	var benched_peasant := player.add_creature("peasant")
+	check(player.move_to_slot(benched_peasant, 0) and not benched_peasant.is_fielded(), "second peasant waits on the bench")
 	hud.clear_harvest()
 	game.start_round()
-	gold += Rules.income(2) + 2
-	check(player.gold == gold, "round start grants peasant gold immediately")
+	gold += Rules.income(2)
+	check(player.gold == gold and hud.harvest_coins.is_empty(), "round start pays no harvest before placement")
+	_finish_enemy_preparation(game)
+	game.start_combat()
+	check(game.phase == game.Phase.COMBAT, "combat starts with a fielded peasant")
+	gold += 2
+	check(player.gold == gold, "combat start pays only the fielded peasant's gold")
 	check(hud.displayed_gold(player) == gold - 2, "harvest coins are shown only once they land")
 	check(hud.harvest_coins.filter(func(c): return c.team == 0).size() == 2, "one flying coin per harvested gold")
-	check(game._enemy_wait >= hud.harvest_remaining(1), "opponent shops after its harvest lands")
 	for i in 120:
 		hud.advance_harvest(1.0 / 30.0)
 	check(hud.displayed_gold(player) == gold and hud.harvest_coins.is_empty(), "every harvest coin lands in the purse")
@@ -571,7 +576,6 @@ func _test_shop_drag_and_enemy_preparation() -> void:
 	foe.add_creature("guardian")
 	foe.gold = 3
 	foe.offers = ["archer", "", ""]
-	game._enemy_wait = 0.3 # the replaced roster has no harvest to wait for
 	check(game.enemy_preparing and foe.gold == 3 and foe.creatures.size() == 1,
 		"round starts without instantly completing enemy purchases")
 	game.start_combat()

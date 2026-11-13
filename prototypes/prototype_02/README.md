@@ -64,14 +64,16 @@ All confirmed rules and delegated defaults of the design note, notably:
 
 - Gold income 3, 4, 5... per round, unspent gold kept. Three random fantasy offers
   per round, each bought once; prices 1-3; selling refunds the price.
-- Peasant harvest: at the start of every round (round 1 included), each fielded
-  Pitchfork Peasant gives 1 gold, doubled per star (1, 2, 4, 8). Benched peasants
-  give nothing, so the gold competes with a stronger board slot. The peasant hops
+- Peasant harvest: when each fight begins, every Pitchfork Peasant placed on the
+  board gives 1 gold, doubled per star (1, 2, 4, 8). Benched peasants give
+  nothing, so the gold competes with a stronger board slot. The peasant hops
   with a golden burst, its coins pop out in a fan above it and fly one by one
   into the purse with a rising chime; the counter ticks up as each coin lands.
-  The opponent starts shopping only once its harvest has landed. The hover card
-  shows one small coin per harvested gold, and the next-income hint includes the
+  The gold is spent in the next shop phase. The hover card shows one small coin
+  per harvested gold, and during preparation the next-income hint includes the
   current board's harvest.
+- The bench and the shop stay visible (read-only) during the fight; hovering
+  them shows the creature card. The spell charges sit below the bench.
 - A shop click buys onto the bench on mouse release. Dragging an offer instead
   buys directly onto a free board cell, free bench slot, or compatible merge
   recipient. Mouse-down only previews the offer. Invalid drops consume no gold
