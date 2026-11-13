@@ -62,7 +62,11 @@ const FORMS := {
 	"assassin": {"family": "fantasy", "hp": 105, "dmg": 20, "interval": 1.1, "range": 0.3, "speed": 2.6, "armour": 0, "price": 2, "role": "front", "attack": "melee", "ability": "backline"},
 	"spearman": {"family": "fantasy", "hp": 110, "dmg": 9, "interval": 1.1, "range": 1.3, "speed": 1.5, "armour": 10, "price": 1, "role": "mid", "attack": "melee", "ability": ""},
 	"archer": {"family": "fantasy", "hp": 85, "dmg": 7, "interval": 0.8, "range": 4.5, "speed": 1.8, "armour": 0, "price": 1, "role": "back", "attack": "arrow", "ability": "kite"},
-	"crossbowman": {"family": "fantasy", "hp": 105, "dmg": 26, "interval": 2.2, "range": 5.0, "speed": 1.2, "armour": 0, "price": 3, "role": "back", "attack": "bolt", "ability": "pierce"},
+	# chain_targets: bolt targets per star (0 to 3). From 1 star the bolt homes in and
+	# chains to the nearest enemy not yet hit within chain_radius cells, each hop
+	# dealing chain_falloff less than the previous one (100%, 70%, 49%...).
+	"crossbowman": {"family": "fantasy", "hp": 105, "dmg": 31.2, "interval": 2.2, "range": 5.0, "speed": 1.2, "armour": 0, "price": 3, "role": "back", "attack": "bolt", "ability": "pierce",
+		"chain_targets": [1, 3, 5, 5], "chain_falloff": 0.3, "chain_radius": 5.0},
 	"pyromancer": {"family": "fantasy", "hp": 90, "dmg": 12, "interval": 1.7, "range": 4.0, "speed": 1.3, "armour": 0, "price": 3, "role": "back", "attack": "fire", "ability": "fireball",
 		"splash_radius": 1.0, "burn_duration": 4.0, "burn_dps": 5.0, "cd": 15.0, "cd_start": 6.0, "power": 120.0, "fireball_speed": 3.5,
 		"channel_duration": 1.0},

@@ -198,12 +198,24 @@ func damage(src: Unit, dst: Unit, amount: float, kind: String, pierce := false) 
 # --- Projectiles --------------------------------------------------------------
 
 func spawn_projectile(src: Unit, t: Unit, fireball := false) -> void:
+	var chain_targets: Array = src.data.get("chain_targets", [])
+	var bounces := 0
+	if not fireball and not chain_targets.is_empty():
+		bounces = int(chain_targets[clampi(src.stars, 0, chain_targets.size() - 1)]) - 1
+	var kind: String = "fireball" if fireball else src.data.attack
+	if bounces > 0:
+		kind = "seeker_bolt"
 	projectiles.append({
 		"pos": src.position,
 		"target": t,
 		"aim": t.position,
 		"team": src.team,
-		"kind": "fireball" if fireball else src.data.attack,
+		"kind": kind,
+		# Seeker bolts: remaining hops, ids already struck, damage kept per hop.
+		"bounces": bounces,
+		"hit_ids": [],
+		"chain_keep": 1.0 - src.data.get("chain_falloff", 0.0),
+		"chain_radius": src.data.get("chain_radius", 0.0) * CELL,
 		# Fire damage scales with stars and levels like basic damage, so the
 		# pyromancer's ability-based damage keeps pace with merged enemies.
 		"dmg": src.data.power * src.stat_mult() if fireball else src.attack_damage(),
@@ -225,6 +237,9 @@ func _update_projectiles(dt: float) -> void:
 		if p.kind == "fireball" and (t == null or not t.alive):
 			t = _nearest_enemy_from(p.team, p.pos)
 			p.target = t
+		elif p.kind == "seeker_bolt" and (t == null or not t.alive):
+			t = _nearest_unhit_enemy(p, p.pos, INF)
+			p.target = t
 		if t != null and t.alive:
 			p.aim = t.position
 		var to: Vector2 = p.aim - p.pos
@@ -243,6 +258,38 @@ func _update_projectiles(dt: float) -> void:
 			if p.kind == "fireball":
 				emit_fx("blast", p.aim, {"radius": CELL * 0.8})
 				Sfx.play("hit")
+			elif p.bounces > 0:
+				_chain_bolt(p, t)
+
+
+## Seeker bolt hop: continues from the struck enemy (even through a parry) to
+## the nearest enemy it has not hit yet, with reduced damage.
+func _chain_bolt(p: Dictionary, struck: Unit) -> void:
+	var hit_ids: Array = p.hit_ids.duplicate()
+	hit_ids.append(struck.get_instance_id())
+	var hop := p.duplicate()
+	hop.hit_ids = hit_ids
+	var next := _nearest_unhit_enemy(hop, p.aim, p.chain_radius)
+	if next == null:
+		return
+	hop.pos = p.aim
+	hop.target = next
+	hop.aim = next.position
+	hop.dmg = p.dmg * p.chain_keep
+	hop.bounces = p.bounces - 1
+	projectiles.append(hop)
+
+
+func _nearest_unhit_enemy(p: Dictionary, pos: Vector2, radius: float) -> Unit:
+	var best: Unit = null
+	var best_d := radius * radius
+	for u in units:
+		if u.alive and u.team != p.team and not p.hit_ids.has(u.get_instance_id()):
+			var d := pos.distance_squared_to(u.position)
+			if d <= best_d:
+				best_d = d
+				best = u
+	return best
 
 
 func _projectile_hit(p: Dictionary, src: Unit, dst: Unit, kind: String) -> void:

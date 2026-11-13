@@ -26,6 +26,7 @@ func _ready() -> void:
 	_test_abilities()
 	_test_animal_roles()
 	_test_mage_attacks()
+	_test_crossbow_bolts()
 	_test_mage_interruptions()
 	_test_bard_song()
 	_test_overlapping_blizzards()
@@ -991,6 +992,47 @@ func _test_bard_song() -> void:
 	far._tick_statuses(0.2)
 	check(not far.statuses.has("inspired"), "inspiration expires three seconds after the last beat")
 	b.free()
+
+
+## Fires one crossbowman bolt at the first of a row of guardians and returns the
+## damage taken by each guardian once every hop has landed.
+func _crossbow_volley(stars: int, row: int, kill_first := false) -> Array[float]:
+	var b := _new_battle()
+	var cell := Rules.CELL
+	var bow := b.spawn(0, "crossbowman", Vector2(200, 200 + cell * 3.0), 0, stars)
+	var row_units: Array[Unit] = []
+	for i in row:
+		row_units.append(b.spawn(1, "guardian", Vector2(200 + i * cell * 0.8, 200)))
+	bow._attack(row_units[0])
+	if kill_first:
+		b.damage(null, row_units[0], row_units[0].max_hp * 10.0, "ability")
+	for step in 200:
+		b._update_projectiles(0.02)
+	var taken: Array[float] = []
+	for u in row_units:
+		taken.append(u.max_hp - u.hp)
+	b.free()
+	return taken
+
+
+func _test_crossbow_bolts() -> void:
+	var d: float = CreatureDB.get_form("crossbowman").dmg
+	check(is_equal_approx(d, 26.0 * 1.2), "crossbowman base damage is 20% higher (31.2)")
+	var plain := _crossbow_volley(0, 3)
+	check(is_equal_approx(plain[0], d) and plain[1] == 0.0 and plain[2] == 0.0,
+		"0-star bolt hits a single target, ignoring armour")
+	var m1 := d * Rules.star_mult(1)
+	var one := _crossbow_volley(1, 4)
+	check(is_equal_approx(one[0], m1) and is_equal_approx(one[1], m1 * 0.7)
+		and is_equal_approx(one[2], m1 * 0.49) and one[3] == 0.0,
+		"1-star seeker bolt chains to 3 targets, -30% per hop")
+	var m2 := d * Rules.star_mult(2)
+	var two := _crossbow_volley(2, 6)
+	check(is_equal_approx(two[4], m2 * pow(0.7, 4)) and two[5] == 0.0,
+		"2-star seeker bolt chains to 5 targets")
+	var homing := _crossbow_volley(1, 4, true)
+	check(is_equal_approx(homing[1], m1) and is_equal_approx(homing[2], m1 * 0.7) and homing[3] > 0.0,
+		"seeker bolt retargets when its target dies in flight")
 
 
 func _test_mage_attacks() -> void:

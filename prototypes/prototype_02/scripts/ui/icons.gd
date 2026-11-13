@@ -435,6 +435,12 @@ static func projectile(ci: CanvasItem, kind: String, p: Vector2, dir: Vector2) -
 		"bolt":
 			ci.draw_line(p - dir * 10.0, p, Color(0.35, 0.3, 0.3), 4.5, true)
 			ci.draw_circle(p, 3.5, Color(0.9, 0.9, 0.95))
+		"seeker_bolt":
+			# Homing bolt: same shaft with a glowing cyan trail and tip.
+			ci.draw_line(p - dir * 22.0, p - dir * 8.0, Color(0.4, 0.95, 1.0, 0.35), 6.0, true)
+			ci.draw_line(p - dir * 10.0, p, Color(0.35, 0.3, 0.3), 4.5, true)
+			ci.draw_circle(p, 5.5, Color(0.4, 0.95, 1.0, 0.45))
+			ci.draw_circle(p, 3.5, Color(0.85, 1.0, 1.0))
 		"fire", "fireball":
 			var size := 2.2 if kind == "fireball" else 1.0
 			ci.draw_circle(p - dir * 6.0 * size, 5.0 * size, Color(1.0, 0.4, 0.1, 0.5))
