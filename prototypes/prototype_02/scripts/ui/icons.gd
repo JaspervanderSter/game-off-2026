@@ -130,8 +130,7 @@ static func creature(ci: CanvasItem, id: String, p: Vector2, s: float) -> void:
 			_snowflake(ci, p + Vector2(0.68, 0.05) * s, s * 0.32, Color(0.85, 0.97, 1.0))
 		"cleric":
 			_humanoid(ci, p, s, Color(0.95, 0.95, 0.92))
-			_line(ci, p, s, Vector2(0, 0.1), Vector2(0, 0.7), GOLD, 0.12)
-			_line(ci, p, s, Vector2(-0.2, 0.3), Vector2(0.2, 0.3), GOLD, 0.12)
+			heart(ci, p + Vector2(0, 0.4) * s, 0.26 * s, GOLD)
 			ci.draw_arc(p + Vector2(0, -0.75) * s, 0.25 * s, 0, TAU, 16, GOLD, maxf(1.0, 0.07 * s), true)
 		"bard":
 			_humanoid(ci, p, s, Color(0.75, 0.25, 0.6))
