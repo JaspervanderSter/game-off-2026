@@ -130,11 +130,26 @@ func _unlock_next_difficulty() -> void:
 		return
 	unlocked_difficulty = next
 	newly_unlocked_difficulty = next
+	_save_difficulty_progress(next)
+
+
+func _save_difficulty_progress(level: int) -> bool:
 	var config := ConfigFile.new()
-	config.set_value("progress", "unlocked_difficulty", unlocked_difficulty)
+	config.set_value("progress", "unlocked_difficulty", level)
 	var error := config.save(difficulty_progress_path)
 	if error != OK:
 		push_warning("Could not save difficulty progress: %s" % error_string(error))
+	return error == OK
+
+
+func _reset_difficulty_progress() -> void:
+	if not _save_difficulty_progress(Difficulty.APPRENTICE):
+		Sfx.play("fail")
+		return
+	difficulty = Difficulty.APPRENTICE
+	unlocked_difficulty = Difficulty.APPRENTICE
+	new_duel()
+	Sfx.play("click")
 
 
 func choose_pack(index: int) -> void:
@@ -408,7 +423,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 			_right_press(pos)
 	elif event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_SPACE and phase == Phase.PREP:
+		if phase == Phase.DIFFICULTY and event.keycode == KEY_R and event.ctrl_pressed and event.shift_pressed:
+			_reset_difficulty_progress()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_SPACE and phase == Phase.PREP:
 			start_combat()
 		elif phase == Phase.DIFFICULTY and event.keycode >= KEY_1 and event.keycode < KEY_1 + Difficulty.COUNT:
 			choose_difficulty(event.keycode - KEY_1)

@@ -1452,6 +1452,17 @@ func _test_difficulty() -> void:
 	game.difficulty_progress_path = progress_path
 	add_child(game)
 	check(game.is_difficulty_unlocked(Difficulty.ARCHMAGE), "the unlocked levels survive a reload")
+	key.keycode = KEY_R
+	key.ctrl_pressed = true
+	key.shift_pressed = true
+	game._unhandled_input(key)
+	check(not game.is_difficulty_unlocked(Difficulty.ADEPT) and not game.hud.unlock_animation_active(),
+		"the reset shortcut restores the initial difficulty screen")
+	game.free()
+	game = load("res://main.tscn").instantiate()
+	game.difficulty_progress_path = progress_path
+	add_child(game)
+	check(not game.is_difficulty_unlocked(Difficulty.ADEPT), "the reset survives a reload")
 	game.free()
 	DirAccess.remove_absolute(progress_path)
 
