@@ -18,6 +18,7 @@ func _ready() -> void:
 	_test_preparation_input()
 	_test_loss_gold()
 	_test_peasant_harvest()
+	_test_fight_layout_animation()
 	_test_shop_drag_and_enemy_preparation()
 	_test_phase_music()
 	_test_result_recordings()
@@ -553,6 +554,40 @@ func _test_peasant_harvest() -> void:
 	for i in 120:
 		hud.advance_harvest(1.0 / 30.0)
 	check(hud.displayed_gold(player) == gold and hud.harvest_coins.is_empty(), "every harvest coin lands in the purse")
+	game.free()
+
+
+func _test_fight_layout_animation() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.choose_difficulty(Difficulty.ARCHMAGE)
+	game.choose_pack(0)
+	check(game.shop_out == 1.0, "shop starts off screen before the first shop")
+	game._advance_ui(0.1)
+	check(game.shop_out > 0.0 and game.shop_out < 1.0, "shop slides in over several frames")
+	game._advance_ui(1.0)
+	check(game.shop_out == 0.0 and game.bench_dock == 0.0, "shop and bench rest in place while shopping")
+	var full: Rect2 = game.bench_slot_rect(2)
+	check(full == Rules.reserve_slot_rect(2), "undocked bench matches the shopping layout")
+	_finish_enemy_preparation(game)
+	game.start_combat()
+	game._advance_ui(0.1)
+	check(game.shop_out > 0.0 and game.shop_out < 1.0, "shop slides out instead of vanishing")
+	check(game.bench_dock > 0.0 and game.bench_dock < 1.0, "bench shrinks over several frames")
+	game._advance_ui(1.0)
+	var docked: Rect2 = game.bench_slot_rect(2)
+	check(game.shop_out == 1.0 and is_equal_approx(docked.size.x, Rules.CELL * 0.5)
+		and docked.end.y <= 720.0 and docked.position.y > Rules.reserve_slot_rect(2).end.y,
+		"bench docks at half size at the bottom during the fight")
+	check(game._reserve_slot_at(docked.get_center()) == 2, "docked bench slots stay hoverable")
+	game.battle.ended.emit({"winner": -1, "survivors": 0})
+	game._advance_ui(1.0)
+	check(game.phase == game.Phase.RESOLVE and game.shop_out == 1.0 and game.bench_dock == 1.0,
+		"shop and bench stay away while the result shows")
+	game._finish_round()
+	game._advance_ui(0.1)
+	check(game.phase == game.Phase.PREP and game.shop_out < 1.0 and game.bench_dock < 1.0,
+		"next round slides the shop and bench back")
 	game.free()
 
 

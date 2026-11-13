@@ -56,20 +56,25 @@ func _draw_board() -> void:
 
 
 func _draw_reserve() -> void:
+	# Each slot is drawn at full size around its centre, then scaled with the
+	# dock animation; the bench does not shake with the board.
+	var scale_k: float = game.bench_scale()
+	var r := Rect2(Vector2.ONE * -CELL * 0.5, Vector2.ONE * CELL)
 	for s in Rules.RESERVE_CAP:
-		var r := Rules.reserve_slot_rect(s)
-		r.position -= position
+		var centre: Vector2 = game.bench_slot_rect(s).get_center() - position
+		draw_set_transform(centre, 0.0, Vector2.ONE * scale_k)
 		draw_rect(r.grow(-4), Color(0.25, 0.17, 0.12))
 		draw_rect(r.grow(-4), Color(0.5, 0.36, 0.24), false, 2.0)
 		var c: OwnedCreature = game.player.at_slot(s)
 		if c != null and c != game.drag:
 			var hl: bool = game.hover_info.get("owned") == c
-			Icons.token(self, c.form_id, r.get_center(), Rules.BODY_RADIUS * CELL, 0, hl)
-			Icons.merge_stars(self, r.get_center() + Vector2(0, -28), c.stars)
+			Icons.token(self, c.form_id, Vector2.ZERO, Rules.BODY_RADIUS * CELL, 0, hl)
+			Icons.merge_stars(self, Vector2(0, -28), c.stars)
 			if game.show_merge_progress(c):
-				Icons.merge_progress(self, r.get_center() + Vector2(0, 28), c.merge_copies, c.stars)
+				Icons.merge_progress(self, Vector2(0, 28), c.merge_copies, c.stars)
 			if game.can_drop_merge(c):
 				draw_rect(r.grow(-4), Icons.GOLD, false, 3.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# Field capacity pips.
 	var fielded: int = game.player.field_count()
 	for i in Rules.FIELD_CAP:

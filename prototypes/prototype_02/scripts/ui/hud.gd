@@ -13,6 +13,7 @@ const OFFER_SIZE := Vector2(288, 112)
 const REROLL_RECT := Rect2(1000, 458, 224, 42)
 const SHIFT_UPGRADE_RECT := Rect2(976, 636, 272, 54)
 const PACK_TOP := 222.0
+const SHOP_SLIDE := 360.0 # pushes the whole shop column past the right edge
 const HEART_STAGGER := 0.26
 const HEART_BURST := 0.20
 const COIN_FLIGHT := 0.62
@@ -210,8 +211,7 @@ static func pack_token_pos(i: int, j: int) -> Vector2:
 
 
 static func charge_pos(i: int) -> Vector2:
-	# Below the bench, which stays visible during the fight.
-	return Vector2(640 + (i - 1) * 64, 664)
+	return Vector2(640 + (i - 1) * 64, 584)
 
 
 # --- Drawing ------------------------------------------------------------------------
@@ -225,21 +225,14 @@ func _draw() -> void:
 			_draw_difficulty_choice()
 		game.Phase.PACK:
 			_draw_pack_choice()
-		game.Phase.PREP:
-			_draw_shop()
-			_draw_fight_button()
-			_draw_shift_upgrade()
 		game.Phase.COMBAT:
-			_draw_shop()
-			_draw_shift_upgrade()
 			_draw_combat_hud()
 		game.Phase.RESOLVE:
-			_draw_shop()
-			_draw_shift_upgrade()
 			_draw_combat_hud()
 			_draw_result()
 		game.Phase.OVER:
 			_draw_game_over()
+	_draw_shop_column()
 	if not game.hover_info.is_empty() and game.drag == null and game.phase != game.Phase.RESOLVE:
 		_draw_hover_card(game.hover_info)
 	_draw_loss_rewards()
@@ -435,6 +428,19 @@ func _draw_toggles() -> void:
 	draw_circle(ROUND_POS, 22, Color(0.15, 0.1, 0.1))
 	draw_arc(ROUND_POS, 22, 0, TAU, 24, Color(0.6, 0.5, 0.4), 2.0, true)
 	draw_string(font, ROUND_POS + Vector2(-20, 8), str(maxi(1, game.round_num)), HORIZONTAL_ALIGNMENT_CENTER, 40, 22, Color(0.9, 0.85, 0.75))
+
+
+## Offers, reroll, fight button and spell upgrade slide together off the right
+## edge when the fight begins and back in when the next shop opens.
+func _draw_shop_column() -> void:
+	var k := smoothstep(0.0, 1.0, float(game.shop_out))
+	if k >= 1.0:
+		return
+	draw_set_transform(Vector2(SHOP_SLIDE * k, 0), 0.0, Vector2.ONE)
+	_draw_shop()
+	_draw_fight_button()
+	_draw_shift_upgrade()
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_shop() -> void:

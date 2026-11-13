@@ -9,6 +9,11 @@ const RESOLVE_TIME := 2.4
 const ENEMY_ACTION_TIME := 0.55
 const ENEMY_MOVE_TIME := 0.42
 const SHOP_DRAG_DISTANCE := 8.0
+# Fight layout: the shop column slides off the right edge and the bench shrinks
+# and docks at the bottom of the screen, then both come back for the next shop.
+const UI_SLIDE_TIME := 0.45
+const BENCH_DOCK_SCALE := 0.5
+const BENCH_DOCK_POS := Vector2(640 - Rules.CELL * Rules.RESERVE_CAP * BENCH_DOCK_SCALE * 0.5, 720 - Rules.CELL * BENCH_DOCK_SCALE - 8)
 
 var phase := Phase.DIFFICULTY
 var player: WizardState
@@ -37,6 +42,8 @@ var _resolve_t := 0.0
 var _shake_t := 0.0
 var _shake_len := 0.0
 var _shake_mag := 0.0
+var shop_out := 1.0 # 0 = shop column on screen, 1 = slid off the right edge
+var bench_dock := 0.0 # 0 = bench under the board, 1 = half size at the bottom
 
 var board_view: BoardView
 var fx: FxLayer
@@ -302,9 +309,29 @@ func board_cell(screen_pos: Vector2) -> Vector2i:
 	return Vector2i(floori(local.x), floori(local.y))
 
 
+## Moves the shop and bench toward their place for the current phase: the shop
+## is out except while shopping; the bench docks from the fight to the next shop.
+func _advance_ui(dt: float) -> void:
+	var step := dt / UI_SLIDE_TIME
+	shop_out = move_toward(shop_out, 0.0 if phase == Phase.PREP else 1.0, step)
+	var docked := phase == Phase.COMBAT or phase == Phase.RESOLVE or phase == Phase.OVER
+	bench_dock = move_toward(bench_dock, 1.0 if docked else 0.0, step)
+
+
+func bench_scale() -> float:
+	return lerpf(1.0, BENCH_DOCK_SCALE, smoothstep(0.0, 1.0, bench_dock))
+
+
+## On-screen bench slot, following the dock animation.
+func bench_slot_rect(slot: int) -> Rect2:
+	var s := bench_scale()
+	var top_left := Rules.RESERVE_POS.lerp(BENCH_DOCK_POS, smoothstep(0.0, 1.0, bench_dock))
+	return Rect2(top_left + Vector2(slot * Rules.CELL * s, 0), Vector2.ONE * Rules.CELL * s)
+
+
 func _reserve_slot_at(pos: Vector2) -> int:
 	for s in Rules.RESERVE_CAP:
-		if Rules.reserve_slot_rect(s).has_point(pos):
+		if bench_slot_rect(s).has_point(pos):
 			return s
 	return -1
 
@@ -466,7 +493,7 @@ func _release_shop_offer(pos: Vector2) -> void:
 
 func _merge_feedback(recipient: OwnedCreature, previous_stars: int) -> void:
 	var ranked_up := recipient.stars > previous_stars
-	var centre := Rules.BOARD_POS + Rules.cell_center(recipient.cell) if recipient.is_fielded() else Rules.reserve_slot_rect(recipient.slot).get_center()
+	var centre := Rules.BOARD_POS + Rules.cell_center(recipient.cell) if recipient.is_fielded() else bench_slot_rect(recipient.slot).get_center()
 	fx.add("merge" if ranked_up else "combine", centre - Rules.BOARD_POS)
 	Sfx.play("merge" if ranked_up else "combine")
 
@@ -494,6 +521,7 @@ func _cast_at(pos: Vector2) -> void:
 
 func _process(dt: float) -> void:
 	_apply_shake(dt)
+	_advance_ui(dt)
 	var mouse := get_global_mouse_position()
 	hover_info = {}
 	match phase:
@@ -505,14 +533,10 @@ func _process(dt: float) -> void:
 			if u != null:
 				hover_info = {"form": u.form_id, "team": u.team, "unit": u, "pos": mouse}
 			else:
-				# Bench and shop stay on display (read-only) during the fight.
+				# The docked bench stays readable during the fight.
 				var benched := player.at_slot(_reserve_slot_at(mouse))
 				if benched != null:
 					hover_info = {"form": benched.form_id, "team": 0, "owned": benched, "pos": mouse}
-				else:
-					for i in Rules.SHOP_SIZE:
-						if Hud.offer_rect(i).has_point(mouse) and player.offers[i] != "":
-							hover_info = {"form": player.offers[i], "team": 0, "pos": mouse}
 		Phase.PREP:
 			var c := _owned_at(mouse)
 			if c != null:

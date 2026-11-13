@@ -72,8 +72,11 @@ All confirmed rules and delegated defaults of the design note, notably:
   The gold is spent in the next shop phase. The hover card shows one small coin
   per harvested gold, and during preparation the next-income hint includes the
   current board's harvest.
-- The bench and the shop stay visible (read-only) during the fight; hovering
-  them shows the creature card. The spell charges sit below the bench.
+- When the fight begins, the shop column (offers, reroll, fight button, spell
+  upgrade) slides off the right edge and the bench shrinks to half size and docks
+  at the bottom of the screen, where hovering it still shows the creature card.
+  Both stay away during the result and slide back when the next shop opens
+  (0.45 s each way).
 - A shop click buys onto the bench on mouse release. Dragging an offer instead
   buys directly onto a free board cell, free bench slot, or compatible merge
   recipient. Mouse-down only previews the offer. Invalid drops consume no gold
