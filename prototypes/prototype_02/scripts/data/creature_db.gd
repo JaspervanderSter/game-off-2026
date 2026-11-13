@@ -101,14 +101,37 @@ const FORMS := {
 	"peacock": {"family": "animal", "hp": 140, "dmg": 7, "interval": 1.2, "range": 0.3, "speed": 1.7, "armour": 0, "price": 2, "role": "support", "attack": "melee", "ability": "display", "cd": 6.0, "cd_start": 2.0, "radius": 2.6, "duration": 4.0, "power": 1.8},
 }
 
-# All three packs are offered. Bonus gold is granted once, before the first shop.
+# Themed starting compositions of two to four creatures. Each duel deals three of
+# them from a hidden deck (PackDeck). Bonus gold is granted once, before the
+# first shop. Shop prices are a poor guide to an opening's worth: a fielded
+# peasant pays for itself every fight and compounds, and a strong first board
+# saves hearts. So contents and bonuses were tuned in Archmage-vs-Archmage duels
+# between every pair of compositions (training/pack_matrix.sh), not from prices.
 const PACKS := [
-	{"name": "Control", "emblem": "frost_shield",
-		"forms": ["guardian", "frost_mage", "peasant"], "bonus_gold": 1},
-	{"name": "Tempo", "emblem": "song",
-		"forms": ["duelist", "archer", "bard"], "bonus_gold": 0},
-	{"name": "Breakthrough", "emblem": "spear",
-		"forms": ["berserker", "assassin", "spearman"], "bonus_gold": 1},
+	{"name": "Village", "emblem": "pitchfork",
+		"forms": ["peasant", "peasant"], "bonus_gold": 0},
+	{"name": "Fortress", "emblem": "frost_shield",
+		"forms": ["guardian", "frost_mage"], "bonus_gold": 3},
+	{"name": "Troupe", "emblem": "song",
+		"forms": ["duelist", "archer", "bard"], "bonus_gold": 3},
+	{"name": "Raid", "emblem": "spear",
+		"forms": ["berserker", "assassin", "spearman", "spearman"], "bonus_gold": 3},
+	{"name": "Temple", "emblem": "halo",
+		"forms": ["cleric", "cleric", "guardian"], "bonus_gold": 3},
+	{"name": "Arcane", "emblem": "fire_ice",
+		"forms": ["pyromancer", "frost_mage"], "bonus_gold": 3},
+	{"name": "Hunt", "emblem": "bow",
+		"forms": ["archer", "archer", "crossbowman"], "bonus_gold": 1},
+	{"name": "Phalanx", "emblem": "spear_wall",
+		"forms": ["spearman", "spearman", "guardian"], "bonus_gold": 1},
+	{"name": "Shadows", "emblem": "moon_dagger",
+		"forms": ["assassin", "assassin", "crossbowman"], "bonus_gold": 0},
+	{"name": "Inferno", "emblem": "flame",
+		"forms": ["pyromancer", "berserker"], "bonus_gold": 2},
+	{"name": "Tavern", "emblem": "mug",
+		"forms": ["bard", "peasant", "berserker"], "bonus_gold": 0},
+	{"name": "Crusade", "emblem": "banner",
+		"forms": ["cleric", "duelist", "spearman"], "bonus_gold": 3},
 ]
 
 

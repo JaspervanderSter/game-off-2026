@@ -18,7 +18,7 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 | Action | Control |
 | --- | --- |
 | Pick the opponent's difficulty | Left-click an unlocked hat or press its number (1 / 2 / 3) |
-| Pick a starting pack | Left-click one of the three cards |
+| Pick a starting composition | Left-click one of the three cards |
 | Buy a creature | Click and release a shop card for the bench, or drag it directly to a board cell / reserve slot |
 | Reroll shop | Click the circular-arrow button below the offers (1 gold) |
 | Upgrade shapeshift recharge | Click the wand / circular-arrow panel below the combat button (4 gold, once per duel) |
@@ -51,16 +51,30 @@ All confirmed rules and delegated defaults of the design note, notably:
 
 - Duel loop: free starting pack, then every round shop + preparation, real-time
   combat, resolution; until a wizard has 0 of 10 health.
-- The three starting cards show a themed crest, the creatures and one coin per
-  gold available in the first shop. The AI
-  picks one of the same packs at random. Both sides receive their pack's bonus
-  once, on top of the first round's 3 gold.
+- Twelve themed starting compositions (`CreatureDB.PACKS`) of two to four
+  creatures. Each duel offers three cards, each showing a themed crest, the
+  creatures and one coin per gold available in the first shop. Both sides receive
+  their composition's bonus once, on top of the first round's 3 gold.
+- The cards come from a hidden, shuffled deck (`PackDeck`): no composition
+  repeats within nine cards (three duels), then the whole deck is reshuffled.
+  The opponent draws one card per duel from its own deck, which reshuffles after
+  nine openings. Nothing on screen shows the decks, and both resume after a
+  restart (`user://pack_decks.cfg`).
 
-  | Pack | Creatures | Bonus gold |
+  | Composition | Creatures | Bonus gold |
   | --- | --- | ---: |
-  | Control | Shield Guardian, Frost Mage, Pitchfork Peasant | +1 |
-  | Tempo | Duelist, Archer, Bard | 0 |
-  | Breakthrough | Berserker, Assassin, Spearman | +1 |
+  | Village | Pitchfork Peasant x2 | 0 |
+  | Fortress | Shield Guardian, Frost Mage | +3 |
+  | Troupe | Duelist, Archer, Bard | +3 |
+  | Raid | Berserker, Assassin, Spearman x2 | +3 |
+  | Temple | Cleric x2, Shield Guardian | +3 |
+  | Arcane | Pyromancer, Frost Mage | +3 |
+  | Hunt | Archer x2, Crossbowman | +1 |
+  | Phalanx | Spearman x2, Shield Guardian | +1 |
+  | Shadows | Assassin x2, Crossbowman | 0 |
+  | Inferno | Pyromancer, Berserker | +2 |
+  | Tavern | Bard, Pitchfork Peasant, Berserker | 0 |
+  | Crusade | Cleric, Duelist, Spearman | +3 |
 
 - Gold income 3, 4, 5... per round, unspent gold kept. Three random fantasy offers
   per round, each bought once; prices 1-3; selling refunds the price.
@@ -319,8 +333,8 @@ saves unlocked difficulties locally. When the player replays after unlocking a
 difficulty, its padlock opens on the difficulty screen.
 
 - **Archmage** plays its own tuned strategy (`EnemyAI.ARCHMAGE_PROFILE`), with
-  the same rules, gold and information as the player: it opens with the Control
-  pack, fields peasants for their harvest while it has hearts to spare, values
+  the same rules, gold and information as the player: it draws its opening from
+  its deck like every level, fields peasants for their harvest while it has hearts to spare, values
   crossbowman seeker-bolt chains, spreads its frontline from the board edges,
   counts the level reset when choosing hex targets, and rerolls on budget.
 - **Adept** and **Apprentice** follow the same rules, gold and spell charges as
@@ -374,6 +388,29 @@ A side is `{"level": 0-3 (3 = Sparring), "profile": {EnemyAI key overrides}, "ca
 casting overrides}}`. With the tuned profile, the Archmage won 220/220 duels
 against the Adept and 220/220 against the Apprentice (previously about 75% and
 96%); the tuning chain beat the previous Archmage strategy about 89% of the time.
+
+## Starting composition balance (13 November 2026)
+
+`training/pack_matrix.sh` plays every pair of starting compositions in
+Archmage-vs-Archmage duels (each seed from both sides) and prints each
+composition's score against the others plus the full matrix. An optional JSON
+override tries other contents or bonuses without editing the data; `FIELD=n`
+scores appended variants against the first n compositions only. Run it on
+demand, not as a regression test.
+
+```bash
+prototypes/prototype_02/training/pack_matrix.sh 200 22 6 2
+```
+
+Shop prices proved a poor guide. With nominal value 6 for every composition,
+peasants dominated: three peasants and a spearman scored 83%, two peasants with
+a bard and a berserker 76%, and compositions without a peasant 34-53%. Starting
+with three identical peasants merges them into a one-star harvester at once
+(72% with no bonus); even one extra spearman beside two peasants added about
+11 points, because a strong first board saves hearts. One bonus gold is worth
+roughly 4-10 points. The tuned table above scored between 45% and 54% against
+the others over 13,200 duels (Raid lowest at 45.3%, before it was raised from +2
+to +3 gold, which brought it to 51.8% over 2,200 more duels).
 
 ## Tests
 

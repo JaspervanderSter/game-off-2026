@@ -30,10 +30,10 @@ const DEFAULT_PROFILE := {
 	"low_health_bonus": 0.25, "stun_value": 0.16, "interrupt_value": 1.1,
 }
 # Archmage strategy, tuned in full AI-vs-AI duels (training/arena.gd):
-# Control opening, peasant harvest valued while hearts remain, seeker-bolt
-# crossbowmen, a wide frontline and hexes that count the level reset.
+# peasant harvest valued while hearts remain, seeker-bolt crossbowmen, a wide
+# frontline and hexes that count the level reset. Its opening is dealt from its
+# deck like every other level's.
 const ARCHMAGE_PROFILE := {
-	"pack": 0, # Control
 	"fireball_value": 32.0, "blizzard_value": 8.0,
 	"star_ability_scaling": 1.0, "chain_value": 25.0,
 	"harvest_value": 35.0, "harvest_hp_power": 1.0,
@@ -54,8 +54,9 @@ static func profile_for(level: int) -> Dictionary:
 	return ARCHMAGE_PROFILE if level == Difficulty.ARCHMAGE else DEFAULT_PROFILE
 
 
+## Simulations draw an opening uniformly, unless the profile forces one
+## ("pack": index). The live game deals the opponent's opening from a PackDeck.
 static func choose_pack(rng: RandomNumberGenerator, profile: Dictionary = DEFAULT_PROFILE) -> Dictionary:
-	# With three fixed options, sample directly to give each opening opponents.
 	var index := rng.randi_range(0, CreatureDB.PACKS.size() - 1)
 	return CreatureDB.PACKS[int(profile.get("pack", index))]
 

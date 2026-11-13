@@ -10,9 +10,14 @@ extends Node
 ## "cast": {Difficulty casting overrides, delays as [min, max]}}.
 ## Prints one RESULT line: a_wins b_wins draws rounds a_hp_left b_hp_left, plus
 ## per-side averages (peasants fielded, stars, upgrades, gold left unspent).
+## A side opens with a uniformly drawn starting pack unless its profile sets
+## "pack" (an index). --packs='[{"forms": [...], "bonus_gold": n}, ...]' replaces
+## CreatureDB.PACKS for the run; --count-packs prints "PACKS n" and quits.
 
 const STEP := 1.0 / 30.0
 const MAX_ROUNDS := 40
+
+var packs: Array = CreatureDB.PACKS
 
 
 func _ready() -> void:
@@ -46,6 +51,17 @@ func run() -> void:
 			sides[0] = _side(arg.trim_prefix("--a="))
 		elif arg.begins_with("--b="):
 			sides[1] = _side(arg.trim_prefix("--b="))
+		elif arg.begins_with("--packs=") and arg != "--packs=":
+			var override = JSON.parse_string(arg.trim_prefix("--packs="))
+			if override is Array and not override.is_empty():
+				packs = override.map(func(p: Dictionary) -> Dictionary:
+					return {"forms": p.forms, "bonus_gold": int(p.bonus_gold)})
+			else:
+				push_error("Invalid packs: " + arg)
+	if OS.get_cmdline_user_args().has("--count-packs"):
+		print("PACKS %d" % packs.size())
+		get_tree().quit()
+		return
 	var wins := [0, 0]
 	var draws := 0
 	var rounds_total := 0
@@ -82,7 +98,9 @@ func _duel(sides: Array, seed_id: int, a_team: int, stats: Array) -> Dictionary:
 	for team in 2:
 		shops[team].seed = seed_id * 7 + team
 		states[team].ai_level = sides[side_of[team]].level
-		states[team].take_starting_pack(EnemyAI.choose_pack(shops[team], sides[side_of[team]].profile))
+		# Same draw as EnemyAI.choose_pack, over the (possibly overridden) packs.
+		var drawn := shops[team].randi_range(0, packs.size() - 1)
+		states[team].take_starting_pack(packs[int(sides[side_of[team]].profile.get("pack", drawn))])
 	var rounds := 0
 	while states[0].hp > 0 and states[1].hp > 0 and rounds < MAX_ROUNDS:
 		rounds += 1

@@ -12,6 +12,7 @@ func _ready() -> void:
 		if arg.begins_with("--capture-dir="):
 			capture_dir = arg.trim_prefix("--capture-dir=")
 	DirAccess.make_dir_recursive_absolute(capture_dir)
+	PackDeck.save_path = capture_dir.path_join("pack_decks.cfg")
 	game = load("res://main.tscn").instantiate()
 	add_child(game)
 	await _frames(10)
@@ -21,6 +22,15 @@ func _ready() -> void:
 	game.choose_difficulty(Difficulty.APPRENTICE)
 	await _frames(4)
 	await _shot("01_pack")
+	if "--packs-only" in OS.get_cmdline_user_args():
+		# Every composition card, three per screenshot, the middle one hovered.
+		get_viewport().warp_mouse(Hud.pack_rect(1).get_center())
+		for page in CreatureDB.PACKS.size() / 3:
+			game.offered_packs.assign([page * 3, page * 3 + 1, page * 3 + 2])
+			await _frames(4)
+			await _shot("pack_cards_%d" % page)
+		get_tree().quit()
+		return
 	game.choose_pack(0)
 	if "--balance-only" in OS.get_cmdline_user_args():
 		await _capture_balance()

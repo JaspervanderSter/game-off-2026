@@ -618,6 +618,74 @@ static func pack_emblem(ci: CanvasItem, kind: String, p: Vector2, highlighted: b
 			ci.draw_line(p + Vector2(-14, 2), p + Vector2(-7, -5), Color(shaft, 0.8), 2, true)
 			ci.draw_line(p + Vector2(0, 13), p + Vector2(7, 6), Color(shaft, 0.8), 2, true)
 			_poly(ci, p, 1, [Vector2(3, -9), Vector2(14, -14), Vector2(9, -3)], Color(0.85, 0.87, 0.9))
+		"pitchfork":
+			# Wheat ear behind a peasant's pitchfork.
+			var straw := Color(0.95, 0.8, 0.35)
+			ci.draw_line(p + Vector2(-9, 13), p + Vector2(-3, -6), Color(straw, 0.8), 1.5, true)
+			for k in 4:
+				var q := p + Vector2(-3, -6).lerp(Vector2(-8, 9), k / 4.0)
+				_ellipse(ci, q + Vector2(-2.5, 0), 1, Vector2.ZERO, 3.2, 1.6, straw, -0.9)
+				_ellipse(ci, q + Vector2(2.0, -1), 1, Vector2.ZERO, 3.2, 1.6, straw, 0.6)
+			var wood := Color(0.6, 0.38, 0.2)
+			var prong := Color(0.8, 0.8, 0.85)
+			ci.draw_line(p + Vector2(8, 15), p + Vector2(2, -4), wood, 3, true)
+			ci.draw_line(p + Vector2(-3, -4), p + Vector2(8, -4), prong, 2, true)
+			for x in [-3.0, 2.5, 8.0]:
+				ci.draw_line(p + Vector2(x, -4), p + Vector2(x, -14), prong, 1.8, true)
+		"halo":
+			# Rising sun of the temple, ringed by a halo.
+			for k in 8:
+				var d := Vector2.from_angle(TAU * k / 8.0 + 0.2)
+				ci.draw_line(p + d * 9, p + d * 15, Color(GOLD, 0.85), 2, true)
+			ci.draw_circle(p, 7, Color(1.0, 0.97, 0.85), true)
+			ci.draw_arc(p, 10.5, 0, TAU, 24, GOLD, 2, true)
+		"fire_ice":
+			_flame(ci, p + Vector2(-6, 3), 11)
+			_snowflake(ci, p + Vector2(7, -2), 6.5, Color(0.85, 0.97, 1.0))
+		"bow":
+			var wood := Color(0.72, 0.46, 0.22)
+			ci.draw_arc(p + Vector2(-6, 0), 14, -1.15, 1.15, 16, wood, 3, true)
+			var top := p + Vector2(-6, 0) + Vector2.from_angle(-1.15) * 14
+			var bottom := p + Vector2(-6, 0) + Vector2.from_angle(1.15) * 14
+			ci.draw_line(top, bottom, Color(0.95, 0.95, 0.9), 1, true)
+			ci.draw_line(p + Vector2(-12, 0), p + Vector2(12, 0), Color(0.85, 0.8, 0.7), 1.6, true)
+			_poly(ci, p, 1, [Vector2(15, 0), Vector2(9, -4), Vector2(9, 4)], Color(0.85, 0.87, 0.9))
+			_poly(ci, p, 1, [Vector2(-12, 0), Vector2(-15, -4), Vector2(-10, 0), Vector2(-15, 4)], Color(0.3, 0.6, 0.3))
+		"spear_wall":
+			# Three raised spears behind a row of shields.
+			var shaft := Color(0.72, 0.47, 0.25)
+			for x in [-8.0, 0.0, 8.0]:
+				ci.draw_line(p + Vector2(x, 8), p + Vector2(x, -9), shaft, 2, true)
+				_poly(ci, p, 1, [Vector2(x - 3, -9), Vector2(x + 3, -9), Vector2(x, -16)], Color(0.85, 0.87, 0.9))
+			for x in [-8.0, 0.0, 8.0]:
+				ci.draw_circle(p + Vector2(x, 7), 5, Color(0.45, 0.5, 0.25), true)
+				ci.draw_arc(p + Vector2(x, 7), 5, 0, TAU, 12, Color(0.75, 0.62, 0.3), 1.2, true)
+		"moon_dagger":
+			ci.draw_circle(p + Vector2(-3, -3), 11, Color(0.95, 0.92, 0.75), true)
+			ci.draw_circle(p + Vector2(2, -6), 10, Color(0.22, 0.16, 0.12), true)
+			ci.draw_line(p + Vector2(-6, 13), p + Vector2(-2, 9), Color(0.35, 0.18, 0.45), 3, true)
+			ci.draw_line(p + Vector2(-6, 7), p + Vector2(0, 11), GOLD, 2, true)
+			_poly(ci, p, 1, [Vector2(-4, 8), Vector2(-1, 11), Vector2(12, -8)], Color(0.85, 0.87, 0.92))
+		"flame":
+			_flame(ci, p + Vector2(0, 4), 15)
+			for v in [Vector2(-11, -8), Vector2(10, -11), Vector2(12, 2)]:
+				ci.draw_circle(p + v, 1.6, Color(1.0, 0.7, 0.2), true)
+		"mug":
+			var wood := Color(0.62, 0.4, 0.2)
+			ci.draw_arc(p + Vector2(8, 1), 5.5, -PI * 0.5, PI * 0.5, 10, wood.darkened(0.2), 2.5, true)
+			ci.draw_rect(Rect2(p + Vector2(-9, -6), Vector2(17, 19)), wood)
+			for y in [-1.0, 7.0]:
+				ci.draw_line(p + Vector2(-9, y), p + Vector2(8, y), Color(0.45, 0.45, 0.5), 1.5)
+			for v in [Vector2(-6, -7), Vector2(0, -9), Vector2(5, -7)]:
+				ci.draw_circle(p + v, 4.2, Color(0.98, 0.96, 0.9), true)
+		"banner":
+			ci.draw_line(p + Vector2(-9, 15), p + Vector2(-9, -15), Color(0.72, 0.47, 0.25), 2, true)
+			ci.draw_circle(p + Vector2(-9, -15), 2, GOLD, true)
+			var cloth := [Vector2(-8, -13), Vector2(12, -13), Vector2(12, 6), Vector2(2, 1), Vector2(-8, 6)]
+			_poly(ci, p, 1, cloth, Color(0.95, 0.93, 0.88))
+			ci.draw_polyline(_pts(p, 1, cloth + [cloth[0]]), GOLD, 1.2, true)
+			ci.draw_line(p + Vector2(2, -10), p + Vector2(2, -1), GOLD, 2.5)
+			ci.draw_line(p + Vector2(-2, -7), p + Vector2(6, -7), GOLD, 2.5)
 
 
 # --- Difficulty hats ------------------------------------------------------------

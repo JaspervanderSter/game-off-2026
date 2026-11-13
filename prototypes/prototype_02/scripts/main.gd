@@ -24,6 +24,12 @@ var difficulty := Difficulty.APPRENTICE
 var unlocked_difficulty := Difficulty.APPRENTICE
 var newly_unlocked_difficulty := -1
 var difficulty_progress_path := "user://difficulty_progress.cfg"
+const PACK_CHOICES := 3
+# Starting compositions come from hidden decks: three cards for the player per
+# duel, one for the opponent from its own deck.
+var player_deck := PackDeck.new("player")
+var enemy_deck := PackDeck.new("enemy")
+var offered_packs: Array[int] = [] # CreatureDB.PACKS indices on the three cards
 var battle: Battle = null
 var rng := RandomNumberGenerator.new()
 var drag: OwnedCreature = null
@@ -69,6 +75,8 @@ func _ready() -> void:
 	hud.z_index = 20
 	add_child(hud)
 	_load_difficulty_progress()
+	player_deck.load_state()
+	enemy_deck.load_state()
 	new_duel()
 
 
@@ -108,6 +116,8 @@ func choose_difficulty(level: int) -> void:
 		return
 	difficulty = level
 	enemy.ai_level = difficulty
+	offered_packs = player_deck.deal(PACK_CHOICES, rng)
+	player_deck.save_state()
 	phase = Phase.PACK
 	Sfx.play("click")
 
@@ -152,11 +162,13 @@ func _reset_difficulty_progress() -> void:
 	Sfx.play("click")
 
 
-func choose_pack(index: int) -> void:
-	if phase != Phase.PACK or index < 0 or index >= CreatureDB.PACKS.size():
+## `slot` is the card position (0 to 2) among the offered compositions.
+func choose_pack(slot: int) -> void:
+	if phase != Phase.PACK or slot < 0 or slot >= offered_packs.size():
 		return
-	player.take_starting_pack(CreatureDB.PACKS[index])
-	enemy.take_starting_pack(EnemyAI.choose_pack(rng, EnemyAI.profile_for(enemy.ai_level)))
+	player.take_starting_pack(CreatureDB.PACKS[offered_packs[slot]])
+	enemy.take_starting_pack(CreatureDB.PACKS[enemy_deck.deal(1, rng)[0]])
+	enemy_deck.save_state()
 	Sfx.play("buy")
 	start_round()
 
@@ -440,7 +452,7 @@ func _left_press(pos: Vector2) -> void:
 					choose_difficulty(i)
 					return
 		Phase.PACK:
-			for i in CreatureDB.PACKS.size():
+			for i in offered_packs.size():
 				if Hud.pack_rect(i).has_point(pos):
 					choose_pack(i)
 					return
@@ -596,10 +608,10 @@ func _process(dt: float) -> void:
 						if Hud.offer_rect(i).has_point(mouse) and player.offers[i] != "":
 							hover_info = {"form": player.offers[i], "team": 0, "pos": mouse}
 		Phase.PACK:
-			for i in CreatureDB.PACKS.size():
-				var forms: Array = CreatureDB.PACKS[i].forms
+			for i in offered_packs.size():
+				var forms: Array = CreatureDB.PACKS[offered_packs[i]].forms
 				for j in forms.size():
-					if Hud.pack_token_pos(i, j).distance_to(mouse) < 24:
+					if Hud.pack_token_pos(i, j, forms.size()).distance_to(mouse) < Hud.pack_token_radius(forms.size()):
 						hover_info = {"form": forms[j], "team": 0, "pos": mouse}
 	queue_redraw()
 

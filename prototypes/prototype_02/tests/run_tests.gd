@@ -8,6 +8,8 @@ var _checks := 0
 
 
 func _ready() -> void:
+	# Games created by the tests deal from scratch decks, never the player's.
+	PackDeck.save_path = "user://pack_decks_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
 	_test_network()
 	_test_charges()
 	_test_transformation_rules()
@@ -36,6 +38,7 @@ func _ready() -> void:
 	_test_ai_strategy()
 	_test_difficulty()
 	_simulate_duels()
+	DirAccess.remove_absolute(PackDeck.save_path)
 	print("\n%d checks, %d failures" % [_checks, _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -443,25 +446,79 @@ func _test_shop_and_merges() -> void:
 
 
 func _test_starting_packs() -> void:
+	# Twelve themed compositions of two to four creatures, covering every shop
+	# creature. Their balance comes from AI duels (training/pack_matrix.sh).
+	check(CreatureDB.PACKS.size() == 12, "twelve starting compositions")
+	var emblems := {}
+	var uses := {}
+	for pack in CreatureDB.PACKS:
+		emblems[pack.emblem] = true
+		check(pack.forms.size() >= 2 and pack.forms.size() <= 4, "%s has two to four creatures" % pack.name)
+		check(int(pack.bonus_gold) >= 0 and int(pack.bonus_gold) <= 3, "%s bonus stays within 0-3 gold" % pack.name)
+		check(pack.forms.all(func(id: String) -> bool: return id in CreatureDB.shop_ids()), "%s holds shop creatures" % pack.name)
+		for id in pack.forms:
+			uses[id] = uses.get(id, 0) + 1
+	check(emblems.size() == CreatureDB.PACKS.size(), "every composition has its own crest")
+	check(CreatureDB.shop_ids().all(func(id: String) -> bool: return uses.has(id)),
+		"every shop creature starts in at least one composition")
+	var village: Array = CreatureDB.PACKS.filter(func(p: Dictionary) -> bool:
+		return p.forms.all(func(id: String) -> bool: return id == "peasant"))
+	check(village.size() == 1, "one composition is all peasants, for an economy opening")
+
+	# Hidden deck: no repeat within the first nine cards, then a full reshuffle.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var deck := PackDeck.new("test")
+	var seen := {}
+	for duel in 3:
+		for card in deck.deal(3, rng):
+			seen[card] = true
+	check(seen.size() == 9, "three duels deal nine different compositions")
+	var fourth := deck.deal(3, rng)
+	check(deck.dealt == 3 and deck.order.slice(0, 3) == fourth, "the fourth deal reshuffles the whole deck")
+	var solo := PackDeck.new("solo")
+	seen.clear()
+	for duel in PackDeck.RESHUFFLE_AFTER:
+		seen[solo.deal(1, rng)[0]] = true
+	check(seen.size() == PackDeck.RESHUFFLE_AFTER, "the opponent's deck deals nine different openings in a row")
+	solo.deal(1, rng)
+	check(solo.dealt == 1, "the opponent's deck reshuffles after nine openings")
+	deck.save_state()
+	var reloaded := PackDeck.new("test")
+	reloaded.load_state()
+	check(reloaded.order == deck.order and reloaded.dealt == deck.dealt, "a deck resumes where it stopped")
+	reloaded.order[0] = reloaded.order[1]
+	check(reloaded.deal(1, rng).size() == 1 and reloaded.dealt == 1, "a corrupt saved deck is reshuffled")
+
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
-	for i in CreatureDB.PACKS.size():
+	game.player_deck.shuffle(rng)
+	game.enemy_deck.shuffle(rng)
+	seen.clear()
+	var enemy_seen := {}
+	for slot in 3:
 		game.new_duel()
 		game.choose_difficulty(Difficulty.APPRENTICE)
-		var pack: Dictionary = CreatureDB.PACKS[i]
-		game._left_press(Hud.pack_rect(i).get_center())
+		check(game.offered_packs.size() == 3, "three compositions are offered")
+		for card in game.offered_packs:
+			seen[card] = true
+		var pack: Dictionary = CreatureDB.PACKS[game.offered_packs[slot]]
+		game._left_press(Hud.pack_rect(slot).get_center())
 		var forms: Array = game.player.fielded().map(func(c: OwnedCreature) -> String: return c.form_id)
 		var gold := Rules.income(1) + int(pack.bonus_gold)
-		check(forms == pack.forms, "%s fields the selected trio" % pack.name)
+		check(forms == pack.forms, "%s fields the selected creatures" % pack.name)
 		check(game.round_num == 1 and game.player.gold == gold, "%s grants its first shop budget" % pack.name)
 		var enemy_forms: Array = game.enemy.fielded().map(func(c: OwnedCreature) -> String: return c.form_id)
 		var enemy_pack := CreatureDB.PACKS.filter(func(choice: Dictionary) -> bool: return choice.forms == enemy_forms)
 		check(enemy_pack.size() == 1 and game.enemy.gold == Rules.income(1) + enemy_pack[0].bonus_gold,
-			"opponent receives the bonus for its own trio")
-		game.choose_pack(i)
+			"opponent receives the bonus for its own composition")
+		enemy_seen[game.enemy_deck.order[game.enemy_deck.dealt - 1]] = true
+		game.choose_pack(slot)
 		check(game.round_num == 1 and game.player.gold == gold, "pack cannot be claimed twice")
 		game.start_round()
 		check(game.player.gold == gold + Rules.income(2), "pack bonus is not granted again in round two")
+	check(seen.size() == 9, "the player sees nine different compositions over three duels")
+	check(enemy_seen.size() == 3, "the opponent opens with three different compositions")
 	game.free()
 
 
@@ -1349,12 +1406,13 @@ func _test_ai_strategy() -> void:
 	check(EnemyAI.choose_cast(b, 1) != weak_enemy, "AI avoids transforming a weak enemy into stronger expected forms")
 	b.free()
 
-	# Archmage strategy: its own profile, Control opening and harvest economy.
+	# Archmage strategy: its own profile and harvest economy; its opening is dealt.
 	check(EnemyAI.profile_for(Difficulty.ARCHMAGE) == EnemyAI.ARCHMAGE_PROFILE
 		and EnemyAI.profile_for(Difficulty.ADEPT) == EnemyAI.DEFAULT_PROFILE
 		and EnemyAI.profile_for(Difficulty.APPRENTICE) == EnemyAI.DEFAULT_PROFILE,
 		"only the archmage uses the tuned strategy profile")
-	check(EnemyAI.choose_pack(rng, EnemyAI.ARCHMAGE_PROFILE).name == "Control", "archmage opens with the Control pack")
+	check(not EnemyAI.ARCHMAGE_PROFILE.has("pack"), "the archmage has no fixed opening")
+	check(EnemyAI.choose_pack(rng, {"pack": 4}) == CreatureDB.PACKS[4], "simulations can force an opening")
 	state = WizardState.new(1)
 	for id in ["guardian", "berserker", "archer"]:
 		state.add_creature(id)

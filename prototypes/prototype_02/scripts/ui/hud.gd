@@ -272,8 +272,15 @@ func shown_difficulty() -> int:
 	return game.enemy.ai_level
 
 
-static func pack_token_pos(i: int, j: int) -> Vector2:
-	return pack_rect(i).position + Vector2(34 + j * 54, 88)
+## Creature j of the n shown on card i, centred; four creatures sit closer.
+static func pack_token_pos(i: int, j: int, n: int) -> Vector2:
+	var spacing := 54.0 if n <= 3 else 40.0
+	var r := pack_rect(i)
+	return Vector2(r.get_center().x + (j - (n - 1) * 0.5) * spacing, r.position.y + 88)
+
+
+static func pack_token_radius(n: int) -> float:
+	return 24.0 if n <= 3 else 19.0
 
 
 static func charge_pos(i: int) -> Vector2:
@@ -725,16 +732,17 @@ func _draw_difficulty_unlock(card: Rect2, lock_pos: Vector2, opening: float, age
 
 func _draw_pack_choice() -> void:
 	var mouse := get_global_mouse_position()
-	for i in CreatureDB.PACKS.size():
-		var pack: Dictionary = CreatureDB.PACKS[i]
+	for i in game.offered_packs.size():
+		var pack: Dictionary = CreatureDB.PACKS[game.offered_packs[i]]
 		var r := pack_rect(i)
 		var hovered := r.has_point(mouse)
 		_draw_choice_halo(r, pack_halo, i)
 		_panel(r, Color(0.22, 0.16, 0.1) if hovered else Color(0.14, 0.1, 0.08))
 		var emblem_pos := Vector2(r.get_center().x, r.position.y + 31)
 		Icons.pack_emblem(self, pack.emblem, emblem_pos, hovered)
-		for j in pack.forms.size():
-			Icons.token(self, pack.forms[j], pack_token_pos(i, j), 24, 0)
+		var n: int = pack.forms.size()
+		for j in n:
+			Icons.token(self, pack.forms[j], pack_token_pos(i, j, n), pack_token_radius(n), 0)
 		var coin_row := Vector2(emblem_pos.x, r.end.y - 24)
 		var divider := Color(0.45, 0.32, 0.2, 0.65)
 		draw_line(coin_row + Vector2(-66, -17), coin_row + Vector2(66, -17), divider, 1.0)
