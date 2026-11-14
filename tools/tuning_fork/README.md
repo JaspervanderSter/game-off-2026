@@ -5,6 +5,10 @@ sound, shows its files as waveforms, adds sound files dropped from the
 explorer, plays the sound the way the game plays it, edits its JSON settings
 live and saves them back beside the sound. No more opening JSON files by hand.
 
+What Tuning Fork is meant to become is defined in [`docs/`](docs/Home.md), a
+set of linked notes (open the folder as an Obsidian vault). Where this README
+and the definition differ, [`docs/Gaps.md`](docs/Gaps.md) lists the gap.
+
 ## Run
 
 Open `tools/tuning_fork/project.godot` in Godot 4.7 and press F5.

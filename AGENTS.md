@@ -8,6 +8,12 @@ changes, during verification, or as part of `tests/`. Run it only when the user
 explicitly asks for a balance run or balance data. Use `tests/run_tests.tscn` for
 normal verification.
 
+## Tuning Fork definition
+
+`tools/tuning_fork/docs/` (start at `Home.md`) defines what Tuning Fork and
+its game runtime are. Follow it when working on either; when the code and
+the definition differ, update `Gaps.md`.
+
 ## Language
 
 Write shared project documentation in English. Conversation with the user may remain in French.
