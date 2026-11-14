@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="SHIFT"
+config/name="Shapeshifters Duel"
 config/description="Prototype 02: auto-battler duel loop with single-target shapeshifting."
 config/version="0.2.0"
 run/main_scene="res://main.tscn"

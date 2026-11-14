@@ -3,8 +3,8 @@
 #
 #   .\export_windows.ps1 [-Godot <path to Godot_v4.x_console.exe>] [-Out <folder>]
 #
-# Produces <Out>\SHIFT.exe (with the game icon and version info), <Out>\sfx\*.ogg
-# and <Out>-Windows.zip, which unpacks into a single SHIFT folder.
+# Produces <Out>\ShapeshiftersDuel.exe (with the game icon and version info), <Out>\sfx\*.ogg
+# and <Out>-Windows.zip, which unpacks into a single ShapeshiftersDuel folder.
 param(
 	[string]$Godot = "",
 	[string]$Out = ""
@@ -12,7 +12,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $project = $PSScriptRoot
-if (-not $Out) { $Out = Join-Path $project "..\..\export\SHIFT" }
+if (-not $Out) { $Out = Join-Path $project "..\..\export\ShapeshiftersDuel" }
 $Out = [System.IO.Path]::GetFullPath($Out)
 
 function Find-Godot {
@@ -34,12 +34,12 @@ New-Item -ItemType Directory -Force (Join-Path $Out "sfx") | Out-Null
 & $exe --headless --audio-driver Dummy --path $project --script res://tools/make_windows_icon.gd
 if ($LASTEXITCODE -ne 0) { throw "Icon generation failed." }
 & $exe --headless --audio-driver Dummy --path $project --import | Out-Null
-& $exe --headless --audio-driver Dummy --path $project --export-release "Windows Desktop" (Join-Path $Out "SHIFT.exe")
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $Out "SHIFT.exe"))) { throw "Godot export failed." }
+& $exe --headless --audio-driver Dummy --path $project --export-release "Windows Desktop" (Join-Path $Out "ShapeshiftersDuel.exe")
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $Out "ShapeshiftersDuel.exe"))) { throw "Godot export failed." }
 
 Copy-Item (Join-Path $project "sfx\*.ogg") (Join-Path $Out "sfx")
 @"
-Sound effects of SHIFT
+Sound effects of Shapeshifters Duel
 
 Each .ogg file in this folder replaces the game sound of the same name.
 Keep the file names, and use OGG Vorbis. Edit a file, save it, then click

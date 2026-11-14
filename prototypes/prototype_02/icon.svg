@@ -1,8 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="128" height="128" viewBox="0 0 128 128">
+  <!-- The archmage hat of the hardest difficulty (Icons._archmage_hat), frozen
+       mid-animation. Hat coordinates are in the drawing's units (1 = 46 px). -->
+  <defs>
+    <path id="star" d="M0 -1 L0.2645 -0.3641 L0.9511 -0.309 L0.428 0.1391 L0.5878 0.809 L0 0.45 L-0.5878 0.809 L-0.428 0.1391 L-0.9511 -0.309 L-0.2645 -0.3641 Z"/>
+    <clipPath id="frame">
+      <rect width="128" height="128" rx="20"/>
+    </clipPath>
+  </defs>
   <rect width="128" height="128" rx="20" fill="#2a1f1a"/>
-  <path d="M30 98 L64 18 L98 98 Z" fill="#6a3fd0"/>
-  <ellipse cx="64" cy="98" rx="44" ry="10" fill="#4b2c96"/>
-  <circle cx="64" cy="56" r="8" fill="#ffd34d"/>
-  <circle cx="50" cy="78" r="5" fill="#7fe0ff"/>
-  <circle cx="78" cy="80" r="5" fill="#7fe0ff"/>
+  <g clip-path="url(#frame)">
+    <g transform="translate(64 67) scale(46)">
+      <!-- Aura -->
+      <circle cx="0" cy="-0.25" r="1.32" fill="#b86bff" fill-opacity="0.05"/>
+      <circle cx="0" cy="-0.25" r="1.2" fill="#b86bff" fill-opacity="0.06"/>
+      <circle cx="0" cy="-0.25" r="1.08" fill="#b86bff" fill-opacity="0.08"/>
+      <!-- Sparks behind the hat -->
+      <use xlink:href="#star" transform="translate(-1.165 -0.338) scale(0.095)" fill="#ffeb8c" fill-opacity="0.5"/>
+      <use xlink:href="#star" transform="translate(1.21 -0.297) scale(0.1)" fill="#ffeb8c" fill-opacity="0.8"/>
+      <!-- Brim -->
+      <ellipse cx="0" cy="0.66" rx="1.12" ry="0.24" fill="#000000" fill-opacity="0.3"/>
+      <ellipse cx="0" cy="0.52" rx="1.12" ry="0.25" fill="#431a65"/>
+      <path d="M1.12 0.52 A1.12 0.25 0 0 1 -1.12 0.52" fill="none" stroke="#ffd140" stroke-width="0.05" stroke-linecap="round"/>
+      <!-- Cone with curled tip -->
+      <path d="M-0.6 0.52 L0.6 0.52 L0.24 -0.62 L0.62 -0.9 L0.62 -1.02 L0.1 -1.04 L-0.14 -0.66 Z" fill="#702ba8"/>
+      <path d="M-0.6 0.52 L-0.22 0.52 L-0.02 -0.68 L-0.14 -0.66 Z" fill="#5c238a"/>
+      <circle cx="0.62" cy="-1.02" r="0.09" fill="#ffd140"/>
+      <!-- Jewelled band -->
+      <path d="M-0.53 0.3 L0.53 0.3 L0.58 0.47 L-0.58 0.47 Z" fill="#ffd140"/>
+      <circle cx="0" cy="0.385" r="0.1" fill="#e6264d"/>
+      <circle cx="-0.03" cy="0.36" r="0.035" fill="#ffccd9"/>
+      <!-- Crescent moon and stars -->
+      <circle cx="-0.2" cy="-0.05" r="0.17" fill="#fff2b3"/>
+      <circle cx="-0.13" cy="-0.09" r="0.15" fill="#702ba8"/>
+      <use xlink:href="#star" transform="translate(0.2 -0.32) scale(0.13)" fill="#ffd140"/>
+      <use xlink:href="#star" transform="translate(0.02 -0.68) scale(0.09)" fill="#ffda66"/>
+      <use xlink:href="#star" transform="translate(0.28 0.1) scale(0.08)" fill="#ffdf79"/>
+      <!-- Sparks in front -->
+      <use xlink:href="#star" transform="translate(0.675 0.12) scale(0.144)" fill="#ffeb8c" fill-opacity="0.9"/>
+      <use xlink:href="#star" transform="translate(-0.79 0.094) scale(0.141)" fill="#ffeb8c" fill-opacity="0.7"/>
+    </g>
+  </g>
 </svg>

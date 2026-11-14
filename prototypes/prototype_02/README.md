@@ -1,4 +1,4 @@
-# Prototype 02 — Shapeshift Auto-battler
+# Prototype 02 — Shapeshifters Duel
 
 Godot 4.7 project built from scratch from the design notes
 ([Prototype 02](../../docs/design/Prototype%2002.md) and the shared notes in
@@ -201,8 +201,8 @@ a sound only means replacing its file under the same name. The first versions
 were rendered once from the former procedural synthesis (22,050 Hz mono).
 
 The Windows build can be re-voiced without Godot. `export_windows.ps1` exports
-`export/SHIFT/` and `export/SHIFT-Windows.zip` at the repository root:
-`SHIFT.exe` plus an `sfx/` folder with a copy of every effect. The executable
+`export/ShapeshiftersDuel/` and `export/ShapeshiftersDuel-Windows.zip` at the repository root:
+`ShapeshiftersDuel.exe` plus an `sfx/` folder with a copy of every effect. The executable
 carries the game icon, `icon.ico`, which the script first regenerates from
 `icon.svg` with `tools/make_windows_icon.gd`; after changing `icon.svg`, run that
 script before exporting from the editor. An exported desktop
