@@ -952,6 +952,34 @@ func _test_sound_files() -> void:
 	var unused := Sfx.SOUNDS.filter(func(n): return not played.has(n))
 	check(unknown.is_empty() and unused.is_empty(),
 		"scripts play exactly the listed effects (unknown %s, unused %s)" % [unknown, unused])
+	_test_sound_overrides()
+
+
+## An exported build plays OGG files dropped beside its executable instead of
+## the packed ones; here a temporary folder stands in for that location.
+func _test_sound_overrides() -> void:
+	check(Sfx._override_dir == "", "editor runs use only the packed sounds")
+	var dir := "user://sfx_override_test_%d" % OS.get_process_id()
+	DirAccess.make_dir_recursive_absolute(dir)
+	var replacement := dir.path_join("click.ogg")
+	var file := FileAccess.open(replacement, FileAccess.WRITE)
+	file.store_buffer(FileAccess.get_file_as_bytes(Sfx.DIR + "hit.ogg"))
+	file.close()
+	var packed: AudioStream = Sfx._streams.get("click")
+	Sfx._override_dir = ProjectSettings.globalize_path(dir)
+	Sfx.load_overrides()
+	var loaded: AudioStream = Sfx._streams.get("click")
+	check(loaded is AudioStreamOggVorbis and loaded != packed
+		and is_equal_approx(loaded.get_length(), load(Sfx.DIR + "hit.ogg").get_length()),
+		"a file beside the executable replaces the packed sound")
+	Sfx.load_overrides()
+	check(Sfx._streams.get("click") == loaded, "an unchanged replacement is not reloaded")
+	check(Sfx._streams.get("hit") == load(Sfx.DIR + "hit.ogg"), "sounds without a replacement stay packed")
+	Sfx._override_dir = ""
+	Sfx._override_times.clear()
+	Sfx._streams["click"] = packed
+	DirAccess.remove_absolute(replacement)
+	DirAccess.remove_absolute(dir)
 
 
 func _script_files(dir: String) -> Array[String]:

@@ -1,6 +1,9 @@
 extends Node
 ## Sound effects, each one an OGG file `res://sfx/<name>.ogg` played by name.
 ## Autoloaded as Sfx; result audio has its own voice so effects cannot steal it.
+## Exported desktop builds also read `sfx/<name>.ogg` beside the executable:
+## a file there replaces the packed one, so a sound designer can swap effects
+## without re-exporting. Changed files reload when the game window regains focus.
 
 const DIR := "res://sfx/"
 ## Every effect the game plays. Replacing a sound only means replacing its file.
@@ -29,6 +32,10 @@ var _players: Array[AudioStreamPlayer] = []
 var _next := 0
 var _last_played := {}
 var _result_player: AudioStreamPlayer
+## Folder of replacement files beside the executable; empty when not exported.
+var _override_dir := ""
+## Modification time of each replacement file already loaded, by sound name.
+var _override_times := {}
 
 
 func _ready() -> void:
@@ -46,6 +53,34 @@ func _ready() -> void:
 		return
 	for sound_name in SOUNDS:
 		_streams[sound_name] = load(DIR + sound_name + ".ogg")
+	if OS.has_feature("template") and not OS.has_feature("web"):
+		_override_dir = OS.get_executable_path().get_base_dir().path_join("sfx")
+	load_overrides()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_IN and enabled:
+		load_overrides()
+
+
+## Loads each replacement file that is new or changed since its last load.
+## A file that cannot be decoded keeps the previous sound and is retried later.
+func load_overrides() -> void:
+	if _override_dir == "":
+		return
+	for sound_name in SOUNDS:
+		var path := _override_dir.path_join(sound_name + ".ogg")
+		if not FileAccess.file_exists(path):
+			continue
+		var time := FileAccess.get_modified_time(path)
+		if _override_times.get(sound_name, -1) == time:
+			continue
+		var stream := AudioStreamOggVorbis.load_from_file(path)
+		if stream == null:
+			push_warning("Could not load replacement sound %s" % path)
+			continue
+		_override_times[sound_name] = time
+		_streams[sound_name] = stream
 
 
 func play(sound_name: String, pitch_jitter := 0.08, pitch := 1.0) -> void:

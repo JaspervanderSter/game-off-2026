@@ -200,6 +200,14 @@ format. `scripts/audio/sfx.gd` (autoload `Sfx`) loads each effect listed in
 a sound only means replacing its file under the same name. The first versions
 were rendered once from the former procedural synthesis (22,050 Hz mono).
 
+The Windows build can be re-voiced without Godot. `export_windows.ps1` exports
+`export/SHIFT-Prototype-02-Windows/` (and a zip of it) at the repository root:
+`SHIFT.exe` plus an `sfx/` folder with a copy of every effect. An exported desktop
+build plays `sfx/<name>.ogg` beside its executable in place of the packed sound;
+changed files reload when the game window regains focus, and a missing or
+unreadable file falls back to the packed sound. Web builds use only the packed
+sounds. Approved replacements are copied back into the project's `sfx/` folder.
+
 | File | Played when |
 |---|---|
 | `click` | Interface click: difficulty, fight, picking up a creature, offer lock, reroll, restart |
