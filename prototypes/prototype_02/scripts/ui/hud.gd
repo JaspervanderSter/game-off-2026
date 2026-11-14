@@ -99,7 +99,7 @@ func advance_difficulty_unlock(dt: float) -> void:
 	var previous := unlock_time
 	unlock_time += dt
 	if previous < UNLOCK_CLICK and unlock_time >= UNLOCK_CLICK:
-		Sfx.play("difficulty_unlock", 0.0)
+		Sfx.play("difficulty_unlock")
 	if unlock_time >= UNLOCK_DURATION:
 		unlock_level = -1
 
@@ -155,12 +155,12 @@ func advance_harvest(dt: float) -> void:
 		if not src.popped and harvest_time >= src.start:
 			src.popped = true
 			_pop_harvester(src)
-			Sfx.play("coin_pop", 0.04)
+			Sfx.play("coin_pop")
 	for coin in harvest_coins:
 		if not coin.arrived and harvest_time >= coin.fly + HARVEST_FLIGHT:
 			coin.arrived = true
 			# Each landing coin rings a little higher: a rising cash-register run.
-			Sfx.play("coin_gain", 0.02, 1.0 + 0.07 * coin.index)
+			Sfx.play("coin_gain:harvest", coin.index)
 	harvest_sources = harvest_sources.filter(func(s): return harvest_time < s.start + HARVEST_HOP + 0.3)
 	harvest_coins = harvest_coins.filter(func(c): return harvest_time < c.fly + HARVEST_FLIGHT + REWARD_TAIL)
 
@@ -211,11 +211,11 @@ func advance_loss_rewards(dt: float) -> void:
 		var age: float = reward_time - reward.start
 		if age >= 0.0 and not reward.burst:
 			reward.burst = true
-			Sfx.play("heart_break", 0.03)
+			Sfx.play("heart_break")
 		if age >= HEART_BURST + COIN_FLIGHT and not reward.arrived:
 			reward.arrived = true
 			if reward.coin:
-				Sfx.play("coin_gain", 0.05)
+				Sfx.play("coin_gain:compensation")
 	queue_redraw()
 
 

@@ -472,7 +472,7 @@ func _tick_ability() -> void:
 				beat_t = BEAT_TIME * 1.6
 				beat_len = beat_t
 				battle.emit_fx("song", position, {"targets": allies, "source": self, "step": song_step})
-				Sfx.play_note(song_step)
+				Sfx.play("note", song_step)
 				song_step += 1
 		"graze":
 			for a in battle.allies_near(self, position, data.radius * CELL):

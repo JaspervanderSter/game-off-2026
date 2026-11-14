@@ -1,0 +1,10 @@
+{
+	"description": "Bard song, one note per beat. The file should be one short C5 note: the melody transposes it.",
+	"volume_db": -13.0,
+	"volume_jitter_db": 0.0,
+	"pitch": 1.0,
+	"pitch_jitter": 0.0,
+	"pitch_step": 0.0,
+	"cooldown_ms": 0,
+	"melody": [0, 2, 4, 7, 9, 7, 4, 2]
+}

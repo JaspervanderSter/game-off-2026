@@ -1,0 +1,6 @@
+{
+	"description": "Background music. Volume in dB once faded in, fade time in seconds, and the battle music speed-up per frenzy level (5 levels).",
+	"volume_db": -16.0,
+	"fade_seconds": 1.2,
+	"frenzy_speed_per_level": 0.05
+}

@@ -274,7 +274,7 @@ func _on_unit_died(u: Unit) -> void:
 func _on_unit_transformed(u: Unit, caster: int, _from: String) -> void:
 	var blessing := u.team == caster
 	fx.add("shift_bless" if blessing else "shift_hex", u.position)
-	Sfx.play("shift_bless" if blessing else "shift_hex", 0.03)
+	Sfx.play("shift_bless" if blessing else "shift_hex")
 	u.flash_t = 0.12
 	_shake(4.0 if blessing else 6.0, 0.22)
 

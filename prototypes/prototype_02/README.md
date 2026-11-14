@@ -190,60 +190,90 @@ zero. Phase changes use a 1.2-second crossfade with a smooth amplitude curve.
 Rapid reversals continue from the current volumes; selecting the same track
 preserves its playback position. Both streams loop in Godot, and combat x2 does
 not change music speed. Music volume is initially -16 dB to leave room for effects.
-Fade duration and volume can be tuned with `PhaseMusic.FADE_SECONDS` and `MUSIC_DB`.
+Fade duration, volume and the frenzy speed-up are tuned in `music/music.json`
+(see "Sound effects").
 
 ## Sound effects
 
-All game audio is OGG Vorbis; the `sfx/` and `music/` folders hold no other
-format. `scripts/audio/sfx.gd` (autoload `Sfx`) loads each effect listed in
-`Sfx.SOUNDS` from `sfx/<name>.ogg`, and `Sfx.play("<name>")` plays it. Replacing
-a sound only means replacing its file under the same name. The first versions
-were rendered once from the former procedural synthesis (22,050 Hz mono).
+All game audio is OGG Vorbis. Effects are sorted into category folders under
+`sfx/` (interface, coins, combat, abilities, shapeshift, duel); each effect is
+`sfx/<category>/<name>.ogg` with a JSON file of the same name beside it.
+`scripts/audio/sfx.gd` (autoload `Sfx`) lists every effect and its category in
+`Sfx.SOUNDS`, and `Sfx.play("<name>")` plays it. Replacing a sound only means
+replacing its file under the same name. The first versions were rendered once
+from the former procedural synthesis (22,050 Hz mono).
 
-The Windows build can be re-voiced without Godot. `export_windows.ps1` exports
-`export/ShapeshiftersDuel/` and `export/ShapeshiftersDuel-Windows.zip` at the repository root:
-`ShapeshiftersDuel.exe` plus an `sfx/` folder with a copy of every effect. The executable
-carries the game icon, `icon.ico`, which the script first regenerates from
-`icon.svg` with `tools/make_windows_icon.gd`; after changing `icon.svg`, run that
-script before exporting from the editor. An exported desktop
-build plays `sfx/<name>.ogg` beside its executable in place of the packed sound;
-changed files reload when the game window regains focus, and a missing or
-unreadable file falls back to the packed sound. Web builds use only the packed
-sounds. Approved replacements are copied back into the project's `sfx/` folder.
+How each sound plays is data, not code. Its JSON file holds:
 
-| File | Played when |
+| Key | Meaning |
 |---|---|
-| `click` | Interface click: difficulty, fight, picking up a creature, offer lock, reroll, restart |
-| `fail` | Impossible action: not enough gold, locked difficulty, fizzled cast, invalid drop |
-| `buy` | Purchase, starting composition, recharge upgrade, player sale |
-| `combine` | Merge without a new star |
-| `merge` | Merge that grants a star |
-| `coin_gain` | Coin received: enemy sale, harvest coin landing, heart-loss compensation |
-| `coin_pop` | A peasant pops its harvest coins at the start of combat |
-| `heart_break` | A half-heart breaks after a lost round |
-| `difficulty_unlock` | The lock of a newly unlocked difficulty opens |
-| `hit` | Melee hit, dive, charge, fireball impact |
-| `shoot` | A projectile is fired |
-| `death` | A creature dies |
-| `shift_bless` | Shapeshift cast on an own creature |
-| `shift_hex` | Shapeshift cast on an enemy creature |
-| `hop` | Rabbit leap |
-| `fear` | Skunk fear burst |
-| `blizzard` | Blizzard cast |
-| `note` | Bard song, one note per beat |
-| `victory` | Final duel victory |
-| `defeat` | Final duel defeat |
+| `description` | When the game plays the sound (for reading only) |
+| `volume_db` | Loudness in dB (0 = as recorded) |
+| `volume_jitter_db` | Random loudness change per play, up to ± this many dB |
+| `pitch` | Playback pitch (1 = as recorded); pitch also changes speed |
+| `pitch_jitter` | Random pitch change per play, up to ± this amount |
+| `pitch_step` | Pitch added per step of a series (each harvest coin) |
+| `melody` | Semitones above the file, one per step, looping (bard) |
+| `cooldown_ms` | A repeat of the same sound sooner than this is skipped |
+| `variants` | Named uses of the same file with some values changed |
 
-Playback details that replacement sounds should allow for:
+`Sfx.play("coin_gain:harvest", coin_index)` plays `coin_gain.ogg` with the
+values of its `harvest` variant, falling back to the sound's own values and then
+`Sfx.SOUND_DEFAULTS` for missing keys. `music/music.json` holds `volume_db`,
+`fade_seconds` and `frenzy_speed_per_level`. Unknown keys are reported as
+warnings.
 
-- Effects get a random pitch variation (±8 % by default) on every play.
-- The same effect cannot restart within 40 ms; at most 10 effects play at once.
+The Windows build can be re-voiced and re-tuned without Godot.
+`export_windows.ps1` exports `export/ShapeshiftersDuel/` and
+`export/ShapeshiftersDuel-Windows.zip` at the repository root:
+`ShapeshiftersDuel.exe`, an `sfx/` folder with every effect's `.ogg` and `.json`
+in their category folders plus a `README.txt` explaining the values, and
+`music/music.json`. The executable carries the game icon, `icon.ico`, which the
+script first regenerates from `icon.svg` with `tools/make_windows_icon.gd`; after
+changing `icon.svg`, run that script before exporting from the editor. An
+exported desktop build reads these files beside its executable in place of the
+packed ones: a sound file replaces the packed sound, and a JSON file applies over
+the packed values key by key. Changed files reload when the game window regains
+focus; a missing or unreadable file keeps the packed or current version. Web
+builds use only the packed files. Approved replacements are copied back into the
+project's `sfx/` and `music/` folders.
+
+| Folder | File | Played when |
+|---|---|---|
+| `interface` | `click` | Interface click: difficulty, fight, picking up a creature, offer lock, reroll, restart |
+| `interface` | `fail` | Impossible action: not enough gold, locked difficulty, fizzled cast, invalid drop |
+| `interface` | `buy` | Purchase, starting composition, recharge upgrade, player sale |
+| `interface` | `combine` | Merge without a new star |
+| `interface` | `merge` | Merge that grants a star |
+| `interface` | `difficulty_unlock` | The lock of a newly unlocked difficulty opens |
+| `coins` | `coin_gain` | Coin received: enemy sale, harvest coin landing (`harvest`), heart-loss compensation (`compensation`) |
+| `coins` | `coin_pop` | A peasant pops its harvest coins at the start of combat |
+| `combat` | `hit` | Melee hit, dive, charge, fireball impact |
+| `combat` | `shoot` | A projectile is fired |
+| `combat` | `death` | A creature dies |
+| `abilities` | `hop` | Rabbit leap |
+| `abilities` | `fear` | Skunk fear burst |
+| `abilities` | `blizzard` | Blizzard cast |
+| `abilities` | `note` | Bard song, one note per beat |
+| `shapeshift` | `shift_bless` | Shapeshift cast on an own creature |
+| `shapeshift` | `shift_hex` | Shapeshift cast on an enemy creature |
+| `duel` | `heart_break` | A half-heart breaks after a lost round |
+| `duel` | `victory` | Final duel victory |
+| `duel` | `defeat` | Final duel defeat |
+
+Playback details that replacement sounds should allow for, with the shipped
+settings:
+
+- Effects get a random pitch variation (±8 % by default) on every play. Pitch
+  also changes speed: a higher pitch plays shorter.
+- The same effect cannot restart within 40 ms; at most 10 effects play at once
+  (a fixed limit, not a setting).
 - `note` should be a C5. The game transposes it along a pentatonic melody
   (C D E G A G E D), so one note is enough.
 - Harvest `coin_gain` plays 7 % higher for each successive coin.
 
-The final duel result uses `sfx/victory.ogg` when the opponent has no hearts left
-and `sfx/defeat.ogg` when the player has no hearts left. These recordings start
+The final duel result uses `sfx/duel/victory.ogg` when the opponent has no hearts left
+and `sfx/duel/defeat.ogg` when the player has no hearts left. These recordings start
 only on entering the game-over screen, after the final heart-loss sequence.
 Intermediate rounds and draws play neither recording; heart and coin effects
 provide round feedback. Each recording plays once at its original pitch on a
