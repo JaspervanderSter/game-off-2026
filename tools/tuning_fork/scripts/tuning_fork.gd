@@ -1,15 +1,17 @@
 extends Control
-## Tuning Fork: lists a game's sounds, plays them as the game does, edits
-## their JSON settings live and saves them back beside the sounds.
+## Tuning Fork: lists a game's sounds, shows each sound's files as waveforms,
+## plays them as the game does, edits their JSON settings live and saves them
+## back beside the sounds. WAV and OGG files dropped on the window are added to
+## the selected sound (WAV converted to OGG with oggenc).
 ##
 ## Command-line user arguments (after `--`):
 ##   --root=<folder>     game folder holding sfx/ and music/
-##   --select=<sound>    sound (or sound:variant) selected at start
+##   --select=<sound>    sound selected at start
 ##   --screenshot=<png>  plays a muted series, saves the window to this file, quits
 
 const CONFIG_PATH := "user://tuning_fork.cfg"
-## Slider range of each setting: [min, max, step]. The number boxes accept
-## values beyond the slider.
+## Slider range of each number setting: [min, max, step]. The number boxes
+## accept values beyond the slider.
 const RANGES := {
 	"volume_db": [-40.0, 12.0, 0.1],
 	"volume_jitter_db": [0.0, 12.0, 0.1],
@@ -17,6 +19,7 @@ const RANGES := {
 	"pitch_jitter": [0.0, 0.5, 0.005],
 	"pitch_step": [-0.5, 0.5, 0.005],
 	"cooldown_ms": [0.0, 1000.0, 1.0],
+	"shuffle_refill_after": [0.0, 16.0, 1.0],
 	"fade_seconds": [0.0, 10.0, 0.05],
 	"frenzy_speed_per_level": [0.0, 0.5, 0.005],
 }
@@ -27,12 +30,13 @@ const HINTS := {
 	"pitch_jitter": "Random pitch change per play, up to ± this amount",
 	"pitch_step": "Pitch added per step of a series (each harvest coin)",
 	"cooldown_ms": "A repeat of the same sound sooner than this is skipped",
+	"pick": "How each play chooses a file: shuffle plays every file once in a random order before any repeats; random draws any file each time",
+	"shuffle_refill_after": "Shuffle only: deal the files again after this many plays, before all have played (0 = after all of them)",
 	"fade_seconds": "Seconds of a full music fade in or out",
 	"frenzy_speed_per_level": "Battle music speed-up per frenzy level",
 }
 const FRENZY_LEVELS := 5
 const ACCENT := Color(0.98, 0.72, 0.30)
-const BLUE := Color(0.37, 0.70, 0.85)
 const DIM := Color(1, 1, 1, 0.45)
 const WARNING := Color(1.0, 0.62, 0.35)
 const PANEL := Color("16181d")
@@ -42,16 +46,16 @@ var library := SoundLibrary.new()
 var sound_player: SoundPlayer
 var music: MusicPreview
 var current: SoundEntry
-## Selected variant of the current sound, "" for the sound itself.
-var variant := ""
 
 var _items := {}
 var _rows := {}
+var _cards: Array[WaveCard] = []
 var _updating := false
 var _series_token := 0
 var _series_running := false
 var _after_confirm := Callable()
 var _last_track := ""
+var _pending_removal := -1
 
 var _root_label: Label
 var _auto_play: CheckButton
@@ -65,9 +69,8 @@ var _save_button: Button
 var _revert_button: Button
 var _description: LineEdit
 var _problems_label: Label
-var _variant_tabs: TabBar
-var _variant_row: HBoxContainer
-var _remove_variant: Button
+var _files_box: VBoxContainer
+var _file_strip: HFlowContainer
 var _grid: GridContainer
 var _effect_box: VBoxContainer
 var _step_spin: SpinBox
@@ -86,10 +89,10 @@ var _status: Label
 var _unsaved_label: Label
 var _save_all_button: Button
 var _auto_timer: Timer
-var _file_dialog: FileDialog
+var _folder_dialog: FileDialog
+var _add_dialog: FileDialog
 var _confirm: ConfirmationDialog
-var _variant_dialog: ConfirmationDialog
-var _variant_name: LineEdit
+var _remove_dialog: ConfirmationDialog
 
 
 func _ready() -> void:
@@ -100,6 +103,7 @@ func _ready() -> void:
 	music = MusicPreview.new()
 	add_child(music)
 	_build_ui()
+	get_window().files_dropped.connect(_add_files)
 	var disk_timer := Timer.new()
 	disk_timer.wait_time = 1.0
 	disk_timer.autostart = true
@@ -199,21 +203,18 @@ func _open_root(root: String, select := "") -> void:
 		return
 	_save_config("root", library.root)
 	_set_status("%d sounds in %s" % [library.sounds.size(), library.root])
-	var entry := library.find(select.get_slice(":", 0))
+	var entry := library.find(select)
 	if entry == null and not library.sounds.is_empty():
 		entry = library.sounds[0]
 	_select(entry)
-	if entry != null and select.contains(":") and entry.variants().has(select.get_slice(":", 1)):
-		variant = select.get_slice(":", 1)
-		_show_entry()
 
 
 func _select(entry: SoundEntry) -> void:
 	if entry != current:
 		_stop_series()
 		current = entry
-		variant = ""
 		_scatter.clear_points()
+		_last_label.text = ""
 		if entry != null:
 			_save_config("selected", entry.name)
 	if entry != null and _items.has(entry) and _tree.get_selected() != _items[entry]:
@@ -255,10 +256,13 @@ func _update_item(entry: SoundEntry) -> void:
 	if _items.has(entry):
 		var item: TreeItem = _items[entry]
 		var dirty := entry.is_dirty()
-		item.set_text(0, entry.name + ("  ●" if dirty else ""))
+		var text := entry.name
+		if entry.files.size() > 1:
+			text += "  ×%d" % entry.files.size()
+		item.set_text(0, text + ("  ●" if dirty else ""))
 		if dirty:
 			item.set_custom_color(0, ACCENT)
-		elif not entry.problems.is_empty() or (not entry.is_music and entry.stream == null):
+		elif not entry.problems.is_empty() or not entry.file_problems.is_empty() or (not entry.is_music and entry.files.is_empty()):
 			item.set_custom_color(0, WARNING)
 		else:
 			item.clear_custom_color(0)
@@ -283,19 +287,16 @@ func _show_entry() -> void:
 	if current == null:
 		return
 	_updating = true
-	_name_label.text = current.name if variant == "" else "%s:%s" % [current.name, variant]
-	var files := [library.relative(current.json_path)]
-	if current.ogg_path != "":
-		files.push_front(library.relative(current.ogg_path))
-	var path_text := "   ".join(files)
-	if current.stream != null:
-		path_text += "   ·   %.2f s" % current.stream.get_length()
+	_name_label.text = current.name
+	var path_text := library.relative(current.json_path)
+	if not current.is_music:
+		path_text += "   ·   %d file%s" % [current.files.size(), "" if current.files.size() == 1 else "s"]
 	_path_label.text = path_text
 	_description.text = str(current.data.get("description", ""))
 	_effect_box.visible = not current.is_music
 	_music_box.visible = current.is_music
-	_variant_row.visible = not current.is_music
-	_build_variant_tabs()
+	_files_box.visible = not current.is_music
+	_build_cards()
 	_build_rows()
 	_updating = false
 	_refresh()
@@ -310,10 +311,11 @@ func _refresh() -> void:
 		_refresh_row(key)
 	_updating = false
 	var notes: Array[String] = current.problems.duplicate()
+	notes.append_array(current.file_problems)
 	if not current.has_json:
 		notes.append("No JSON file yet: saving creates %s" % library.relative(current.json_path))
-	if not current.is_music and current.stream == null:
-		notes.append("No playable OGG file beside the settings")
+	if not current.is_music and current.files.is_empty():
+		notes.append("No sound file yet: drop a WAV or OGG file on the window")
 	if current.changed_on_disk:
 		notes.append("The JSON file changed on disk: revert to load it, or save to replace it")
 	_problems_label.text = "\n".join(notes)
@@ -329,20 +331,49 @@ func _refresh() -> void:
 
 func _update_scatter_range(step: int) -> void:
 	_scatter.set_range(
-		SoundPlayer.base_pitch(current, variant, step), float(current.setting("pitch_jitter", variant)),
-		float(current.setting("volume_db", variant)), float(current.setting("volume_jitter_db", variant)))
+		SoundPlayer.base_pitch(current, step), float(current.setting("pitch_jitter")),
+		float(current.setting("volume_db")), float(current.setting("volume_jitter_db")))
 
 
-func _build_variant_tabs() -> void:
-	_variant_tabs.clear_tabs()
-	_variant_tabs.add_tab(current.name)
-	var names := current.variants().keys()
-	for v: String in names:
-		_variant_tabs.add_tab(":" + v)
-	if variant != "" and not variant in names:
-		variant = ""
-	_variant_tabs.current_tab = 0 if variant == "" else names.find(variant) + 1
-	_remove_variant.disabled = variant == ""
+## One waveform card per file of the current sound, then the add card.
+func _build_cards() -> void:
+	for child in _file_strip.get_children():
+		_file_strip.remove_child(child)
+		child.queue_free()
+	_cards.clear()
+	if current == null or current.is_music:
+		return
+	for i in current.files.size():
+		var card := WaveCard.new()
+		card.setup(i, current.files[i], current.streams[i])
+		card.play_requested.connect(func(index: int) -> void:
+			_stop_series()
+			_play_step(int(_step_spin.value), index))
+		card.remove_requested.connect(_ask_remove_file)
+		_file_strip.add_child(card)
+		_cards.append(card)
+	var add := Button.new()
+	add.icon = Icons.get_icon("plus", Color(1, 1, 1, 0.6), 28)
+	add.text = "WAV · OGG"
+	add.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+	add.custom_minimum_size = Vector2(150, 112)
+	add.focus_mode = FOCUS_NONE
+	add.tooltip_text = "Add sound files: drop WAV or OGG files on the window, or click to choose them"
+	add.add_theme_color_override("font_color", DIM)
+	add.add_theme_font_size_override("font_size", 13)
+	var dashed := StyleBoxFlat.new()
+	dashed.bg_color = Color(1, 1, 1, 0.02)
+	dashed.set_border_width_all(2)
+	dashed.border_color = Color(1, 1, 1, 0.15)
+	dashed.set_corner_radius_all(6)
+	add.add_theme_stylebox_override("normal", dashed)
+	var hover := dashed.duplicate()
+	hover.border_color = ACCENT
+	add.add_theme_stylebox_override("hover", hover)
+	add.add_theme_stylebox_override("pressed", hover)
+	add.pressed.connect(func() -> void: _add_dialog.popup_centered_ratio(0.6))
+	_file_strip.add_child(add)
 
 
 func _build_rows() -> void:
@@ -351,7 +382,10 @@ func _build_rows() -> void:
 		child.queue_free()
 	_rows.clear()
 	for key: String in current.defaults():
-		_add_number_row(key)
+		if key == "pick":
+			_add_pick_row()
+		else:
+			_add_number_row(key)
 
 
 func _add_number_row(key: String) -> void:
@@ -370,7 +404,7 @@ func _add_number_row(key: String) -> void:
 	spin.max_value = limits[1]
 	spin.step = limits[2]
 	spin.allow_greater = true
-	spin.allow_lesser = true
+	spin.allow_lesser = limits[0] < 0.0
 	spin.select_all_on_focus = true
 	spin.custom_minimum_size.x = 120
 	slider.value_changed.connect(func(value: float) -> void:
@@ -386,19 +420,33 @@ func _add_number_row(key: String) -> void:
 	_row_end(key, row)
 
 
+func _add_pick_row() -> void:
+	var row := _row_start("pick")
+	var options := OptionButton.new()
+	for mode: String in SoundLibrary.PICK_MODES:
+		options.add_item(mode)
+	options.tooltip_text = HINTS["pick"]
+	options.size_flags_horizontal = SIZE_SHRINK_BEGIN
+	options.custom_minimum_size.x = 160
+	options.item_selected.connect(func(i: int) -> void:
+		if not _updating and current != null:
+			current.data["pick"] = SoundLibrary.PICK_MODES[i]
+			sound_player.reset_pick(current)
+			_after_edit(false))
+	_grid.add_child(options)
+	_grid.add_child(Control.new())
+	row["options"] = options
+	_row_end("pick", row)
+
 
 func _row_start(key: String) -> Dictionary:
-	var check := CheckBox.new()
-	check.tooltip_text = "Set in this variant (otherwise taken from the sound)"
-	check.toggled.connect(func(on: bool) -> void: _set_override(key, on))
-	_grid.add_child(check)
 	var label := Label.new()
 	label.text = key
 	label.tooltip_text = HINTS.get(key, "")
 	label.mouse_filter = MOUSE_FILTER_PASS
 	label.custom_minimum_size.x = 190
 	_grid.add_child(label)
-	return {"check": check, "label": label}
+	return {"label": label}
 
 
 func _row_end(key: String, row: Dictionary) -> void:
@@ -414,54 +462,39 @@ func _row_end(key: String, row: Dictionary) -> void:
 
 func _refresh_row(key: String) -> void:
 	var row: Dictionary = _rows[key]
-	var in_variant := variant != ""
-	var overridden: bool = not in_variant or current.variants()[variant].has(key)
-	var value = current.setting(key, variant)
-	# Hidden by transparency: the grid would skip an invisible cell.
-	row["check"].modulate.a = 1.0 if in_variant else 0.0
-	row["check"].disabled = not in_variant
-	row["check"].mouse_filter = MOUSE_FILTER_STOP if in_variant else MOUSE_FILTER_IGNORE
-	row["check"].set_pressed_no_signal(overridden)
-	row["label"].add_theme_color_override("font_color", Color.WHITE if overridden else DIM)
+	var value = current.setting(key)
+	var default = current.defaults()[key]
+	row["reset"].disabled = str(value) == str(default) if default is String \
+		else is_equal_approx(float(value), float(default))
+	if key == "pick":
+		row["options"].select(maxi(0, SoundLibrary.PICK_MODES.find(str(value))))
+		return
 	var number := float(value)
 	row["slider"].set_value_no_signal(number)
 	row["spin"].set_value_no_signal(number)
-	row["slider"].editable = overridden
-	row["spin"].editable = overridden
-	row["reset"].disabled = not overridden or (not in_variant and is_equal_approx(number, float(current.defaults()[key])))
+	# The refill count only applies to shuffle.
+	var active: bool = key != "shuffle_refill_after" or str(current.setting("pick")) == "shuffle"
+	row["slider"].editable = active
+	row["spin"].editable = active
+	row["label"].add_theme_color_override("font_color", Color.WHITE if active else DIM)
 
 
 # --- Editing ---------------------------------------------------------------
 
-## The dictionary edits apply to: the sound's own values or its variant's.
-func _target() -> Dictionary:
-	return current.data if variant == "" else current.variants()[variant]
-
-
 func _set_value(key: String, value: float) -> void:
 	if _updating or current == null:
 		return
-	_target()[key] = int(roundf(value)) if key in SoundLibrary.INT_KEYS else snappedf(value, 0.0001)
-	_after_edit()
-
-
-func _set_override(key: String, on: bool) -> void:
-	if _updating or current == null or variant == "":
-		return
-	if on:
-		_target()[key] = current.setting(key, variant)
-	else:
-		_target().erase(key)
+	current.data[key] = int(roundf(value)) if key in SoundLibrary.INT_KEYS else snappedf(value, 0.0001)
+	if key == "shuffle_refill_after":
+		sound_player.reset_pick(current)
 	_after_edit()
 
 
 func _reset_value(key: String) -> void:
 	if current == null:
 		return
-	if variant != "":
-		_target().erase(key)
-	else:
-		current.data[key] = current.defaults()[key]
+	current.data[key] = current.defaults()[key]
+	sound_player.reset_pick(current)
 	_after_edit()
 
 
@@ -478,43 +511,52 @@ func _after_edit(replay := true) -> void:
 		_auto_timer.start()
 
 
-func _add_variant() -> void:
+# --- Sound files -------------------------------------------------------------
+
+## Adds dropped or chosen WAV/OGG files to the current sound.
+func _add_files(paths: PackedStringArray) -> void:
 	if current == null or current.is_music:
+		_set_status("Select a sound to add files to it", true)
 		return
-	_variant_name.text = ""
-	_variant_dialog.popup_centered(Vector2i(360, 0))
-	_variant_name.grab_focus()
-
-
-func _confirm_add_variant(_text := "") -> void:
-	var variant_name := _variant_name.text.strip_edges()
-	_variant_dialog.hide()
-	if variant_name == "" or variant_name.contains(":") or current.variants().has(variant_name):
-		_set_status("A variant needs a new name without \":\"", true)
-		return
-	if not current.data.get("variants") is Dictionary:
-		current.data["variants"] = {}
-	current.data["variants"][variant_name] = {}
-	variant = variant_name
+	var added: Array[String] = []
+	var problems: Array[String] = []
+	for path in paths:
+		var problem := current.add_file(path)
+		if problem == "":
+			added.append(current.files.back().get_file())
+		else:
+			problems.append(problem)
+	sound_player.reset_pick(current)
 	_show_entry()
+	if not problems.is_empty():
+		_set_status("  ·  ".join(problems), true)
+	else:
+		_set_status("Added " + ", ".join(added))
 
 
-func _remove_current_variant() -> void:
-	if current == null or variant == "":
+func _ask_remove_file(index: int) -> void:
+	if current == null or index >= current.files.size():
 		return
-	current.variants().erase(variant)
-	if current.variants().is_empty():
-		current.data.erase("variants")
-	variant = ""
-	_show_entry()
+	_pending_removal = index
+	var later := current.files.size() - index - 1
+	_remove_dialog.dialog_text = "Move %s to the recycle bin?%s" % [current.files[index].get_file(),
+		"\nThe files after it are renumbered." if later > 0 else ""]
+	_remove_dialog.popup_centered(Vector2i(420, 0))
 
 
-func _on_variant_tab(tab: int) -> void:
-	if _updating or current == null:
+func _remove_file() -> void:
+	if current == null or _pending_removal < 0:
 		return
-	variant = "" if tab == 0 else str(current.variants().keys()[tab - 1])
-	_scatter.clear_points()
+	_stop_all()
+	var file_name := current.files[_pending_removal].get_file()
+	var problem := current.remove_file(_pending_removal)
+	_pending_removal = -1
+	sound_player.reset_pick(current)
 	_show_entry()
+	if problem != "":
+		_set_status(problem, true)
+	else:
+		_set_status("Moved %s to the recycle bin" % file_name)
 
 
 # --- Saving ----------------------------------------------------------------
@@ -547,6 +589,7 @@ func _revert_current() -> void:
 	if current == null:
 		return
 	current.load_settings()
+	sound_player.reset_pick(current)
 	_set_status("Reloaded %s" % library.relative(current.json_path))
 	_show_entry()
 
@@ -562,13 +605,16 @@ func _confirm_unsaved(then: Callable) -> void:
 	_confirm.popup_centered(Vector2i(440, 0))
 
 
-## Reloads sounds and settings that changed on disk (another editor, a new OGG).
+## Reloads sounds and settings that changed on disk (another editor, new files).
 func _check_disk() -> void:
 	var reloaded: Array[String] = []
+	var current_changed := false
 	for entry in library.all_entries():
-		if entry.ogg_changed_on_disk():
-			entry.load_stream()
-			reloaded.append(entry.name + ".ogg")
+		if entry.files_changed_on_disk():
+			entry.load_files()
+			sound_player.reset_pick(entry)
+			reloaded.append(entry.name + " files")
+			current_changed = current_changed or entry == current
 		if entry.json_changed_on_disk():
 			if entry.is_dirty():
 				entry.changed_on_disk = true
@@ -576,6 +622,7 @@ func _check_disk() -> void:
 			else:
 				entry.load_settings()
 				reloaded.append(entry.name + ".json")
+			current_changed = current_changed or entry == current
 		_update_item(entry)
 	var tracks := library.reload_changed_tracks()
 	if not tracks.is_empty():
@@ -584,6 +631,7 @@ func _check_disk() -> void:
 		reloaded.append_array(tracks)
 	if not reloaded.is_empty():
 		_set_status("Reloaded from disk: " + ", ".join(reloaded))
+	if current_changed:
 		_show_entry()
 
 
@@ -600,21 +648,28 @@ func _play_pressed() -> void:
 		_play_step(int(_step_spin.value))
 
 
-func _play_step(step: int) -> void:
+## Plays the current sound at `step`: file `file_index`, or the one it picks.
+func _play_step(step: int, file_index := -1) -> void:
 	if current == null or current.is_music:
 		return
-	if current.stream == null:
-		_set_status("%s has no playable OGG file" % current.name, true)
-	elif not sound_player.play(current, variant, step):
+	if current.files.is_empty():
+		_set_status("%s has no sound file: drop a WAV or OGG file on the window" % current.name, true)
+	elif not sound_player.play(current, step, file_index):
 		_last_label.text = "step %d skipped: repeated within cooldown_ms" % step
 
 
-func _on_played(entry: SoundEntry, played_variant: String, step: int, pitch: float, volume_db: float) -> void:
-	if entry != current or played_variant != variant:
+func _on_played(entry: SoundEntry, file_index: int, step: int, pitch: float, volume_db: float, voice: AudioStreamPlayer) -> void:
+	if entry != current:
 		return
 	_update_scatter_range(step)
 	_scatter.add_point(pitch, volume_db)
-	_last_label.text = "step %d   ·   pitch %.3f   ·   %.1f dB" % [step, pitch, volume_db]
+	_last_label.text = "%s   ·   step %d   ·   pitch %.3f   ·   %.1f dB" % [
+		entry.files[file_index].get_file(), step, pitch, volume_db]
+	for card in _cards:
+		if card.index == file_index:
+			card.show_play(voice, pitch)
+		else:
+			card.clear_play()
 
 
 ## Plays `count` steps from the step box, `interval` ms apart, looping if set.
@@ -708,7 +763,7 @@ func _build_top_bar() -> Control:
 	_root_label.mouse_filter = MOUSE_FILTER_PASS
 	row.add_child(_root_label)
 	row.add_child(_icon_button("folder", "Open a game folder (the one holding sfx/ and music/)",
-		func() -> void: _confirm_unsaved(func() -> void: _file_dialog.popup_centered_ratio(0.6))))
+		func() -> void: _confirm_unsaved(func() -> void: _folder_dialog.popup_centered_ratio(0.6))))
 	row.add_child(_icon_button("reload", "Reload every sound and settings file from disk",
 		func() -> void: _confirm_unsaved(func() -> void: _open_root(library.root, current.name if current else ""))))
 	_auto_play = CheckButton.new()
@@ -775,11 +830,18 @@ func _build_editor() -> Control:
 	_path_label.add_theme_color_override("font_color", DIM)
 	_path_label.add_theme_font_size_override("font_size", 13)
 	titles.add_child(_path_label)
-	_revert_button = _icon_button("revert", "Revert to the file on disk", _revert_current)
+	_revert_button = _icon_button("revert", "Revert the settings to the file on disk", _revert_current)
 	header.add_child(_revert_button)
-	_save_button = _icon_button("save", "Save (Ctrl+S)", _save_current)
+	_save_button = _icon_button("save", "Save the settings (Ctrl+S)", _save_current)
 	_save_button.icon = Icons.get_icon("save", ACCENT)
 	header.add_child(_save_button)
+
+	_files_box = VBoxContainer.new()
+	column.add_child(_files_box)
+	_file_strip = HFlowContainer.new()
+	_file_strip.add_theme_constant_override("h_separation", 10)
+	_file_strip.add_theme_constant_override("v_separation", 10)
+	_files_box.add_child(_file_strip)
 
 	_description = LineEdit.new()
 	_description.placeholder_text = "When the game plays this sound"
@@ -790,21 +852,10 @@ func _build_editor() -> Control:
 	_problems_label.add_theme_color_override("font_color", WARNING)
 	column.add_child(_problems_label)
 
-	_variant_row = HBoxContainer.new()
-	column.add_child(_variant_row)
-	_variant_tabs = TabBar.new()
-	_variant_tabs.clip_tabs = false
-	_variant_tabs.tab_changed.connect(_on_variant_tab)
-	_variant_tabs.tooltip_text = "The sound and its variants (played as \"sound:variant\")"
-	_variant_row.add_child(_variant_tabs)
-	_variant_row.add_child(_icon_button("plus", "Add a variant", _add_variant, 16))
-	_remove_variant = _icon_button("minus", "Remove this variant", _remove_current_variant, 16)
-	_variant_row.add_child(_remove_variant)
-
 	var card := _panel(CARD, 14)
 	column.add_child(card)
 	_grid = GridContainer.new()
-	_grid.columns = 5
+	_grid.columns = 4
 	_grid.add_theme_constant_override("h_separation", 12)
 	_grid.add_theme_constant_override("v_separation", 10)
 	card.get_child(0).add_child(_grid)
@@ -820,7 +871,7 @@ func _build_effect_box() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	_effect_box.add_child(row)
-	var play := _icon_button("play", "Play (Space)", _play_pressed, 30)
+	var play := _icon_button("play", "Play: one file, as the game picks it (Space)", _play_pressed, 30)
 	play.icon = Icons.get_icon("play", ACCENT, 30)
 	play.flat = false
 	row.add_child(play)
@@ -935,13 +986,22 @@ func _build_status_bar() -> Control:
 
 
 func _build_dialogs() -> void:
-	_file_dialog = FileDialog.new()
-	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
-	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	_file_dialog.use_native_dialog = true
-	_file_dialog.title = "Game folder (holding sfx/ and music/)"
-	_file_dialog.dir_selected.connect(func(dir: String) -> void: _open_root(dir))
-	add_child(_file_dialog)
+	_folder_dialog = FileDialog.new()
+	_folder_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+	_folder_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_folder_dialog.use_native_dialog = true
+	_folder_dialog.title = "Game folder (holding sfx/ and music/)"
+	_folder_dialog.dir_selected.connect(func(dir: String) -> void: _open_root(dir))
+	add_child(_folder_dialog)
+
+	_add_dialog = FileDialog.new()
+	_add_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILES
+	_add_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_add_dialog.use_native_dialog = true
+	_add_dialog.title = "Sound files to add"
+	_add_dialog.filters = PackedStringArray(["*.wav, *.ogg ; WAV and OGG sounds"])
+	_add_dialog.files_selected.connect(_add_files)
+	add_child(_add_dialog)
 
 	_confirm = ConfirmationDialog.new()
 	_confirm.title = "Unsaved changes"
@@ -956,14 +1016,11 @@ func _build_dialogs() -> void:
 			_after_confirm.call())
 	add_child(_confirm)
 
-	_variant_dialog = ConfirmationDialog.new()
-	_variant_dialog.title = "New variant"
-	_variant_name = LineEdit.new()
-	_variant_name.placeholder_text = "name, played as sound:name"
-	_variant_name.text_submitted.connect(_confirm_add_variant)
-	_variant_dialog.add_child(_variant_name)
-	_variant_dialog.confirmed.connect(_confirm_add_variant)
-	add_child(_variant_dialog)
+	_remove_dialog = ConfirmationDialog.new()
+	_remove_dialog.title = "Remove file"
+	_remove_dialog.ok_button_text = "Move to recycle bin"
+	_remove_dialog.confirmed.connect(_remove_file)
+	add_child(_remove_dialog)
 
 
 # --- Small helpers ---------------------------------------------------------

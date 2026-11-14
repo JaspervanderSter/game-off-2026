@@ -1,12 +1,13 @@
 class_name SoundLibrary
 extends RefCounted
-## The sounds of a game folder: every `sfx/<category>/<name>.ogg` with its JSON
-## settings file beside it, plus `music/music.json` and the music tracks
+## The sounds of a game folder: every sound of `sfx/<category>/` (one or more
+## OGG files `<name>.ogg`, `<name>_2.ogg`... and its JSON settings file
+## `<name>.json`), plus `music/music.json` and the music tracks
 ## (`music/*.ogg`). Reads and writes the JSON files in the game's format.
 ##
 ## Mirrors prototypes/prototype_02/scripts/audio/sfx.gd. Keep SOUND_DEFAULTS,
-## MUSIC_DEFAULTS and the playback rules (SoundPlayer, MusicPreview) in sync
-## with it; tests/run_tests.gd compares the defaults with the game's.
+## MUSIC_DEFAULTS, the file naming and the playback rules (SoundPlayer,
+## MusicPreview) in sync with it; tests/run_tests.gd compares them with the game's.
 
 const SOUND_DEFAULTS := {
 	"volume_db": -8.0,
@@ -15,18 +16,22 @@ const SOUND_DEFAULTS := {
 	"pitch_jitter": 0.08,
 	"pitch_step": 0.0,
 	"cooldown_ms": 40,
+	"pick": "shuffle",
+	"shuffle_refill_after": 0,
 }
+const PICK_MODES := ["shuffle", "random"]
 const MUSIC_DEFAULTS := {
 	"volume_db": -16.0,
 	"fade_seconds": 1.2,
 	"frenzy_speed_per_level": 0.05,
 }
 ## Keys a settings file may hold besides its values.
-const INFO_KEYS := ["description", "variants"]
+const INFO_KEYS := ["description"]
 ## Keys written as whole numbers.
-const INT_KEYS := ["cooldown_ms"]
-## Written key order: description, values (defaults order), other keys, variants.
-const VALUE_ORDER := ["volume_db", "volume_jitter_db", "pitch", "pitch_jitter", "pitch_step", "cooldown_ms"]
+const INT_KEYS := ["cooldown_ms", "shuffle_refill_after"]
+## Written key order: description, values (defaults order), other keys.
+const VALUE_ORDER := ["volume_db", "volume_jitter_db", "pitch", "pitch_jitter", "pitch_step", "cooldown_ms",
+	"pick", "shuffle_refill_after"]
 
 ## The game folder (holding sfx/ and music/), as an absolute path.
 var root := ""
@@ -61,6 +66,7 @@ func open(path: String) -> String:
 		music.name = "music"
 		music.category = "music"
 		music.is_music = true
+		music.dir = music_dir
 		music.json_path = music_dir.path_join("music.json")
 		music.load_settings()
 		var files := Array(DirAccess.get_files_at(music_dir))
@@ -101,23 +107,30 @@ func reload_changed_tracks() -> Array[String]:
 	return reloaded
 
 
+## A folder's sounds: every JSON file, and every OGG file that is not a
+## numbered file (`_N`) of another sound there.
 func _scan_sounds(dir: String, category: String) -> void:
+	var jsons := {}
 	var names := {}
 	for file in DirAccess.get_files_at(dir):
 		var extension := file.get_extension().to_lower()
+		if extension == "json":
+			jsons[file.get_basename()] = true
 		if extension == "json" or extension == "ogg":
 			names[file.get_basename()] = true
 	var sorted := names.keys()
 	sorted.sort()
 	for sound_name: String in sorted:
+		# A numbered OGG without its own JSON belongs to the sound it numbers.
+		if not jsons.has(sound_name) and sorted.any(func(other: String) -> bool: return file_number(sound_name + ".ogg", other) > 1):
+			continue
 		var entry := SoundEntry.new()
 		entry.name = sound_name
 		entry.category = category
+		entry.dir = dir
 		entry.json_path = dir.path_join(sound_name + ".json")
-		var ogg := dir.path_join(sound_name + ".ogg")
-		entry.ogg_path = ogg if FileAccess.file_exists(ogg) else ""
 		entry.load_settings()
-		entry.load_stream()
+		entry.load_files()
 		sounds.append(entry)
 
 
@@ -129,24 +142,32 @@ func _load_track(path: String) -> void:
 		music_tracks[path.get_file().get_basename()] = stream
 
 
-## Keys of a settings dictionary (or of its variants) that the game does not
-## know. Same rules as Sfx.settings_problems in the game.
+## Position of `file` among the sound files of `sound_name`: 1 for
+## "<name>.ogg", N for "<name>_N.ogg" (N from 2), 0 otherwise (as Sfx.file_number).
+static func file_number(file: String, sound_name: String) -> int:
+	if file == sound_name + ".ogg":
+		return 1
+	var digits := file.trim_prefix(sound_name + "_").trim_suffix(".ogg")
+	if file.begins_with(sound_name + "_") and file.ends_with(".ogg") and digits.is_valid_int() \
+			and str(int(digits)) == digits and int(digits) >= 2:
+		return int(digits)
+	return 0
+
+
+## File name of the `number`-th sound file of `sound_name`.
+static func numbered_file(sound_name: String, number: int) -> String:
+	return sound_name + ".ogg" if number <= 1 else "%s_%d.ogg" % [sound_name, number]
+
+
+## Keys of a settings dictionary that the game does not know, and values it
+## cannot use. Same rules as Sfx.settings_problems in the game.
 static func settings_problems(data: Dictionary, known: Dictionary) -> Array[String]:
 	var problems: Array[String] = []
 	for key: String in data:
 		if not known.has(key) and not key in INFO_KEYS:
 			problems.append("unknown key \"%s\"" % key)
-	var variants = data.get("variants", {})
-	if not variants is Dictionary:
-		problems.append("\"variants\" must be an object")
-		return problems
-	for variant: String in variants:
-		if not variants[variant] is Dictionary:
-			problems.append("variant \"%s\" must be an object" % variant)
-			continue
-		for key: String in variants[variant]:
-			if not known.has(key):
-				problems.append("unknown key \"%s\" in variant \"%s\"" % [key, variant])
+	if data.has("pick") and known.has("pick") and not data["pick"] in PICK_MODES:
+		problems.append("\"pick\" must be one of %s" % ", ".join(PICK_MODES))
 	return problems
 
 
@@ -165,18 +186,8 @@ static func ordered(data: Dictionary, defaults: Dictionary) -> Dictionary:
 		if data.has(key) and not out.has(key):
 			out[key] = data[key]
 	for key in data:
-		if not out.has(key) and key != "variants":
+		if not out.has(key):
 			out[key] = data[key]
-	if data.has("variants"):
-		var variants = data["variants"]
-		if variants is Dictionary:
-			var ordered_variants := {}
-			for variant in variants:
-				var values = variants[variant]
-				ordered_variants[variant] = ordered(values, defaults) if values is Dictionary else values
-			out["variants"] = ordered_variants
-		else:
-			out["variants"] = variants
 	return out
 
 

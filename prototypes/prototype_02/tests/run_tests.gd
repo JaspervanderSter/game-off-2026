@@ -923,21 +923,32 @@ func _test_result_recordings() -> void:
 	game.free()
 
 
-## Every effect is a non-looping OGG file in its category folder with a JSON
-## settings file beside it; audio folders hold nothing else, and the scripts
-## play exactly the listed effects.
+## Every effect is one or more non-looping OGG files in its category folder
+## (name.ogg, name_2.ogg...) with a JSON settings file beside them; audio folders
+## hold nothing else, and the scripts play exactly the listed effects.
 func _test_sound_files() -> void:
 	var missing: Array[String] = []
 	var expected := {"res://music/music.json": true}
 	for sound_name in Sfx.SOUNDS:
-		var ogg := Sfx.DIR + Sfx.sound_file(sound_name, ".ogg")
+		var dir: String = Sfx.DIR + Sfx.SOUNDS[sound_name]
 		var json := Sfx.DIR + Sfx.sound_file(sound_name, ".json")
-		var stream = load(ogg)
-		if not (stream is AudioStreamOggVorbis) or stream.loop or not FileAccess.file_exists(json):
+		var files := Sfx.sound_files_in(dir, sound_name)
+		if files.is_empty() or files[0] != sound_name + ".ogg" or not FileAccess.file_exists(json) \
+				or Sfx._streams.get(sound_name, []).size() != files.size():
 			missing.append(sound_name)
-		for path in [ogg, ogg + ".import", json]:
-			expected[path] = true
-	check(missing.is_empty(), "every effect is a one-shot OGG file with its JSON settings %s" % [missing])
+		for file in files:
+			var stream = load(dir.path_join(file))
+			if not (stream is AudioStreamOggVorbis) or stream.loop:
+				missing.append(file)
+			expected[dir.path_join(file)] = true
+			expected[dir.path_join(file) + ".import"] = true
+		expected[json] = true
+	check(missing.is_empty(), "every effect is one-shot OGG files with their JSON settings %s" % [missing])
+	check(Sfx.file_number("hit.ogg", "hit") == 1 and Sfx.file_number("hit_2.ogg", "hit") == 2
+		and Sfx.file_number("hit_12.ogg", "hit") == 12 and Sfx.file_number("hit_1.ogg", "hit") == 0
+		and Sfx.file_number("hit_02.ogg", "hit") == 0 and Sfx.file_number("hit_x.ogg", "hit") == 0
+		and Sfx.file_number("hitch.ogg", "hit") == 0 and Sfx.file_number("hit.json", "hit") == 0,
+		"sound files are name.ogg then name_2.ogg, name_3.ogg...")
 	var foreign: Array[String] = []
 	for path in _files_under(Sfx.DIR) + _files_under("res://music/"):
 		var music_track := path.begins_with("res://music/") and (path.ends_with(".ogg") or path.ends_with(".ogg.import"))
@@ -945,26 +956,18 @@ func _test_sound_files() -> void:
 			foreign.append(path)
 	check(foreign.is_empty(), "audio folders hold only the listed sounds, their settings and the music %s" % [foreign])
 	var played := {}
-	var variants := {}
 	# String literals in a play call, except those compared in its condition.
-	var literal := RegEx.create_from_string("(?<!== )\"(\\w+)(?::(\\w+))?\"")
+	var literal := RegEx.create_from_string("(?<!== )\"(\\w+)\"")
 	for path in _script_files("res://scripts/"):
 		for line in FileAccess.get_file_as_string(path).split("\n"):
 			if line.contains("Sfx.play(") or line.contains("Sfx.set_loop("):
 				for m in literal.search_all(line):
 					played[m.get_string(1)] = true
-					if m.get_string(2) != "":
-						variants[m.get_string(1) + ":" + m.get_string(2)] = true
 	var unknown := played.keys().filter(func(n): return not n in Sfx.SOUNDS)
 	var unused := Sfx.SOUNDS.keys().filter(func(n): return not played.has(n))
 	check(unknown.is_empty() and unused.is_empty(),
 		"scripts play exactly the listed effects (unknown %s, unused %s)" % [unknown, unused])
-	var untuned: Array[String] = []
-	for v: String in variants:
-		var data := Sfx.read_settings(Sfx.DIR + Sfx.sound_file(v.get_slice(":", 0), ".json"), Sfx.SOUND_DEFAULTS)
-		if not Sfx._variants(data).has(v.get_slice(":", 1)):
-			untuned.append(v)
-	check(untuned.is_empty(), "every played sound variant is defined in its JSON file %s" % [untuned])
+	_test_file_picking()
 	_test_sound_settings()
 	_test_sound_overrides()
 	_test_project_settings_reload()
@@ -979,8 +982,51 @@ func _files_under(dir: String) -> Array[String]:
 	return files
 
 
-## Shipped settings reproduce the tuned playback, and resolve variant, sound,
-## then defaults for each key.
+## "shuffle" plays every file once per deal, never twice in a row across deals,
+## and can deal again early; "random" draws any file.
+func _test_file_picking() -> void:
+	seed(7)
+	var state := {}
+	var deals: Array = []
+	for d in 50:
+		var deal := {}
+		for i in 4:
+			deal[Sfx.next_pick(state, 4, "shuffle", 0)] = true
+		deals.append(deal.size())
+	check(deals.all(func(n: int) -> bool: return n == 4), "shuffle plays every file once before any repeats")
+	state = {}
+	var picks: Array[int] = []
+	for i in 300:
+		picks.append(Sfx.next_pick(state, 3, "shuffle", 2))
+	var repeats := 0
+	var distinct_pairs := true
+	for i in range(1, picks.size()):
+		if picks[i] == picks[i - 1]:
+			repeats += 1
+		if i % 2 == 1 and picks[i] == picks[i - 1]:
+			distinct_pairs = false
+	check(repeats == 0 and distinct_pairs and picks.has(0) and picks.has(1) and picks.has(2),
+		"shuffle_refill_after deals again early, never repeating the file just played")
+	state = {}
+	var counts := [0, 0, 0]
+	var random_repeats := 0
+	var last := -1
+	for i in 600:
+		var pick := Sfx.next_pick(state, 3, "random", 0)
+		counts[pick] += 1
+		random_repeats += 1 if pick == last else 0
+		last = pick
+	check(counts.all(func(n: int) -> bool: return n > 120) and random_repeats > 0,
+		"random draws every file and may repeat one")
+	check(Sfx.next_pick({}, 1, "shuffle", 0) == 0 and Sfx.next_pick({}, 1, "random", 0) == 0,
+		"a single file always plays")
+	state = {"bag": [5, 4], "dealt": 1, "last": 4}
+	check(Sfx.next_pick(state, 2, "shuffle", 0) < 2, "a deal of removed files starts over")
+	randomize()
+
+
+## Shipped settings reproduce the tuned playback, and fall back to the
+## defaults for missing keys.
 func _test_sound_settings() -> void:
 	var problems: Array[String] = []
 	for sound_name in Sfx.SOUNDS:
@@ -993,19 +1039,20 @@ func _test_sound_settings() -> void:
 	var music := Sfx.read_settings(Sfx.MUSIC_SETTINGS, Sfx.MUSIC_DEFAULTS)
 	problems.append_array(Sfx.settings_problems(music, Sfx.MUSIC_DEFAULTS))
 	check(problems.is_empty() and not music.is_empty(), "shipped sound settings hold only known keys %s" % [problems])
-	check(Sfx.settings_problems({"volme_db": 1, "variants": {"harvest": {"pich": 1}}}, Sfx.SOUND_DEFAULTS).size() == 2
-		and Sfx.settings_problems({"pitch": 1}, Sfx.MUSIC_DEFAULTS).size() == 1,
-		"misspelled keys are reported")
+	check(Sfx.settings_problems({"volme_db": 1, "variants": {}}, Sfx.SOUND_DEFAULTS).size() == 2
+		and Sfx.settings_problems({"pitch": 1}, Sfx.MUSIC_DEFAULTS).size() == 1
+		and Sfx.settings_problems({"pick": "cycle"}, Sfx.SOUND_DEFAULTS).size() == 1,
+		"misspelled keys, the former variants and unknown pick modes are reported")
 	check(is_equal_approx(Sfx.sound_setting("hit", "pitch_jitter"), 0.08)
-		and is_equal_approx(Sfx.sound_setting("hit", "volume_db"), -8.0),
-		"effects play at -8 dB with a +/-0.08 random pitch")
-	check(is_equal_approx(Sfx.sound_setting("coin_gain:harvest", "pitch_jitter"), 0.02)
-		and is_equal_approx(Sfx.sound_setting("coin_gain:compensation", "pitch_jitter"), 0.05)
-		and is_equal_approx(Sfx.sound_setting("coin_gain", "pitch_jitter"), 0.08)
-		and is_equal_approx(Sfx.sound_setting("coin_gain:harvest", "volume_db"), -8.0),
-		"a variant overrides its own keys and inherits the others")
-	check(is_equal_approx(Sfx.base_pitch("coin_gain:harvest", 0), 1.0)
-		and is_equal_approx(Sfx.base_pitch("coin_gain:harvest", 7), 1.49),
+		and is_equal_approx(Sfx.sound_setting("hit", "volume_db"), -8.0)
+		and Sfx.sound_setting("hit", "pick") == "shuffle",
+		"effects play at -8 dB with a +/-0.08 random pitch, shuffling their files")
+	check(is_equal_approx(Sfx.sound_setting("coin_harvest", "pitch_jitter"), 0.02)
+		and is_equal_approx(Sfx.sound_setting("coin_compensation", "pitch_jitter"), 0.05)
+		and is_equal_approx(Sfx.sound_setting("coin_gain", "pitch_jitter"), 0.08),
+		"each coin sound has its own settings")
+	check(is_equal_approx(Sfx.base_pitch("coin_harvest", 0), 1.0)
+		and is_equal_approx(Sfx.base_pitch("coin_harvest", 7), 1.49),
 		"harvest coins ring 0.07 higher per coin")
 	check(is_equal_approx(Sfx.base_pitch("bard_song"), 1.0) and Sfx.sound_setting("bard_song", "pitch_jitter") == 0.0
 		and not Sfx.SOUND_DEFAULTS.has("melody"),
@@ -1058,29 +1105,30 @@ func _test_sound_overrides() -> void:
 		f.close()
 		created.append(path)
 	var hit_ogg := Sfx.DIR + Sfx.sound_file("hit", ".ogg")
+	var death_ogg := Sfx.DIR + Sfx.sound_file("death", ".ogg")
 	write.call("sfx/" + Sfx.sound_file("click", ".ogg"), FileAccess.get_file_as_bytes(hit_ogg))
-	var packed: AudioStream = Sfx._streams.get("click")
+	write.call("sfx/" + Sfx.sound_file("click", "_2.ogg"), FileAccess.get_file_as_bytes(death_ogg))
+	var packed: Array = Sfx._streams.get("click")
 	var packed_settings: Dictionary = Sfx._settings.duplicate(true)
 	var packed_music: Dictionary = Sfx._music.duplicate(true)
 	Sfx._override_root = ProjectSettings.globalize_path(root)
 	Sfx.load_overrides()
-	var loaded: AudioStream = Sfx._streams.get("click")
-	check(loaded is AudioStreamOggVorbis and loaded != packed
-		and is_equal_approx(loaded.get_length(), load(hit_ogg).get_length()),
-		"a sound file beside the executable replaces the packed sound")
+	var loaded: Array = Sfx._streams.get("click")
+	check(loaded.size() == 2 and loaded[0] is AudioStreamOggVorbis and loaded[0] != packed[0]
+		and is_equal_approx(loaded[0].get_length(), load(hit_ogg).get_length())
+		and is_equal_approx(loaded[1].get_length(), load(death_ogg).get_length()),
+		"sound files beside the executable replace all the packed files of the sound")
 	Sfx.load_overrides()
-	check(Sfx._streams.get("click") == loaded, "an unchanged replacement is not reloaded")
-	check(Sfx._streams.get("hit") == load(hit_ogg), "sounds without a replacement stay packed")
+	check(Sfx._streams.get("click") == loaded, "unchanged replacements are not reloaded")
+	check(Sfx._streams.get("hit")[0] == load(hit_ogg), "sounds without a replacement stay packed")
 	write.call("sfx/" + Sfx.sound_file("hit", ".json"), "{\"volume_db\": -3.0}".to_utf8_buffer())
-	write.call("sfx/" + Sfx.sound_file("coin_gain", ".json"),
-		"{\"variants\": {\"harvest\": {\"pitch_step\": 0.1}}}".to_utf8_buffer())
+	write.call("sfx/" + Sfx.sound_file("coin_harvest", ".json"), "{\"pitch_step\": 0.1}".to_utf8_buffer())
 	write.call("music/music.json", "{\"fade_seconds\": 2.5}".to_utf8_buffer())
 	Sfx.load_overrides()
 	check(is_equal_approx(Sfx.sound_setting("hit", "volume_db"), -3.0)
 		and is_equal_approx(Sfx.sound_setting("hit", "pitch_jitter"), 0.08)
-		and is_equal_approx(Sfx.sound_setting("coin_gain:harvest", "pitch_step"), 0.1)
-		and is_equal_approx(Sfx.sound_setting("coin_gain:harvest", "pitch_jitter"), 0.02)
-		and is_equal_approx(Sfx.sound_setting("coin_gain:compensation", "pitch_jitter"), 0.05)
+		and is_equal_approx(Sfx.sound_setting("coin_harvest", "pitch_step"), 0.1)
+		and is_equal_approx(Sfx.sound_setting("coin_harvest", "pitch_jitter"), 0.02)
 		and is_equal_approx(Sfx.music_setting("fade_seconds"), 2.5)
 		and is_equal_approx(Sfx.music_setting("volume_db"), -16.0),
 		"JSON files beside the executable apply over the packed values key by key")
@@ -1089,8 +1137,15 @@ func _test_sound_overrides() -> void:
 	Sfx.load_overrides()
 	check(is_equal_approx(Sfx.sound_setting("hit", "volume_db"), -3.0),
 		"an unreadable replacement JSON file keeps the current values")
+	for path in created.duplicate():
+		if path.get_extension() == "ogg":
+			DirAccess.remove_absolute(path)
+			created.erase(path)
+	Sfx.load_overrides()
+	check(Sfx._streams.get("click") == packed, "once the replacement files are gone, the packed files play again")
 	Sfx._override_root = ""
 	Sfx._override_times.clear()
+	Sfx._override_sounds.clear()
 	Sfx._settings = packed_settings
 	Sfx._music = packed_music
 	Sfx._streams["click"] = packed

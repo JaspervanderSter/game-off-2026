@@ -160,7 +160,7 @@ func advance_harvest(dt: float) -> void:
 		if not coin.arrived and harvest_time >= coin.fly + HARVEST_FLIGHT:
 			coin.arrived = true
 			# Each landing coin rings a little higher: a rising cash-register run.
-			Sfx.play("coin_gain:harvest", coin.index)
+			Sfx.play("coin_harvest", coin.index)
 	harvest_sources = harvest_sources.filter(func(s): return harvest_time < s.start + HARVEST_HOP + 0.3)
 	harvest_coins = harvest_coins.filter(func(c): return harvest_time < c.fly + HARVEST_FLIGHT + REWARD_TAIL)
 
@@ -215,7 +215,7 @@ func advance_loss_rewards(dt: float) -> void:
 		if age >= HEART_BURST + COIN_FLIGHT and not reward.arrived:
 			reward.arrived = true
 			if reward.coin:
-				Sfx.play("coin_gain:compensation")
+				Sfx.play("coin_compensation")
 	queue_redraw()
 
 

@@ -197,11 +197,15 @@ Fade duration, volume and the frenzy speed-up are tuned in `music/music.json`
 
 All game audio is OGG Vorbis. Effects are sorted into category folders under
 `sfx/` (interface, coins, combat, abilities, shapeshift, duel); each effect is
-`sfx/<category>/<name>.ogg` with a JSON file of the same name beside it.
+one or more sound files, `sfx/<category>/<name>.ogg` then `<name>_2.ogg`,
+`<name>_3.ogg`..., with a JSON file `<name>.json` beside them.
 `scripts/audio/sfx.gd` (autoload `Sfx`) lists every effect and its category in
-`Sfx.SOUNDS`, and `Sfx.play("<name>")` plays it. Replacing a sound only means
-replacing its file under the same name. The first versions were rendered once
-from the former procedural synthesis (22,050 Hz mono).
+`Sfx.SOUNDS`, and `Sfx.play("<name>")` plays one of its files. Replacing a
+sound only means replacing its files under the same names; adding a numbered
+file adds a variation the game picks among. A different use of a sound, even
+slightly, is its own sound with its own files (the three coin sounds). The
+first versions were rendered once from the former procedural synthesis
+(22,050 Hz mono).
 
 How each sound plays is data, not code. Its JSON file holds:
 
@@ -214,17 +218,24 @@ How each sound plays is data, not code. Its JSON file holds:
 | `pitch_jitter` | Random pitch change per play, up to ± this amount |
 | `pitch_step` | Pitch added per step of a series (each harvest coin) |
 | `cooldown_ms` | A repeat of the same sound sooner than this is skipped |
-| `variants` | Named uses of the same file with some values changed |
+| `pick` | How each play chooses among the sound's files: `shuffle` or `random` |
+| `shuffle_refill_after` | `shuffle` only: deal the files again after this many plays (0 = after all) |
 
-`Sfx.play("coin_gain:harvest", coin_index)` plays `coin_gain.ogg` with the
-values of its `harvest` variant, falling back to the sound's own values and then
-`Sfx.SOUND_DEFAULTS` for missing keys. `music/music.json` holds `volume_db`,
-`fade_seconds` and `frenzy_speed_per_level`. Unknown keys are reported as
-warnings.
+With `shuffle`, every file plays once in a random order before any plays again;
+`shuffle_refill_after` above 0 deals the files again sooner, so fewer plays pass
+before a file can return. A new deal never starts with the file just played.
+With `random`, each play draws any file, repeats included. A sound with one file
+always plays it.
+
+`Sfx.play("coin_harvest", coin_index)` plays the harvest coin as step
+`coin_index` of a series; missing keys fall back to `Sfx.SOUND_DEFAULTS`.
+`music/music.json` holds `volume_db`, `fade_seconds` and
+`frenzy_speed_per_level`. Unknown keys are reported as warnings.
 
 [Tuning Fork](../../tools/tuning_fork/README.md) (`tools/tuning_fork`) edits
-these files without opening them: it lists the sounds, plays them with these
-rules and saves the changed values back. Its copy of the defaults and playback
+these files without opening them: it lists the sounds, shows their files as
+waveforms, adds dropped WAV or OGG files, plays them with these rules and saves
+the changed values back. Its copy of the defaults, file naming and playback
 rules must follow any change to `sfx.gd` or `phase_music.gd`.
 
 In a run from the Godot editor, a settings JSON file saved under `sfx/` or
@@ -235,14 +246,15 @@ imported by the editor and still need a restart.
 The Windows build can be re-voiced and re-tuned without Godot.
 `export_windows.ps1` exports `export/ShapeshiftersDuel/` and
 `export/ShapeshiftersDuel-Windows.zip` at the repository root:
-`ShapeshiftersDuel.exe`, an `sfx/` folder with every effect's `.ogg` and `.json`
-in their category folders plus a `README.txt` explaining the values, and
+`ShapeshiftersDuel.exe`, an `sfx/` folder with every effect's `.ogg` files and
+`.json` in their category folders plus a `README.txt` explaining the values, and
 `music/music.json`. The executable carries the game icon, `icon.ico`, which the
 script first regenerates from `icon.svg` with `tools/make_windows_icon.gd`; after
 changing `icon.svg`, run that script before exporting from the editor. An
 exported desktop build reads these files beside its executable in place of the
-packed ones: a sound file replaces the packed sound, and a JSON file applies over
-the packed values key by key. Changed files reload when the game window regains
+packed ones: the sound files of a sound there replace all its packed files (so
+files can be added or removed there too; once none is left, the packed files
+play again), and a JSON file applies over the packed values key by key. Changed files reload when the game window regains
 focus; a missing or unreadable file keeps the packed or current version. Web
 builds use only the packed files. Approved replacements are copied back into the
 project's `sfx/` and `music/` folders.
@@ -255,7 +267,9 @@ project's `sfx/` and `music/` folders.
 | `interface` | `combine` | Merge without a new star |
 | `interface` | `merge` | Merge that grants a star |
 | `interface` | `difficulty_unlock` | The lock of a newly unlocked difficulty opens |
-| `coins` | `coin_gain` | Coin received: enemy sale, harvest coin landing (`harvest`), heart-loss compensation (`compensation`) |
+| `coins` | `coin_gain` | Coin received from an enemy sale |
+| `coins` | `coin_harvest` | Each landing harvest coin, rising |
+| `coins` | `coin_compensation` | Coin given for a lost heart |
 | `coins` | `coin_pop` | A peasant pops its harvest coins at the start of combat |
 | `combat` | `hit` | Melee hit, dive, charge, fireball impact |
 | `combat` | `shoot` | A projectile is fired |
@@ -282,7 +296,9 @@ settings:
   0.25 s once none does or the combat ends. It plays on its own voice, without
   random variation, at any length. The shipped 8 s loop renders the former bard
   melody (C D E G A G E D, one note per second) from the old single note.
-- Harvest `coin_gain` plays 7 % higher for each successive coin.
+- `coin_harvest` plays 7 % higher for each successive coin.
+- The three coin sounds started as copies of the same recording, with their
+  former variant settings: `coin_harvest` ±2 % pitch, `coin_compensation` ±5 %.
 
 The final duel result uses `sfx/duel/victory.ogg` when the opponent has no hearts left
 and `sfx/duel/defeat.ogg` when the player has no hearts left. These recordings start

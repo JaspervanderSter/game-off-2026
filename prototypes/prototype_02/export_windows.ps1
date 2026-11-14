@@ -50,14 +50,18 @@ Copy-Item (Join-Path $project "music\music.json") (Join-Path $Out "music")
 Sound effects of Shapeshifters Duel
 
 Sounds are sorted by category: interface, coins, combat, abilities,
-shapeshift, duel. Each sound is two files with the same name:
+shapeshift, duel. Each sound is one or more sound files and a settings file:
 
   hit.ogg    the sound itself (OGG Vorbis)
+  hit_2.ogg  more versions of it, numbered from 2 (optional); each play
+  hit_3.ogg  picks one of them
   hit.json   how the game plays it
 
 Edit a file, save it, then click back into the game window: changes apply
-without restarting. A missing or unreadable file falls back to the version
-built into the game. Keep the file names and folders.
+without restarting. The sound files of a sound here replace all its built-in
+files; once none is left, the built-in ones play again. A missing or unreadable
+settings file falls back to the version built into the game. Keep the file
+names and folders.
 
 Values in a sound's .json file:
 
@@ -70,8 +74,12 @@ Values in a sound's .json file:
                     (0.08 = up to 8 % higher or lower)
   pitch_step        pitch added for each step of a series (each harvest coin)
   cooldown_ms       the same sound repeated sooner than this is skipped
-  variants          other uses of the same file with some values changed,
-                    e.g. coin_gain's "harvest" and "compensation"
+  pick              how each play chooses a file: "shuffle" plays every file
+                    once in a random order before any repeats; "random" draws
+                    any file each time
+  shuffle_refill_after
+                    shuffle only: deal the files again after this many plays
+                    (0 = after all of them)
 
 abilities\bard_song.ogg is a loop: it plays from its start while a bard sings
 and fades out when none does. It can have any length.

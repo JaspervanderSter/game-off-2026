@@ -1,7 +1,7 @@
 extends Node
 ## Headless checks for Tuning Fork. Run from tools/tuning_fork:
 ##   godot --headless --path . res://tests/run_tests.tscn
-## Reads the newest prototype's sounds; writes only to a scratch folder in user://.
+## Reads the newest prototype's sounds; writes only to scratch folders in user://.
 
 const GAME_SFX_SCRIPT := "scripts/audio/sfx.gd"
 
@@ -14,10 +14,12 @@ func _ready() -> void:
 	_check(game != "", "a prototype with an sfx/ folder exists")
 	if game != "":
 		_test_round_trip(game)
-		_test_defaults_match_game(game)
+		_test_rules_match_game(game)
 		_test_playback_rules(game)
+		_test_waveform(game)
 	_test_number_text()
 	_test_editing_and_saving()
+	_test_sound_files()
 	print("%d checks, %d failures" % [_checks, _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -37,22 +39,21 @@ func _game_folder() -> String:
 func _test_round_trip(game: String) -> void:
 	var library := SoundLibrary.new()
 	_check(library.open(game) == "", "the game folder opens")
-	_check(library.sounds.size() >= 20, "all effects are listed (%d)" % library.sounds.size())
+	_check(library.sounds.size() >= 22, "all effects are listed (%d)" % library.sounds.size())
 	_check(library.music != null and library.music_tracks.size() >= 2, "music settings and tracks are listed")
 	for entry in library.all_entries():
 		_check(entry.has_json, "%s has a JSON file" % entry.name)
-		_check(entry.is_music or entry.stream != null, "%s has a playable OGG" % entry.name)
+		_check(entry.is_music or (not entry.files.is_empty() and not entry.streams.has(null)), "%s has playable OGG files" % entry.name)
 		_check(entry.problems.is_empty(), "%s has no settings problems" % entry.name)
 		var on_disk := FileAccess.get_file_as_string(entry.json_path).replace("\r\n", "\n")
 		_check(entry.text() == on_disk, "%s is written back unchanged" % entry.name)
 		_check(not entry.is_dirty(), "%s starts saved" % entry.name)
-	var coin := library.find("coin_gain")
-	_check(coin != null and coin.category == "coins", "coin_gain is in coins/")
-	_check(coin != null and coin.variants().has("harvest"), "coin_gain has its harvest variant")
+	var coin := library.find("coin_harvest")
+	_check(coin != null and coin.category == "coins", "coin_harvest is in coins/")
 
 
-## The tool's defaults are the game's (Sfx.SOUND_DEFAULTS and MUSIC_DEFAULTS).
-func _test_defaults_match_game(game: String) -> void:
+## The tool's defaults, file naming and file picking are the game's.
+func _test_rules_match_game(game: String) -> void:
 	var path := game.path_join(GAME_SFX_SCRIPT)
 	_check(FileAccess.file_exists(path), "the game's sfx.gd exists")
 	var script := GDScript.new()
@@ -62,19 +63,46 @@ func _test_defaults_match_game(game: String) -> void:
 	_check(constants.get("SOUND_DEFAULTS") == SoundLibrary.SOUND_DEFAULTS, "SOUND_DEFAULTS match the game")
 	_check(constants.get("MUSIC_DEFAULTS") == SoundLibrary.MUSIC_DEFAULTS, "MUSIC_DEFAULTS match the game")
 	_check(constants.get("INFO_KEYS") == SoundLibrary.INFO_KEYS, "INFO_KEYS match the game")
+	_check(constants.get("PICK_MODES") == SoundLibrary.PICK_MODES, "pick modes match the game")
 	_check(constants.get("VOICES") == SoundPlayer.VOICES, "voice count matches the game")
+	var same_numbers := true
+	for file in ["hit.ogg", "hit_2.ogg", "hit_10.ogg", "hit_1.ogg", "hit_02.ogg", "hitch.ogg", "hit.json", "hit_x.ogg"]:
+		same_numbers = same_numbers and script.file_number(file, "hit") == SoundLibrary.file_number(file, "hit")
+	_check(same_numbers, "file numbering matches the game")
+	var same_picks := true
+	for setup in [[4, "shuffle", 0], [5, "shuffle", 2], [3, "random", 0], [1, "shuffle", 0]]:
+		var game_state := {}
+		var tool_state := {}
+		for i in 40:
+			seed(1000 + i)
+			var expected: int = script.next_pick(game_state, setup[0], setup[1], setup[2])
+			seed(1000 + i)
+			same_picks = same_picks and SoundPlayer.next_pick(tool_state, setup[0], setup[1], setup[2]) == expected
+	randomize()
+	_check(same_picks, "file picking matches the game")
 
 
 func _test_playback_rules(game: String) -> void:
 	var library := SoundLibrary.new()
 	library.open(game)
 	var song := library.find("bard_song")
-	_check(song != null and is_equal_approx(SoundPlayer.base_pitch(song, "", 5), 1.0), "the bard song plays at one pitch")
-	var coin := library.find("coin_gain")
-	var step := float(coin.setting("pitch_step", "harvest"))
-	_check(step > 0.0 and is_equal_approx(SoundPlayer.base_pitch(coin, "harvest", 2), 1.0 + 2.0 * step), "pitch_step rises per step in a variant")
-	_check(is_equal_approx(SoundPlayer.base_pitch(coin, "", 2), 1.0), "the sound itself has no pitch step")
-	_check(coin.setting("volume_db", "harvest") == coin.setting("volume_db"), "a variant falls back to the sound's values")
+	_check(song != null and is_equal_approx(SoundPlayer.base_pitch(song, 5), 1.0), "the bard song plays at one pitch")
+	var coin := library.find("coin_harvest")
+	var step := float(coin.setting("pitch_step"))
+	_check(step > 0.0 and is_equal_approx(SoundPlayer.base_pitch(coin, 2), 1.0 + 2.0 * step), "pitch_step rises per step")
+	_check(is_equal_approx(SoundPlayer.base_pitch(library.find("coin_gain"), 2), 1.0), "a sound without pitch_step keeps its pitch")
+
+
+func _test_waveform(game: String) -> void:
+	var stream := AudioStreamOggVorbis.load_from_file(game.path_join("sfx/combat/hit.ogg"))
+	var peaks := WaveCard.peaks_of(stream, 60)
+	var loudest := 0.0
+	var ordered := true
+	for i in 60:
+		loudest = maxf(loudest, peaks[i * 2 + 1])
+		ordered = ordered and peaks[i * 2] <= peaks[i * 2 + 1]
+	_check(peaks.size() == 120 and ordered and loudest > 0.1, "a waveform has a low and a high peak per column")
+	_check(WaveCard.peaks_of(stream, 60) == peaks, "waveforms are measured once")
 
 
 func _test_number_text() -> void:
@@ -85,7 +113,7 @@ func _test_number_text() -> void:
 	_check(SoundLibrary.number_text(0.075, false) == "0.075", "three decimals are kept")
 
 
-## Edits, a new variant and a save in a scratch copy, then a reload.
+## Edits and a save in a scratch copy, then a reload.
 func _test_editing_and_saving() -> void:
 	var dir := ProjectSettings.globalize_path("user://test_library_%d" % OS.get_process_id())
 	DirAccess.make_dir_recursive_absolute(dir.path_join("sfx/combat"))
@@ -99,22 +127,82 @@ func _test_editing_and_saving() -> void:
 	_check(Array(hit.problems) == ["unknown key \"extra\""], "unknown keys are reported")
 	_check(not hit.is_dirty(), "a hand-written file is not unsaved")
 	hit.data["volume_db"] = -3.5
-	hit.data["variants"] = {"heavy": {"pitch": 0.8}}
+	hit.data["pick"] = "random"
 	_check(hit.is_dirty(), "an edit is unsaved")
 	_check(hit.save() == OK and not hit.is_dirty(), "saving clears unsaved")
-	var expected := "{\n\t\"description\": \"Hit.\",\n\t\"volume_db\": -3.5,\n\t\"pitch\": 1.0,\n\t\"extra\": true,\n\t\"variants\": {\n\t\t\"heavy\": {\n\t\t\t\"pitch\": 0.8\n\t\t}\n\t}\n}\n"
+	var expected := "{\n\t\"description\": \"Hit.\",\n\t\"volume_db\": -3.5,\n\t\"pitch\": 1.0,\n\t\"pick\": \"random\",\n\t\"extra\": true\n}\n"
 	_check(FileAccess.get_file_as_string(hit.json_path) == expected, "saved file has the game's layout")
 	var swing := library.find("swing")
 	_check(swing != null and not swing.has_json and not swing.is_dirty(), "a sound without JSON is listed with defaults")
 	_check(swing.save() == OK and FileAccess.file_exists(swing.json_path), "saving creates its JSON file")
 	var reloaded := SoundLibrary.new()
 	reloaded.open(dir)
-	_check(is_equal_approx(float(reloaded.find("hit").setting("pitch", "heavy")), 0.8), "the saved variant reloads")
+	_check(reloaded.find("hit").setting("pick") == "random", "the saved values reload")
 	_check(reloaded.find("swing").setting("cooldown_ms") == 40.0, "the created file holds the defaults")
-	for path in [hit.json_path, swing.json_path, dir.path_join("sfx/combat/swing.ogg")]:
-		DirAccess.remove_absolute(path)
-	DirAccess.remove_absolute(dir.path_join("sfx/combat"))
-	DirAccess.remove_absolute(dir.path_join("sfx"))
+	_remove_tree(dir)
+
+
+## Numbered files group under their sound; files are added (OGG copied, WAV
+## converted when oggenc is there) and removed with renumbering.
+func _test_sound_files() -> void:
+	var dir := ProjectSettings.globalize_path("user://test_files_%d" % OS.get_process_id())
+	var combat := dir.path_join("sfx/combat")
+	DirAccess.make_dir_recursive_absolute(combat)
+	var game_combat := _game_folder().path_join("sfx/combat")
+	DirAccess.copy_absolute(game_combat.path_join("hit.ogg"), combat.path_join("hit.ogg"))
+	DirAccess.copy_absolute(game_combat.path_join("death.ogg"), combat.path_join("hit_2.ogg"))
+	DirAccess.copy_absolute(game_combat.path_join("shoot.ogg"), combat.path_join("hit_3.ogg"))
+	DirAccess.copy_absolute(game_combat.path_join("shoot.ogg"), combat.path_join("shoot.ogg"))
+	var library := SoundLibrary.new()
+	library.open(dir)
+	var names := library.sounds.map(func(e: SoundEntry) -> String: return e.name)
+	_check(names == ["hit", "shoot"], "numbered files belong to their sound, not to new sounds %s" % [names])
+	var hit := library.find("hit")
+	_check(hit.files.size() == 3 and hit.files[1].get_file() == "hit_2.ogg", "a sound lists its files in order")
+	_check(hit.add_file(game_combat.path_join("hit.json")) != "", "only WAV and OGG files can be added")
+	_check(hit.add_file(game_combat.path_join("death.ogg")) == "" and hit.files.size() == 4
+		and hit.files[3].get_file() == "hit_4.ogg", "an OGG file is copied as the next numbered file")
+	var wav := dir.path_join("beep.wav")
+	_write_wav(wav)
+	if Oggenc.program() != "":
+		_check(hit.add_file(wav) == "" and hit.files.size() == 5 and hit.streams[4] is AudioStreamOggVorbis,
+			"a WAV file is converted to OGG with oggenc")
+	else:
+		print("oggenc not found: WAV conversion not checked")
+	var before := hit.files.size()
+	var second_length := hit.streams[2].get_length()
+	_check(hit.remove_file(1, false) == "" and hit.files.size() == before - 1, "a file is removed")
+	var renumbered := hit.list_files()
+	var contiguous := true
+	for i in renumbered.size():
+		contiguous = contiguous and renumbered[i] == SoundLibrary.numbered_file("hit", i + 1)
+	_check(contiguous and is_equal_approx(hit.streams[1].get_length(), second_length),
+		"the files after it are renumbered in order %s" % [renumbered])
+	_check(hit.remove_file(0, false) == "" and hit.list_files()[0] == "hit.ogg", "removing the first file renumbers the next to name.ogg")
+	_check(not hit.files_changed_on_disk(), "the entry follows its own file changes")
+	DirAccess.copy_absolute(game_combat.path_join("hit.ogg"), combat.path_join("hit_%d.ogg" % (hit.files.size() + 1)))
+	_check(hit.files_changed_on_disk(), "a file added by another program is noticed")
+	_remove_tree(dir)
+
+
+## A short 16-bit mono beep.
+func _write_wav(path: String) -> void:
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = 22050
+	var data := PackedByteArray()
+	data.resize(4410 * 2)
+	for i in 4410:
+		data.encode_s16(i * 2, int(sin(i * TAU * 440.0 / 22050.0) * 12000.0))
+	wav.data = data
+	wav.save_to_wav(path)
+
+
+func _remove_tree(dir: String) -> void:
+	for sub in DirAccess.get_directories_at(dir):
+		_remove_tree(dir.path_join(sub))
+	for file in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir.path_join(file))
 	DirAccess.remove_absolute(dir)
 
 
