@@ -24,6 +24,7 @@ func _ready() -> void:
 	_test_shop_drag_and_enemy_preparation()
 	_test_phase_music()
 	_test_result_recordings()
+	_test_sound_files()
 	_test_round_reset_and_damage()
 	_test_frenzy()
 	_test_abilities()
@@ -880,12 +881,12 @@ func _test_result_recordings() -> void:
 	add_child(game)
 	var voice: AudioStreamPlayer = Sfx._result_player
 	voice.stop()
-	Sfx._last_played.erase("win")
-	Sfx._last_played.erase("lose")
+	Sfx._last_played.erase("victory")
+	Sfx._last_played.erase("defeat")
 	game._on_battle_ended({"winner": 0, "survivors": 1})
-	check(not voice.playing and not Sfx._last_played.has("win"), "intermediate victory has no result recording")
+	check(not voice.playing and not Sfx._last_played.has("victory"), "intermediate victory has no result recording")
 	game._on_battle_ended({"winner": 1, "survivors": 1})
-	check(not voice.playing and not Sfx._last_played.has("lose"), "intermediate defeat has no result recording")
+	check(not voice.playing and not Sfx._last_played.has("defeat"), "intermediate defeat has no result recording")
 	game._on_battle_ended({"winner": -1, "survivors": 0})
 	check(not voice.playing, "draw has no result recording")
 	game.enemy.hp = 0.5
@@ -894,13 +895,13 @@ func _test_result_recordings() -> void:
 	game.battle = Battle.new()
 	game.add_child(game.battle)
 	game._finish_round()
-	check(game.phase == game.Phase.OVER and voice.stream.resource_path == "res://sfx/victory.wav" and voice.playing,
+	check(game.phase == game.Phase.OVER and voice.stream.resource_path == "res://sfx/victory.ogg" and voice.playing,
 		"final duel victory plays supplied victory recording on game over")
-	check(voice.pitch_scale == 1.0 and voice.stream.loop_mode == AudioStreamWAV.LOOP_DISABLED,
+	check(voice.pitch_scale == 1.0 and not voice.stream.loop,
 		"result recording plays once at its original pitch")
 	game.new_duel()
 	voice.stop()
-	Sfx._last_played.erase("lose")
+	Sfx._last_played.erase("defeat")
 	game.music.transition_to("battle")
 	game.music.advance_fades(PhaseMusic.FADE_SECONDS)
 	game.player.hp = 0.5
@@ -912,14 +913,55 @@ func _test_result_recordings() -> void:
 	game.battle = Battle.new()
 	game.add_child(game.battle)
 	game._finish_round()
-	check(game.phase == game.Phase.OVER and voice.stream.resource_path == "res://sfx/defeat.wav" and voice.playing,
+	check(game.phase == game.Phase.OVER and voice.stream.resource_path == "res://sfx/defeat.ogg" and voice.playing,
 		"final duel defeat plays supplied defeat recording on game over")
 	for i in Sfx.VOICES + 2:
 		Sfx._last_played.erase("heart_break")
 		Sfx.play("heart_break")
-	check(voice.stream.resource_path == "res://sfx/defeat.wav" and voice.playing,
+	check(voice.stream.resource_path == "res://sfx/defeat.ogg" and voice.playing,
 		"heart effects cannot steal or interrupt the result voice")
 	game.free()
+
+
+## Every effect is a non-looping OGG file named after it; audio folders hold
+## nothing else, and the scripts play exactly the listed effects.
+func _test_sound_files() -> void:
+	var missing: Array[String] = []
+	for sound_name in Sfx.SOUNDS:
+		var stream = load(Sfx.DIR + sound_name + ".ogg")
+		if not (stream is AudioStreamOggVorbis) or stream.loop:
+			missing.append(sound_name)
+	check(missing.is_empty(), "every effect is a one-shot OGG file %s" % [missing])
+	var foreign: Array[String] = []
+	for dir in [Sfx.DIR, "res://music/"]:
+		for file in DirAccess.get_files_at(dir):
+			if not (file.ends_with(".ogg") or file.ends_with(".ogg.import")):
+				foreign.append(dir + file)
+	check(foreign.is_empty(), "audio folders contain only OGG files %s" % [foreign])
+	var played := {}
+	# String literals in a play call, except those compared in its condition.
+	var literal := RegEx.create_from_string("(?<!== )\"(\\w+)\"")
+	for path in _script_files("res://scripts/"):
+		for line in FileAccess.get_file_as_string(path).split("\n"):
+			if line.contains("Sfx.play_note("):
+				played["note"] = true
+			elif line.contains("Sfx.play("):
+				for m in literal.search_all(line):
+					played[m.get_string(1)] = true
+	var unknown := played.keys().filter(func(n): return not n in Sfx.SOUNDS)
+	var unused := Sfx.SOUNDS.filter(func(n): return not played.has(n))
+	check(unknown.is_empty() and unused.is_empty(),
+		"scripts play exactly the listed effects (unknown %s, unused %s)" % [unknown, unused])
+
+
+func _script_files(dir: String) -> Array[String]:
+	var files: Array[String] = []
+	for file in DirAccess.get_files_at(dir):
+		if file.ends_with(".gd"):
+			files.append(dir + file)
+	for sub in DirAccess.get_directories_at(dir):
+		files.append_array(_script_files(dir + sub + "/"))
+	return files
 
 
 func _test_round_reset_and_damage() -> void:

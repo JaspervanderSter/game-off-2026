@@ -259,7 +259,7 @@ func _finish_round() -> void:
 		if player.hp > 0:
 			_unlock_next_difficulty()
 			hud.begin_victory()
-		Sfx.play("lose" if player.hp == 0 else "win")
+		Sfx.play("defeat" if player.hp == 0 else "victory")
 	else:
 		start_round()
 

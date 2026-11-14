@@ -192,8 +192,47 @@ preserves its playback position. Both streams loop in Godot, and combat x2 does
 not change music speed. Music volume is initially -16 dB to leave room for effects.
 Fade duration and volume can be tuned with `PhaseMusic.FADE_SECONDS` and `MUSIC_DB`.
 
-The final duel result uses `sfx/victory.wav` when the opponent has no hearts left
-and `sfx/defeat.wav` when the player has no hearts left. These recordings start
+## Sound effects
+
+All game audio is OGG Vorbis; the `sfx/` and `music/` folders hold no other
+format. `scripts/audio/sfx.gd` (autoload `Sfx`) loads each effect listed in
+`Sfx.SOUNDS` from `sfx/<name>.ogg`, and `Sfx.play("<name>")` plays it. Replacing
+a sound only means replacing its file under the same name. The first versions
+were rendered once from the former procedural synthesis (22,050 Hz mono).
+
+| File | Played when |
+|---|---|
+| `click` | Interface click: difficulty, fight, picking up a creature, offer lock, reroll, restart |
+| `fail` | Impossible action: not enough gold, locked difficulty, fizzled cast, invalid drop |
+| `buy` | Purchase, starting composition, recharge upgrade, player sale |
+| `combine` | Merge without a new star |
+| `merge` | Merge that grants a star |
+| `coin_gain` | Coin received: enemy sale, harvest coin landing, heart-loss compensation |
+| `coin_pop` | A peasant pops its harvest coins at the start of combat |
+| `heart_break` | A half-heart breaks after a lost round |
+| `difficulty_unlock` | The lock of a newly unlocked difficulty opens |
+| `hit` | Melee hit, dive, charge, fireball impact |
+| `shoot` | A projectile is fired |
+| `death` | A creature dies |
+| `shift_bless` | Shapeshift cast on an own creature |
+| `shift_hex` | Shapeshift cast on an enemy creature |
+| `hop` | Rabbit leap |
+| `fear` | Skunk fear burst |
+| `blizzard` | Blizzard cast |
+| `note` | Bard song, one note per beat |
+| `victory` | Final duel victory |
+| `defeat` | Final duel defeat |
+
+Playback details that replacement sounds should allow for:
+
+- Effects get a random pitch variation (±8 % by default) on every play.
+- The same effect cannot restart within 40 ms; at most 10 effects play at once.
+- `note` should be a C5. The game transposes it along a pentatonic melody
+  (C D E G A G E D), so one note is enough.
+- Harvest `coin_gain` plays 7 % higher for each successive coin.
+
+The final duel result uses `sfx/victory.ogg` when the opponent has no hearts left
+and `sfx/defeat.ogg` when the player has no hearts left. These recordings start
 only on entering the game-over screen, after the final heart-loss sequence.
 Intermediate rounds and draws play neither recording; heart and coin effects
 provide round feedback. Each recording plays once at its original pitch on a
@@ -204,7 +243,8 @@ dedicated voice. Music has faded out during resolution and stays silent at game 
 Answers given by the user while scoping the implementation:
 
 - Procedural shapes and icons only, as little text as possible (rule for all prototypes).
-- Top-down camera, synthesized sound effects, icon-based interface.
+- Top-down camera, synthesized sound effects, icon-based interface. (14 November
+  2026: the effects were rendered once to OGG files so they can be replaced.)
 - All 24 abilities implemented; short combats (~20-30 s); visible homing projectiles.
 - Hover shows the three outcomes with chances (no outcome-stat comparison).
 - Three thematic starting packs. The AI evaluates purchases and transformations
