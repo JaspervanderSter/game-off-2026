@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tuning Fork: getting started</title>
+<!-- Getting started with Tuning Fork, shipped beside TuningFork.exe by
+     export_windows.ps1. Keep it short: the tooltips explain the rest. -->
+<style>
+	:root {
+		--bg: #f6f5f2;
+		--card: #ffffff;
+		--text: #1d2026;
+		--dim: #5d6370;
+		--line: #e2e0da;
+		--accent: #c97a0c;
+		--key: #eceae4;
+	}
+	@media (prefers-color-scheme: dark) {
+		:root {
+			--bg: #1d2026;
+			--card: #23272f;
+			--text: #eef0f3;
+			--dim: #9aa1ad;
+			--line: #323844;
+			--accent: #fab84d;
+			--key: #2d323c;
+		}
+	}
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		background: var(--bg);
+		color: var(--text);
+		font: 16px/1.55 "Segoe UI", system-ui, sans-serif;
+	}
+	main { max-width: 680px; margin: 0 auto; padding: 40px 16px 56px; }
+	header { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+	header svg { width: 44px; height: 44px; color: var(--accent); flex: none; }
+	h1 { font-size: 30px; margin: 0; font-weight: 600; }
+	.lead { color: var(--dim); margin: 0 0 28px; }
+	ol { list-style: none; counter-reset: step; padding: 0; margin: 0; }
+	li {
+		counter-increment: step;
+		position: relative;
+		background: var(--card);
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		padding: 16px 18px 16px 62px;
+		margin-bottom: 12px;
+	}
+	li::before {
+		content: counter(step);
+		position: absolute;
+		left: 18px; top: 15px;
+		width: 28px; height: 28px;
+		border-radius: 50%;
+		background: var(--accent);
+		color: var(--bg);
+		font-weight: 700;
+		text-align: center;
+		line-height: 28px;
+	}
+	h2 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+	p { margin: 0; }
+	.icon { width: 18px; height: 18px; vertical-align: -3px; color: var(--accent); }
+	kbd, code {
+		background: var(--key);
+		border-radius: 4px;
+		padding: 1px 6px;
+		font: 14px Consolas, monospace;
+	}
+	.note { color: var(--dim); font-size: 14px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+	<symbol id="fork" viewBox="0 0 24 24"><path d="M8 2.5v8.5a4 4 0 0 0 8 0V2.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M12 15v6.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+	<symbol id="folder" viewBox="0 0 24 24"><path d="M2.5 6.5A1.5 1.5 0 0 1 4 5h5l2 2.5h9a1.5 1.5 0 0 1 1.5 1.5v9.5A1.5 1.5 0 0 1 20 20H4a1.5 1.5 0 0 1-1.5-1.5z" fill="currentColor"/></symbol>
+	<symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+	<symbol id="play" viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></symbol>
+	<symbol id="speaker" viewBox="0 0 24 24"><path d="M3 9h4l5-4.5v15L7 15H3z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+	<symbol id="save" viewBox="0 0 24 24"><path d="M4 4h12l4 4v12H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><rect x="8" y="4" width="7" height="5" fill="currentColor"/><rect x="7" y="13" width="10" height="7" rx="1" fill="currentColor"/></symbol>
+</svg>
+<main>
+	<header>
+		<svg><use href="#fork"/></svg>
+		<h1>Tuning Fork</h1>
+	</header>
+	<p class="lead">Create the sounds of a game and tune them while it runs. Five steps
+	to get going; hover any button or setting in the tool for the rest.</p>
+
+	<ol>
+		<li>
+			<h2>Open the game</h2>
+			<p>Start <code>TuningFork.exe</code> and pick the game in the list, or
+			<svg class="icon"><use href="#folder"/></svg> <b>Open a game folder</b>:
+			the folder that holds <code>sfx/</code>. The folder button at the top
+			brings you back to this list.</p>
+		</li>
+		<li>
+			<h2>Create an event</h2>
+			<p>An event is one sound of the game, such as <code>combat/hit</code>.
+			Click <svg class="icon"><use href="#plus"/></svg> beside the filter, give it a
+			folder, a name and when it plays. Then tell your programmer its path: the
+			game plays it with <code>Sfx.play("combat/hit")</code>.</p>
+		</li>
+		<li>
+			<h2>Add sound files</h2>
+			<p>Drop WAV or OGG files on the window. Each file is a take; with several,
+			the game picks a different one each time, so a repeated sound never sounds
+			the same.</p>
+		</li>
+		<li>
+			<h2>Listen and tune</h2>
+			<p><svg class="icon"><use href="#play"/></svg> or <kbd>Space</kbd> plays the
+			event as the game will. Move the sliders; with
+			<svg class="icon"><use href="#speaker"/></svg> auto-play on, it replays
+			after each change. <kbd>Esc</kbd> stops a looping sound.</p>
+		</li>
+		<li>
+			<h2>Save and hear it in the game</h2>
+			<p><svg class="icon"><use href="#save"/></svg> or <kbd>Ctrl</kbd>+<kbd>S</kbd>
+			saves the event, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> saves
+			everything. Keep the game running: click back into it and the next play
+			uses your change.</p>
+		</li>
+	</ol>
+
+	<p class="note">Keep <code>oggenc2.exe</code> beside <code>TuningFork.exe</code>:
+	it converts dropped WAV files to OGG. Mixing groups (effects, ui, ambience…) are
+	the last entry of the event list.</p>
+</main>
+</body>
+</html>

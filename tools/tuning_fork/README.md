@@ -39,7 +39,11 @@ switch.
 ```
 
 Writes `export/TuningFork/TuningFork.exe` at the repository root (ignored by
-git): one executable with the fork icon, launched without Godot. The script
+git): one executable with the fork icon, launched without Godot. Beside it
+goes `Getting started.html`, a five-step guide for the sound designer kept in
+[`guide/`](guide/Getting%20started.html); the rest is left to the tooltips.
+Then the script zips the folder into `export/TuningFork-Windows.zip`, which
+unpacks into a single `TuningFork` folder. The script
 finds Godot like the game's export script (`-Godot <path>` or `$env:GODOT`
 otherwise) and first regenerates `icon.ico` from `icon.svg` with
 `tools/make_windows_icon.gd`. It also copies `oggenc2.exe` (about 2 MB) beside

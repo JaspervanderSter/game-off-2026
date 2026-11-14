@@ -3,8 +3,9 @@
 #   .\export_windows.ps1 [-Godot <path to Godot_v4.x_console.exe>] [-Oggenc <path to oggenc2.exe>] [-Out <folder>]
 #
 # Produces <Out>\TuningFork.exe, by default export\TuningFork\ at the repository
-# root, with a copy of oggenc2.exe beside it so the tool converts dropped WAV
-# files on any machine. oggenc2 (about 2 MB) comes from
+# root, with "Getting started.html" (from guide\) and a copy of oggenc2.exe
+# beside it so the tool converts dropped WAV files on any machine; then
+# <Out>-Windows.zip, which unpacks into a single TuningFork folder. oggenc2 (about 2 MB) comes from
 # https://www.rarewares.org/ogg-oggenc.php; unless given, the script looks for it
 # in %USERPROFILE%\Tools\oggenc\, then $env:OGGENC, then the PATH. Launched from
 # there, the tool finds the repository's prototypes by itself.
@@ -56,4 +57,9 @@ if ($Oggenc -and (Test-Path $Oggenc)) {
 } else {
 	Write-Warning "oggenc2 not found: the exported tool adds OGG files only. Get it from https://www.rarewares.org/ogg-oggenc.php and pass -Oggenc <path to oggenc2.exe>."
 }
-Write-Host "Exported $target"
+Copy-Item (Join-Path $project "guide\Getting started.html") $Out -Force
+
+$zip = "$Out-Windows.zip"
+if (Test-Path $zip) { Remove-Item -Force $zip }
+Compress-Archive -Path $Out -DestinationPath $zip
+Write-Host "Exported $target and $zip"
