@@ -18,6 +18,10 @@ const SHAPES := {
 	"edit": '<path d="M4 20h4L19 9l-4-4L4 16z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/><path d="M13.5 6.5l4 4" stroke="#fff" stroke-width="2.2"/>',
 	"link": '<path d="M10 14a4 4 0 0 0 5.7 0l3.6-3.6a4 4 0 0 0-5.7-5.7L12 6.3" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><path d="M14 10a4 4 0 0 0-5.7 0l-3.6 3.6a4 4 0 0 0 5.7 5.7l1.6-1.6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>',
 	"mixer": '<path d="M6 3v18M12 3v18M18 3v18" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".5"/><rect x="3.5" y="13" width="5" height="3.5" rx="1" fill="#fff"/><rect x="9.5" y="6" width="5" height="3.5" rx="1" fill="#fff"/><rect x="15.5" y="10" width="5" height="3.5" rx="1" fill="#fff"/>',
+	"close": '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>',
+	"back": '<path d="M19.5 12h-14M11 5.5L4.5 12l6.5 6.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
+	"clock": '<circle cx="12" cy="12" r="8.5" fill="none" stroke="#fff" stroke-width="2.2"/><path d="M12 7.5V12l3 2" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+	"search": '<circle cx="10.5" cy="10.5" r="6" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M15 15l5 5" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>',
 	"fork": '<path d="M8 2.5v8.5a4 4 0 0 0 8 0V2.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M12 15v6.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>',
 }
 

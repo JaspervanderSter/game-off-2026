@@ -13,11 +13,24 @@ definition differ, [`docs/Gaps.md`](docs/Gaps.md) lists the gap.
 
 Open `tools/tuning_fork/project.godot` in Godot 4.7 and press F5.
 
-It opens the newest prototype that has an `sfx/` folder (today
-`prototypes/prototype_02`). The folder button opens another game folder: any
-folder holding `sfx/`, such as the exported Windows build
-(`export/ShapeshiftersDuel/`). The tool remembers the last folder, the
-selected event and the auto-play switch.
+It starts on the **project window** and opens nothing by itself: click a game
+folder (any folder holding `sfx/`) to open it. The window lists:
+
+- **Recent**: the folders opened before, most recent first (at most 12). The
+  `×` removes one from the list; the folder stays on disk. A folder that no
+  longer holds `sfx/` is greyed out.
+- **Found beside Tuning Fork**: the prototypes holding `sfx/` that are not
+  already recent, newest first. The tool finds them by looking upward from
+  its own folder (or the executable's, once exported), at most six levels, for
+  a `prototypes/` folder.
+
+Each folder shows its number of events. **Open a game folder** (or dropping a
+folder on the window) opens any other one, such as the exported Windows build
+(`export/ShapeshiftersDuel/`). Once a project is open, the folder button of
+the top bar comes back to this window (after saving or discarding unsaved
+changes); the back arrow or Esc returns to the open project. The tool
+remembers the recent folders, the selected event of each and the auto-play
+switch.
 
 ## Export
 
@@ -35,8 +48,8 @@ oggenc2 once from <https://www.rarewares.org/ogg-oggenc.php> (the x64 build)
 and put it in `%USERPROFILE%\Tools\oggenc\`; the script also takes
 `-Oggenc <path>`, `$env:OGGENC` or one on the PATH. Run from
 anywhere inside the repository, the executable finds the prototypes by looking
-upward from its folder; elsewhere, open the game folder once with the folder
-button and it is remembered.
+upward from its folder; elsewhere, open the game folder once from the project
+window and it stays among the recent ones.
 
 ## What it does
 
@@ -114,12 +127,16 @@ Checks that every event file and groups.json of the newest prototype is
 written back unchanged; that the defaults, known keys, groups file, pick
 modes, file numbering, file picking (same draws for the same random seed),
 voice count and loop fade match the game's runtime; borrowed files
-(`files_from`); waveform measurement; number formatting; an edit-save-reload
+(`files_from`); the project window's search (the newest prototype first, only
+folders holding `sfx/`), its event count and its recent list; waveform
+measurement; number formatting; an edit-save-reload
 cycle in a scratch folder (unknown keys kept, JSON created for an event
 without one); numbered files grouped under their event, OGG files added, a WAV
 file converted (when oggenc2 is found), and removals with renumbering; event
 creation, renaming (files and `files_from` follow, empty folders removed) and
 deletion; and group creation, renaming, removal and saving.
 
-`-- --select=<path> --screenshot=<file.png>` starts on an event (or
-`--select=groups`), plays it a few times muted, saves the window and quits.
+`-- --root=<game folder>` opens that folder without the project window.
+`--select=<path>` starts on an event (or `--select=groups`).
+`--screenshot=<file.png>` plays the selected event a few times muted, saves
+the window and quits; without `--root` it saves the project window.

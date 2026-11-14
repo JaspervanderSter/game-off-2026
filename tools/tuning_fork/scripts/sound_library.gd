@@ -441,27 +441,53 @@ static func _value_text(value: Variant, key: String, indent: String) -> String:
 ## A folder's events: every JSON file, and every OGG file that is not a
 ## numbered file (`_N`) of another event there; then its sub-folders.
 func _scan(dir: String, folder: String) -> void:
-	var jsons := {}
-	var names := {}
-	for file in DirAccess.get_files_at(dir):
-		var extension := file.get_extension().to_lower()
-		if folder == "" and file == GROUPS_FILE:
-			continue
-		if extension == "json":
-			jsons[file.get_basename()] = true
-		if extension == "json" or extension == "ogg":
-			names[file.get_basename()] = true
-	var sorted := names.keys()
-	for event_name: String in sorted:
-		# A numbered OGG without its own JSON belongs to the event it numbers.
-		if not jsons.has(event_name) and sorted.any(func(other: String) -> bool: return file_number(event_name + ".ogg", other) > 1):
-			continue
+	for event_name in event_names_at(dir, folder == ""):
 		var entry := _entry_at(event_name if folder == "" else folder.path_join(event_name))
 		entry.load_settings()
 		entry.load_files()
 		sounds.append(entry)
 	for sub in DirAccess.get_directories_at(dir):
 		_scan(dir.path_join(sub), sub if folder == "" else folder.path_join(sub))
+
+
+## Names of the events in the folder `dir` (not its sub-folders): every JSON
+## file, and every OGG file that is not a numbered file (`_N`) of another event
+## there. `top` skips groups.json, for sfx/ itself.
+static func event_names_at(dir: String, top: bool) -> Array[String]:
+	var jsons := {}
+	var names := {}
+	for file in DirAccess.get_files_at(dir):
+		var extension := file.get_extension().to_lower()
+		if top and file == GROUPS_FILE:
+			continue
+		if extension == "json":
+			jsons[file.get_basename()] = true
+		if extension == "json" or extension == "ogg":
+			names[file.get_basename()] = true
+	var sorted := names.keys()
+	var found: Array[String] = []
+	for event_name: String in sorted:
+		# A numbered OGG without its own JSON belongs to the event it numbers.
+		if not jsons.has(event_name) and sorted.any(func(other: String) -> bool: return file_number(event_name + ".ogg", other) > 1):
+			continue
+		found.append(event_name)
+	return found
+
+
+## Number of events in the game folder `game` (holding sfx/), counted without
+## loading them; -1 when it has no sfx/ folder.
+static func event_count(game: String) -> int:
+	var sfx := game.path_join("sfx")
+	if not DirAccess.dir_exists_absolute(sfx):
+		return -1
+	return _count_events(sfx, true)
+
+
+static func _count_events(dir: String, top: bool) -> int:
+	var count := event_names_at(dir, top).size()
+	for sub in DirAccess.get_directories_at(dir):
+		count += _count_events(dir.path_join(sub), false)
+	return count
 
 
 func _entry_at(event_path: String) -> SoundEntry:

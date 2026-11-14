@@ -3,10 +3,12 @@ extends Control
 ## deletes them, shows each event's files as waveforms, plays them as the game
 ## does, edits their JSON settings and the mixing groups, and saves them back.
 ## WAV and OGG files dropped on the window are added to the selected event
-## (WAV converted to OGG with oggenc). Definition: docs/Home.md.
+## (WAV converted to OGG with oggenc). It starts on the project window
+## (ProjectPicker), where the user picks the game folder. Definition:
+## docs/Home.md.
 ##
 ## Command-line user arguments (after `--`):
-##   --root=<folder>     game folder holding sfx/
+##   --root=<folder>     game folder holding sfx/, opened without the project window
 ##   --select=<path>     event selected at start ("groups" for the groups)
 ##   --screenshot=<png>  plays the event a few times muted, saves the window, quits
 
@@ -54,6 +56,8 @@ var _updating := false
 var _after_confirm := Callable()
 var _pending_removal := -1
 
+var _background: Control
+var _picker: ProjectPicker
 var _root_label: Label
 var _auto_play: CheckButton
 var _filter: LineEdit
@@ -82,7 +86,6 @@ var _status: Label
 var _unsaved_label: Label
 var _save_all_button: Button
 var _auto_timer: Timer
-var _folder_dialog: FileDialog
 var _add_dialog: FileDialog
 var _confirm: ConfirmationDialog
 var _remove_dialog: ConfirmationDialog
@@ -103,7 +106,11 @@ func _ready() -> void:
 	add_child(sound_player)
 	sound_player.played.connect(_on_played)
 	_build_ui()
-	get_window().files_dropped.connect(_add_files)
+	get_window().files_dropped.connect(func(paths: PackedStringArray) -> void:
+		if _picker.visible:
+			_picker.open_dropped(paths)
+		else:
+			_add_files(paths))
 	var disk_timer := Timer.new()
 	disk_timer.wait_time = 1.0
 	disk_timer.autostart = true
@@ -119,10 +126,11 @@ func _ready() -> void:
 	config.load(CONFIG_PATH)
 	_auto_play.set_pressed_no_signal(bool(config.get_value("tool", "auto_play", true)))
 	var args := _user_args()
-	var root: String = args.get("root", config.get_value("tool", "root", ""))
-	if root == "" or not DirAccess.dir_exists_absolute(root):
-		root = _find_game_folder()
-	_open_root(root, args.get("select", config.get_value("tool", "selected", "")))
+	if args.has("root"):
+		var game := ProjectPicker.normalized(args["root"])
+		_open_root(game, args.get("select", _remembered_selection(game)))
+	else:
+		_show_picker()
 	if args.has("screenshot"):
 		_take_screenshot(args["screenshot"])
 
@@ -138,6 +146,11 @@ func _input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	var key := event as InputEventKey
+	if _picker.visible:
+		if key.keycode == KEY_ESCAPE and _picker.can_go_back:
+			_hide_picker()
+			get_viewport().set_input_as_handled()
+		return
 	var typing := get_viewport().gui_get_focus_owner() is LineEdit or get_viewport().gui_get_focus_owner() is TextEdit
 	if key.keycode == KEY_S and key.is_command_or_control_pressed():
 		if key.shift_pressed:
@@ -157,35 +170,74 @@ func _input(event: InputEvent) -> void:
 
 # --- Folder and selection -------------------------------------------------
 
-## Newest prototype of this repository that has an sfx/ folder. The repository
-## is the nearest folder above the project (or, exported, above the executable)
-## that holds prototypes/.
-func _find_game_folder() -> String:
-	var start := ProjectSettings.globalize_path("res://")
-	if OS.has_feature("template"):
-		start = OS.get_executable_path().get_base_dir()
-	var prototypes := ""
-	var dir := start.simplify_path()
-	for i in 6:
-		if DirAccess.dir_exists_absolute(dir.path_join("prototypes")):
-			prototypes = dir.path_join("prototypes")
-			break
-		dir = dir.get_base_dir()
-	var found := ""
-	if prototypes != "":
-		var folders := Array(DirAccess.get_directories_at(prototypes))
-		folders.sort()
-		for folder: String in folders:
-			if DirAccess.dir_exists_absolute(prototypes.path_join(folder).path_join("sfx")):
-				found = prototypes.path_join(folder)
-	return found
+## Shows the project window over the editor, with `message` as a warning.
+func _show_picker(message := "", animate := true) -> void:
+	_stop_all()
+	var open := library.root != "" and DirAccess.dir_exists_absolute(library.sfx_dir())
+	_picker.show_projects(_recent(), ProjectPicker.detect(), open, message, animate)
+	_background.hide()
+
+
+func _hide_picker() -> void:
+	_picker.hide()
+	_background.show()
+
+
+func _on_project_chosen(game: String) -> void:
+	game = ProjectPicker.normalized(game)
+	if SoundLibrary.event_count(game) < 0:
+		_picker.show_message("No sfx/ folder in %s" % game)
+		return
+	_open_root(game, _remembered_selection(game))
+
+
+func _on_project_forgotten(game: String) -> void:
+	var recent := _recent()
+	recent.erase(game)
+	_save_config("recent", recent)
+	_show_picker("", false)
+
+
+## Game folders opened before, most recent first.
+func _recent() -> Array[String]:
+	var config := ConfigFile.new()
+	config.load(CONFIG_PATH)
+	var recent: Array[String] = []
+	for game in config.get_value("tool", "recent", []):
+		recent.append(str(game))
+	# Before the project window, only the last folder was kept.
+	var last := str(config.get_value("tool", "root", ""))
+	if not config.has_section_key("tool", "recent") and last != "":
+		recent.append(last)
+	return recent
+
+
+## The event or page last selected in `game`.
+func _remembered_selection(game: String) -> String:
+	var config := ConfigFile.new()
+	config.load(CONFIG_PATH)
+	var selections: Dictionary = config.get_value("tool", "selections", {})
+	if selections.has(game):
+		return str(selections[game])
+	if game == str(config.get_value("tool", "root", "")):
+		return str(config.get_value("tool", "selected", ""))
+	return ""
+
+
+func _remember_selection(select: String) -> void:
+	var config := ConfigFile.new()
+	config.load(CONFIG_PATH)
+	var selections: Dictionary = config.get_value("tool", "selections", {})
+	selections[library.root] = select
+	config.set_value("tool", "selections", selections)
+	config.save(CONFIG_PATH)
 
 
 func _open_root(root: String, select := "") -> void:
 	_stop_all()
 	current = null
 	showing_groups = false
-	var error := library.open(root) if root != "" else "Open a game folder: the one holding sfx/"
+	var error := library.open(root)
 	_root_label.text = library.root if error == "" else "—"
 	_root_label.tooltip_text = _root_label.text
 	sound_player.apply_groups(library.groups)
@@ -193,8 +245,11 @@ func _open_root(root: String, select := "") -> void:
 	if error != "":
 		_set_status(error, true)
 		_show_page()
+		_show_picker(error)
 		return
-	_save_config("root", library.root)
+	_hide_picker()
+	_save_config("recent", ProjectPicker.remember(_recent(), library.root))
+	get_window().title = "Tuning Fork · %s" % library.root.get_file()
 	_set_status("%d events in %s" % [library.sounds.size(), library.root])
 	if select == GROUPS_ITEM:
 		_select_groups()
@@ -212,7 +267,7 @@ func _select(entry: SoundEntry) -> void:
 		_scatter.clear_points()
 		_last_label.text = ""
 		if entry != null:
-			_save_config("selected", entry.path)
+			_remember_selection(entry.path)
 	if entry != null and _items.has(entry) and _tree.get_selected() != _items[entry]:
 		_updating = true
 		_items[entry].select(0)
@@ -224,7 +279,7 @@ func _select(entry: SoundEntry) -> void:
 func _select_groups() -> void:
 	current = null
 	showing_groups = true
-	_save_config("selected", GROUPS_ITEM)
+	_remember_selection(GROUPS_ITEM)
 	if _items.has(GROUPS_ITEM) and _tree.get_selected() != _items[GROUPS_ITEM]:
 		_updating = true
 		_items[GROUPS_ITEM].select(0)
@@ -1034,6 +1089,7 @@ func _build_ui() -> void:
 	background.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	background.add_theme_stylebox_override("panel", _flat(Color("1d2026")))
 	add_child(background)
+	_background = background
 	var page := VBoxContainer.new()
 	page.add_theme_constant_override("separation", 0)
 	background.add_child(page)
@@ -1045,6 +1101,12 @@ func _build_ui() -> void:
 	split.add_child(_build_editor())
 	page.add_child(_build_status_bar())
 	_build_dialogs()
+	_picker = ProjectPicker.new()
+	_picker.hide()
+	_picker.chosen.connect(_on_project_chosen)
+	_picker.forgotten.connect(_on_project_forgotten)
+	_picker.closed.connect(_hide_picker)
+	add_child(_picker)
 
 
 func _build_top_bar() -> Control:
@@ -1068,8 +1130,8 @@ func _build_top_bar() -> Control:
 	_root_label.add_theme_color_override("font_color", DIM)
 	_root_label.mouse_filter = MOUSE_FILTER_PASS
 	row.add_child(_root_label)
-	row.add_child(_icon_button("folder", "Open a game folder (the one holding sfx/)",
-		func() -> void: _confirm_unsaved(func() -> void: _folder_dialog.popup_centered_ratio(0.6))))
+	row.add_child(_icon_button("folder", "Projects: open another game folder",
+		func() -> void: _confirm_unsaved(func() -> void: _show_picker())))
 	row.add_child(_icon_button("reload", "Reload every event and the groups from disk",
 		func() -> void: _confirm_unsaved(func() -> void:
 			_open_root(library.root, GROUPS_ITEM if showing_groups else (current.path if current else "")))))
@@ -1270,14 +1332,6 @@ func _build_status_bar() -> Control:
 
 
 func _build_dialogs() -> void:
-	_folder_dialog = FileDialog.new()
-	_folder_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
-	_folder_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	_folder_dialog.use_native_dialog = true
-	_folder_dialog.title = "Game folder (holding sfx/)"
-	_folder_dialog.dir_selected.connect(func(dir: String) -> void: _open_root(dir))
-	add_child(_folder_dialog)
-
 	_add_dialog = FileDialog.new()
 	_add_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILES
 	_add_dialog.access = FileDialog.ACCESS_FILESYSTEM
@@ -1432,6 +1486,8 @@ func _take_screenshot(path: String) -> void:
 	for i in 6:
 		_play_once()
 		await get_tree().create_timer(0.2).timeout
+	# Low-processor mode draws only on change: ask for one more frame.
+	queue_redraw()
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(path)
 	get_tree().quit()

@@ -8,8 +8,8 @@ page lists what the code does not do yet. The game here is
 Aligned on 14 November 2026: event paths, the runtime as a Godot addon,
 `files_from`, `protected`, `loop`, groups as audio buses, warnings for
 missing events, hot reload of everything in editor runs and exported
-builds, music outside Tuning Fork, and the tool's event and group
-management.
+builds, music outside Tuning Fork, the tool's event and group management,
+and its project window.
 
 ## Known limits
 

@@ -5,6 +5,11 @@ exported for Windows, that needs neither Godot nor the game's code.
 
 ## What it does
 
+- **Starts on the project window**, never on a game by itself: the user
+  picks the game folder (the one holding `sfx/`). The window lists the
+  folders opened before, most recent first, then those it finds beside the
+  tool, each with its number of events; a button or a drop opens any other
+  folder. The folder button of the open project comes back to it.
 - **Opens a game folder** and lists its [[Event|events]] by folder, with a
   filter. The list ends with the [[Groups|groups]].
 - **Creates events** with the `+` button: a folder, a name ([[Event path]])

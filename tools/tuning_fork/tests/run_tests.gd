@@ -17,6 +17,7 @@ func _ready() -> void:
 		_test_rules_match_game(game)
 		_test_borrowed_files(game)
 		_test_waveform(game)
+		_test_projects(game)
 	_test_number_text()
 	_test_editing_and_saving()
 	_test_sound_files()
@@ -35,6 +36,25 @@ func _game_folder() -> String:
 		if DirAccess.dir_exists_absolute(prototypes.path_join(folder).path_join("sfx")):
 			found = prototypes.path_join(folder)
 	return found
+
+
+## The project window: prototypes found beside the tool, newest first; the
+## recent folders; event counts without loading.
+func _test_projects(game: String) -> void:
+	var found := ProjectPicker.detect()
+	_check(not found.is_empty() and found[0] == game, "the newest prototype is found first beside the tool")
+	_check(found.all(func(path: String) -> bool: return DirAccess.dir_exists_absolute(path.path_join("sfx"))),
+		"only folders holding sfx/ are found")
+	var library := SoundLibrary.new()
+	library.open(game)
+	_check(SoundLibrary.event_count(game) == library.sounds.size(), "events are counted without loading them")
+	_check(SoundLibrary.event_count(game.path_join("missing")) == -1, "a folder without sfx/ counts -1")
+	var recent := ProjectPicker.remember(["C:/b", "C:/a"], "C:\\a\\")
+	_check(recent == ["C:/a", "C:/b"], "an opened folder moves to the front of the recent ones, once")
+	var many: Array = []
+	for i in 20:
+		many.append("C:/game_%d" % i)
+	_check(ProjectPicker.remember(many, "C:/new").size() == ProjectPicker.MAX_RECENT, "the recent folders are capped")
 
 
 ## Every settings file of the game is written back byte for byte, unchanged.
