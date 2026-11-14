@@ -4,8 +4,9 @@
 # macOS
 .DS_Store
 
-# Local exports
+# Local exports and build archives
 export/
+*.zip
 
 # Balance suite outputs (generated on demand)
 prototypes/prototype_02/balance/results/
