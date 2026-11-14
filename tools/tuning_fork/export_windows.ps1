@@ -1,14 +1,10 @@
-# Exports Tuning Fork as a single Windows executable.
+# Exports Tuning Fork for Windows x64.
 #
 #   .\export_windows.ps1 [-Godot <path to Godot_v4.x_console.exe>] [-Oggenc <path to oggenc2.exe>] [-Out <folder>]
 #
 # Produces <Out>\TuningFork.exe, by default export\TuningFork\ at the repository
-# root, with "Getting started.html" (from guide\) and a copy of oggenc2.exe
-# beside it so the tool converts dropped WAV files on any machine; then
-# <Out>-Windows.zip, which unpacks into a single TuningFork folder. oggenc2 (about 2 MB) comes from
-# https://www.rarewares.org/ogg-oggenc.php; unless given, the script looks for it
-# in %USERPROFILE%\Tools\oggenc\, then $env:OGGENC, then the PATH. Launched from
-# there, the tool finds the repository's prototypes by itself.
+# root, with the getting-started guide and the WAV encoder, then
+# <Out>-Windows.zip, which unpacks into a single TuningFork folder.
 param(
 	[string]$Godot = "",
 	[string]$Oggenc = "",
@@ -19,6 +15,18 @@ $ErrorActionPreference = "Stop"
 $project = $PSScriptRoot
 if (-not $Out) { $Out = Join-Path $project "..\..\export\TuningFork" }
 $Out = [System.IO.Path]::GetFullPath($Out)
+$encoderFolder = Join-Path $project "vendor\oggenc"
+$bundledEncoder = Join-Path $encoderFolder "oggenc.exe"
+$encoderSources = Join-Path $encoderFolder "sources"
+if (-not $Oggenc) { $Oggenc = $bundledEncoder }
+if (-not (Test-Path -LiteralPath $Oggenc -PathType Leaf)) {
+	throw "WAV encoder not found at $Oggenc."
+}
+$Oggenc = (Resolve-Path -LiteralPath $Oggenc).Path
+$usingBundledEncoder = $Oggenc -eq $bundledEncoder
+if ($usingBundledEncoder -and -not (Test-Path -LiteralPath $encoderSources -PathType Container)) {
+	throw "Bundled encoder sources not found at $encoderSources."
+}
 
 function Find-Godot {
 	if ($Godot) { return $Godot }
@@ -43,19 +51,11 @@ if ($LASTEXITCODE -ne 0) { throw "Icon generation failed." }
 & $exe --headless --audio-driver Dummy --path $project --export-release "Windows Desktop" $target
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $target)) { throw "Godot export failed." }
 
-if (-not $Oggenc) {
-	$found = @((Join-Path $env:USERPROFILE "Tools\oggenc\oggenc2.exe"), $env:OGGENC) | Where-Object { $_ -and (Test-Path $_) }
-	if ($found) { $Oggenc = @($found)[0] }
-	else {
-		$cmd = Get-Command oggenc2, oggenc -ErrorAction SilentlyContinue | Select-Object -First 1
-		if ($cmd) { $Oggenc = $cmd.Source }
-	}
-}
-if ($Oggenc -and (Test-Path $Oggenc)) {
-	Copy-Item $Oggenc (Join-Path $Out "oggenc2.exe") -Force
-	Write-Host "Copied oggenc2 from $Oggenc"
-} else {
-	Write-Warning "oggenc2 not found: the exported tool adds OGG files only. Get it from https://www.rarewares.org/ogg-oggenc.php and pass -Oggenc <path to oggenc2.exe>."
+Copy-Item -LiteralPath $Oggenc -Destination (Join-Path $Out "oggenc.exe") -Force
+if ($usingBundledEncoder) {
+	$packagedSources = Join-Path $Out "oggenc-sources"
+	New-Item -ItemType Directory -Force $packagedSources | Out-Null
+	Get-ChildItem -LiteralPath $encoderSources -File | Copy-Item -Destination $packagedSources -Force
 }
 Copy-Item (Join-Path $project "guide\Getting started.html") $Out -Force
 

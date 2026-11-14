@@ -17,7 +17,7 @@ sfx/combat/hit_3.ogg
   - A new shuffle never starts with the file that just played.
 - Numbers have no gaps. Removing a file renumbers the files after it.
 - The [[Tool]] adds WAV or OGG files dropped on its window. OGG files are
-  copied; WAV files are converted to OGG (oggenc2, quality 5).
+  copied. WAV files are converted to OGG with oggenc at quality 5.
 - Effects such as reverb or filters are made in the audio editor before the
   file is exported; Tuning Fork plays files as they are ([[Out of scope]]).
 - An event can play the files of another event instead of its own, with its

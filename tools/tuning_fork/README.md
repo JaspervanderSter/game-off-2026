@@ -46,11 +46,10 @@ Then the script zips the folder into `export/TuningFork-Windows.zip`, which
 unpacks into a single `TuningFork` folder. The script
 finds Godot like the game's export script (`-Godot <path>` or `$env:GODOT`
 otherwise) and first regenerates `icon.ico` from `icon.svg` with
-`tools/make_windows_icon.gd`. It also copies `oggenc2.exe` (about 2 MB) beside
-the executable, so the tool converts dropped WAV files on any machine. Get
-oggenc2 once from <https://www.rarewares.org/ogg-oggenc.php> (the x64 build)
-and put it in `%USERPROFILE%\Tools\oggenc\`; the script also takes
-`-Oggenc <path>`, `$env:OGGENC` or one on the PATH. Run from
+`tools/make_windows_icon.gd`. The script copies the repository's Windows x64
+`oggenc.exe`, its source archives and licenses into the export. A checkout
+with Godot and its Windows export templates can build the ZIP directly.
+`-Oggenc <path>` can supply a compatible encoder for a custom build. Run from
 anywhere inside the repository, the executable finds the prototypes by looking
 upward from its folder; elsewhere, open the game folder once from the project
 window and it stays among the recent ones.
@@ -75,7 +74,7 @@ window and it stays among the recent ones.
   confirmation, and the files after it are renumbered. WAV or OGG files
   dropped on the window (or chosen from the `+` card) become the event's next
   numbered files at once: OGG files are copied, WAV files converted to OGG
-  with oggenc2 (quality 5). An event with `files_from` shows the other
+  with oggenc (quality 5). An event with `files_from` shows the other
   event's files and a link to it, and takes no files of its own.
 - **Edit**: `group`, `files_from` and `pick` are choices, `loop` and
   `protected` switches, and `volume_db`, `volume_jitter_db`, `pitch`,
@@ -116,9 +115,10 @@ The playback rules are a copy of the game's runtime addon,
 `addons/tuning_fork/sfx.gd` (`Sfx`): `scripts/sound_library.gd` holds the
 defaults, the known keys, the file numbering and the event and group files,
 and `scripts/sound_player.gd` the playback and file picking. When the
-runtime's rules change, change them here too. `scripts/oggenc.gd` looks for
-oggenc2 beside the exported executable, then in the places the export script
-checks, so editor runs convert WAV files too. Music is the game's own system
+runtime's rules change, change them here too. `scripts/oggenc.gd` uses the
+packaged encoder in the Windows export and the repository copy in Windows
+editor runs. It also supports `$OGGENC` and compatible encoders on the PATH.
+Music is the game's own system
 and is not shown here.
 
 ## Tests

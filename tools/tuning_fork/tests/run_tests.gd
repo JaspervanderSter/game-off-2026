@@ -194,7 +194,10 @@ func _test_sound_files() -> void:
 		and hit.files[3].get_file() == "hit_4.ogg", "an OGG file is copied as the next numbered file")
 	var wav := dir.path_join("beep.wav")
 	_write_wav(wav)
-	if Oggenc.program() != "":
+	var encoder := Oggenc.program()
+	if OS.has_feature("windows") and OS.has_feature("editor"):
+		_check(encoder != "", "the Windows editor can find its WAV encoder")
+	if encoder != "":
 		_check(hit.add_file(wav) == "" and hit.files.size() == 5 and hit.streams[4] is AudioStreamOggVorbis,
 			"a WAV file is converted to OGG with oggenc")
 	else:

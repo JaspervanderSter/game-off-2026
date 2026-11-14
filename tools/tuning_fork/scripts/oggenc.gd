@@ -1,8 +1,6 @@
 class_name Oggenc
-## Converts WAV files to OGG Vorbis with oggenc2 (rarewares.org, about 2 MB):
-## the copy beside the exported executable (export_windows.ps1 puts it there),
-## otherwise $OGGENC, %USERPROFILE%\Tools\oggenc\oggenc2.exe, or oggenc2 or
-## oggenc on the PATH.
+## Converts WAV files to OGG Vorbis with the bundled Windows oggenc or a
+## compatible encoder. An exported copy lives beside Tuning Fork.
 
 static var _program := ""
 static var _searched := false
@@ -14,9 +12,12 @@ static func program() -> String:
 		_searched = true
 		var candidates: Array[String] = []
 		if OS.has_feature("template"):
+			candidates.append(OS.get_executable_path().get_base_dir().path_join("oggenc.exe"))
 			candidates.append(OS.get_executable_path().get_base_dir().path_join("oggenc2.exe"))
 		if OS.get_environment("OGGENC") != "":
 			candidates.append(OS.get_environment("OGGENC"))
+		if OS.has_feature("editor") and OS.has_feature("windows"):
+			candidates.append(ProjectSettings.globalize_path("res://vendor/oggenc/oggenc.exe"))
 		if OS.get_environment("USERPROFILE") != "":
 			candidates.append(OS.get_environment("USERPROFILE").path_join("Tools/oggenc/oggenc2.exe"))
 		candidates.append_array(["oggenc2", "oggenc"])
@@ -33,7 +34,7 @@ static func program() -> String:
 ## message, or "" on success.
 static func to_ogg(source: String, target: String) -> String:
 	if program() == "":
-		return "Converting %s needs oggenc2.exe, beside Tuning Fork or on the PATH" % source.get_file()
+		return "Converting %s needs oggenc beside Tuning Fork or on the PATH" % source.get_file()
 	var output := []
 	var code := OS.execute(program(), ["-Q", "-q", "5", "-o", target, source], output, true)
 	if code != 0 or AudioStreamOggVorbis.load_from_file(target) == null:
