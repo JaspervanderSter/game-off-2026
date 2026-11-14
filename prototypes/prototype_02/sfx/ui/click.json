@@ -1,5 +1,5 @@
 {
-	"description": "Interface click: difficulty, fight, picking up a creature, offer lock, reroll, restart.",
+	"description": "Interface click: difficulty, picking up or reselecting a creature, offer lock, enemy reroll, restart.",
 	"group": "ui",
 	"loop": false,
 	"protected": false,

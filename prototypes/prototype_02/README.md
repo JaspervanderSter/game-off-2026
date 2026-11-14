@@ -270,9 +270,13 @@ project's `sfx/` and `music/` folders.
 
 | Event | Group | Played when |
 |---|---|---|
-| `ui/click` | ui | Interface click: difficulty, fight, picking up a creature, offer lock, reroll, restart |
-| `ui/fail` | ui | Impossible action: not enough gold, locked difficulty, fizzled cast, invalid drop |
-| `ui/buy` | ui | Purchase, starting composition, recharge upgrade, player sale |
+| `ui/click` | ui | Interface click: difficulty, picking up or reselecting a creature, offer lock, enemy reroll, restart |
+| `ui/fail` | ui | Unavailable or invalid action, such as a locked difficulty, fizzled cast or invalid drop |
+| `ui/buy` | ui | Starting composition, player sale, enemy purchase or recharge upgrade |
+| `ui/battle_start` | ui | A fight successfully starts |
+| `ui/place` | ui | The player drops a creature into a new board cell or reserve slot |
+| `ui/purchase_confirmed` | ui | The player spends gold on a creature, shop reroll or recharge upgrade |
+| `ui/insufficient_gold` | ui | The player cannot afford a creature, shop reroll or recharge upgrade |
 | `ui/combine` | ui | Merge without a new star |
 | `ui/merge` | ui | Merge that grants a star |
 | `ui/difficulty_unlock` | ui | The lock of a newly unlocked difficulty opens |
@@ -280,15 +284,15 @@ project's `sfx/` and `music/` folders.
 | `coins/harvest/1` to `/8` | effects | Landing harvest coins 1 to 8 of a peasant, each higher; later coins replay `/8` |
 | `coins/compensation` | effects | Coin given for a lost heart |
 | `coins/pop` | effects | A peasant pops its harvest coins at the start of combat |
-| `combat/hit` | effects | Melee hit, dive, charge, fireball impact |
+| `combat/hit` | effects | Melee hit, dive, charge, fireball impact, with three shuffled takes |
 | `combat/shoot` | effects | A projectile is fired |
 | `combat/death` | effects | A creature dies |
 | `abilities/hop` | effects | Rabbit leap |
 | `abilities/fear` | effects | Skunk fear burst |
 | `abilities/blizzard` | effects | Blizzard cast |
 | `abilities/bard_song` | effects | Bard song, looping while a bard sings |
-| `shapeshift/bless` | effects | Shapeshift cast on an own creature |
-| `shapeshift/hex` | effects | Shapeshift cast on an enemy creature |
+| `shapeshift/bless` | effects | A caster transforms and heals a creature on their own team (Transform 2) |
+| `shapeshift/hex` | effects | A caster transforms a creature on the opposing team (Transform 3) |
 | `duel/heart_break` | effects | A half-heart breaks after a lost round |
 | `duel/victory` | effects | Final duel victory |
 | `duel/defeat` | effects | Final duel defeat |

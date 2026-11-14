@@ -1,5 +1,5 @@
 {
-	"description": "Impossible action: not enough gold, locked difficulty, fizzled cast, invalid drop.",
+	"description": "Unavailable or invalid action, including a locked difficulty, fizzled cast or invalid drop.",
 	"group": "ui",
 	"loop": false,
 	"protected": false,

@@ -1,5 +1,5 @@
 {
-	"description": "Purchase, starting composition, recharge upgrade, player sale.",
+	"description": "Starting composition, player sale, enemy purchase or recharge upgrade.",
 	"group": "ui",
 	"loop": false,
 	"protected": false,

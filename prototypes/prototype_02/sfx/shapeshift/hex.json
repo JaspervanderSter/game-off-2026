@@ -1,5 +1,5 @@
 {
-	"description": "Shapeshift cast on an enemy creature.",
+	"description": "Shapeshift cast on a creature on the opposing team.",
 	"group": "effects",
 	"loop": false,
 	"protected": false,

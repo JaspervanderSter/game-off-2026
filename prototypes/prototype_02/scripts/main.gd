@@ -212,7 +212,7 @@ func start_combat() -> void:
 	phase = Phase.COMBAT
 	music.set_frenzy_level(0)
 	music.transition_to("battle")
-	Sfx.play("ui/click")
+	Sfx.play("ui/battle_start")
 
 
 func _physics_process(dt: float) -> void:
@@ -458,24 +458,36 @@ func _left_press(pos: Vector2) -> void:
 					return
 		Phase.PREP:
 			if Hud.SHIFT_UPGRADE_RECT.has_point(pos):
-				Sfx.play("ui/buy" if player.upgrade_shift_recharge() else "ui/fail")
+				if player.upgrade_shift_recharge():
+					Sfx.play("ui/purchase_confirmed")
+				elif not player.shift_recharge_upgraded and player.gold < Rules.SHIFT_RECHARGE_COST:
+					Sfx.play("ui/insufficient_gold")
+				else:
+					Sfx.play("ui/fail")
 				return
 			if Hud.REROLL_RECT.has_point(pos):
-				Sfx.play("ui/click" if player.reroll(rng) else "ui/fail")
+				if player.reroll(rng):
+					Sfx.play("ui/purchase_confirmed")
+				elif player.gold < Rules.REROLL_COST:
+					Sfx.play("ui/insufficient_gold")
+				else:
+					Sfx.play("ui/fail")
 				return
 			if pos.distance_to(Rules.FIGHT_CENTER) < Rules.FIGHT_RADIUS:
 				start_combat()
 				return
 			for i in Rules.SHOP_SIZE:
 				if Hud.offer_rect(i).has_point(pos):
-					if player.offers[i] != "" and player.gold >= CreatureDB.get_form(player.offers[i]).price:
+					if player.offers[i] == "":
+						Sfx.play("ui/fail")
+					elif player.gold < CreatureDB.get_form(player.offers[i]).price:
+						Sfx.play("ui/insufficient_gold")
+					else:
 						shop_drag_index = i
 						shop_drag_origin = pos
 						shop_drag_position = pos
 						shop_drag_active = false
 						drag = OwnedCreature.new(player.offers[i])
-					else:
-						Sfx.play("ui/fail")
 					return
 			drag = _owned_at(pos)
 			if drag != null:
@@ -511,10 +523,14 @@ func _left_release(pos: Vector2) -> void:
 		ok = player.move_to_slot(c, slot)
 	elif player.owns_cell(board_cell(pos)):
 		ok = player.move_to_cell(c, board_cell(pos))
-	if ok and combining:
+	if not ok:
+		Sfx.play("ui/fail")
+	elif combining:
 		_merge_feedback(recipient, previous_stars)
+	elif recipient == c:
+		Sfx.play("ui/click")
 	else:
-		Sfx.play("ui/click" if ok else "ui/fail")
+		Sfx.play("ui/place")
 
 
 func _release_shop_offer(pos: Vector2) -> void:
@@ -539,10 +555,12 @@ func _release_shop_offer(pos: Vector2) -> void:
 			bought = player.buy_to_slot(index, slot)
 	if bought == null:
 		Sfx.play("ui/fail")
-	elif combining:
-		_merge_feedback(bought, previous_stars)
 	else:
-		Sfx.play("ui/buy")
+		Sfx.play("ui/purchase_confirmed")
+		if combining:
+			_merge_feedback(bought, previous_stars)
+		elif moved:
+			Sfx.play("ui/place")
 
 
 func _merge_feedback(recipient: OwnedCreature, previous_stars: int) -> void:

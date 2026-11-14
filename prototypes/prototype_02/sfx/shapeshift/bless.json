@@ -1,5 +1,5 @@
 {
-	"description": "Shapeshift cast on an own creature.",
+	"description": "Shapeshift that heals a creature on the caster's team.",
 	"group": "effects",
 	"loop": false,
 	"protected": false,
