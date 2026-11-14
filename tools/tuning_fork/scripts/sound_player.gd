@@ -1,7 +1,7 @@
 class_name SoundPlayer
 extends Node
 ## Plays effects the way the game's Sfx autoload does: a pool of voices, the
-## repeat delay, random volume and pitch variation, pitch steps and the melody.
+## repeat delay, random volume and pitch variation, and pitch steps.
 
 ## Emitted for each play that was not skipped by the repeat delay.
 signal played(entry: SoundEntry, variant: String, step: int, pitch: float, volume_db: float)
@@ -21,13 +21,9 @@ func _ready() -> void:
 
 
 ## Pitch of one play before random variation: `step` is the position in a
-## series; it adds `pitch_step` per step and walks the melody (as Sfx.base_pitch).
+## series; it adds `pitch_step` per step (as Sfx.base_pitch).
 static func base_pitch(entry: SoundEntry, variant: String, step: int) -> float:
-	var pitch := float(entry.setting("pitch", variant)) + float(entry.setting("pitch_step", variant)) * step
-	var melody = entry.setting("melody", variant)
-	if melody is Array and not melody.is_empty():
-		pitch *= pow(2.0, float(melody[posmod(step, melody.size())]) / 12.0)
-	return pitch
+	return float(entry.setting("pitch", variant)) + float(entry.setting("pitch_step", variant)) * step
 
 
 ## Plays `entry` with the values of `variant` ("" for the sound itself).

@@ -68,10 +68,8 @@ func _test_defaults_match_game(game: String) -> void:
 func _test_playback_rules(game: String) -> void:
 	var library := SoundLibrary.new()
 	library.open(game)
-	var note := library.find("note")
-	var melody: Array = note.setting("melody")
-	_check(is_equal_approx(SoundPlayer.base_pitch(note, "", 3), pow(2.0, float(melody[3]) / 12.0)), "melody transposes the step's note")
-	_check(is_equal_approx(SoundPlayer.base_pitch(note, "", melody.size()), 1.0), "melody loops")
+	var song := library.find("bard_song")
+	_check(song != null and is_equal_approx(SoundPlayer.base_pitch(song, "", 5), 1.0), "the bard song plays at one pitch")
 	var coin := library.find("coin_gain")
 	var step := float(coin.setting("pitch_step", "harvest"))
 	_check(step > 0.0 and is_equal_approx(SoundPlayer.base_pitch(coin, "harvest", 2), 1.0 + 2.0 * step), "pitch_step rises per step in a variant")

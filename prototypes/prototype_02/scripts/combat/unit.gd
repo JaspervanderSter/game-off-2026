@@ -56,7 +56,7 @@ var hovered := false
 var anim_t := 0.0
 var beat_t := 0.0 # hop on each song beat (bard and inspired allies)
 var beat_len := 0.28
-var song_step := 0 # bard melody position, one note per beat
+var singing := false # set on the bard's first song beat; the battle loops its song
 
 const BEAT_TIME := 0.28
 const FEAR_SPEED_MULT := 1.3 # panic: feared creatures run faster than they walk
@@ -89,6 +89,7 @@ func _set_form(form: String) -> void:
 func transform_to(new_form: String, ally_cast: bool) -> void:
 	var ratio := hp / max_hp
 	_interrupt_channel()
+	singing = false
 	_set_form(new_form)
 	level = level + 1 if ally_cast else 1
 	max_hp = data.hp * stat_mult()
@@ -471,9 +472,8 @@ func _tick_ability() -> void:
 					a.beat_len = BEAT_TIME
 				beat_t = BEAT_TIME * 1.6
 				beat_len = beat_t
-				battle.emit_fx("song", position, {"targets": allies, "source": self, "step": song_step})
-				Sfx.play("note", song_step)
-				song_step += 1
+				battle.emit_fx("song", position, {"targets": allies, "source": self})
+				singing = true
 		"graze":
 			for a in battle.allies_near(self, position, data.radius * CELL):
 				a.add_status("regen", 0.35, data.power, true)

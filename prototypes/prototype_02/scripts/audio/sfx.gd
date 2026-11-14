@@ -1,7 +1,9 @@
 extends Node
 ## Sound effects, played by name. Each one is an OGG file with a JSON file of
 ## the same name beside it, `res://sfx/<category>/<name>.ogg` and `.json`; the
-## JSON sets how it plays (volume, pitch, random variation, melody, repeat delay).
+## JSON sets how it plays (volume, pitch, random variation, pitch steps, repeat delay).
+## A looping sound (the bard song) plays on its own voice from set_loop(): it
+## starts from the beginning, repeats until switched off, then fades out.
 ## `music/music.json` sets the music volume, fades and frenzy speed-up.
 ## Autoloaded as Sfx; result audio has its own voice so effects cannot steal it.
 ##
@@ -26,7 +28,7 @@ const SOUNDS := {
 	"combine": "interface", "merge": "interface", "difficulty_unlock": "interface",
 	"coin_gain": "coins", "coin_pop": "coins",
 	"hit": "combat", "shoot": "combat", "death": "combat",
-	"hop": "abilities", "fear": "abilities", "blizzard": "abilities", "note": "abilities",
+	"hop": "abilities", "fear": "abilities", "blizzard": "abilities", "bard_song": "abilities",
 	"shift_bless": "shapeshift", "shift_hex": "shapeshift",
 	"heart_break": "duel", "victory": "duel", "defeat": "duel",
 }
@@ -40,9 +42,10 @@ const SOUND_DEFAULTS := {
 	"pitch": 1.0,
 	"pitch_jitter": 0.08,
 	"pitch_step": 0.0,
-	"melody": [],
 	"cooldown_ms": 40,
 }
+## Seconds a looping sound takes to fade out once switched off.
+const LOOP_FADE := 0.25
 const MUSIC_DEFAULTS := {
 	"volume_db": -16.0,
 	"fade_seconds": 1.2,
@@ -61,6 +64,8 @@ var _players: Array[AudioStreamPlayer] = []
 var _next := 0
 var _last_played := {}
 var _result_player: AudioStreamPlayer
+## Voice of each looping sound that is on or fading out, by name.
+var _loops := {}
 ## Folder of the executable, whose sfx/ and music/ files replace packed ones;
 ## empty when not exported.
 var _override_root := ""
@@ -244,13 +249,47 @@ func music_setting(key: String) -> Variant:
 
 
 ## Pitch for one play of `sound`, before random variation. `step` is the
-## position in a series: it adds `pitch_step` per step and walks the melody.
+## position in a series: it adds `pitch_step` per step.
 func base_pitch(sound: String, step := 0) -> float:
-	var pitch := float(sound_setting(sound, "pitch")) + float(sound_setting(sound, "pitch_step")) * step
-	var melody: Array = sound_setting(sound, "melody")
-	if not melody.is_empty():
-		pitch *= pow(2.0, float(melody[posmod(step, melody.size())]) / 12.0)
-	return pitch
+	return float(sound_setting(sound, "pitch")) + float(sound_setting(sound, "pitch_step")) * step
+
+
+## Switches the looping sound `sound` on or off. Switched on, it starts from its
+## beginning on its own voice (unless already playing) and repeats; switched
+## off, it fades out over LOOP_FADE seconds. Volume and pitch come from its
+## settings; random variation and the repeat delay do not apply.
+func set_loop(sound: String, on: bool) -> void:
+	if not enabled or not _streams.has(sound):
+		return
+	var p: AudioStreamPlayer = _loops.get(sound)
+	if on:
+		if p == null:
+			p = AudioStreamPlayer.new()
+			add_child(p)
+			_loops[sound] = p
+		if p.has_meta("fade"):
+			p.get_meta("fade").kill()
+			p.remove_meta("fade")
+		p.volume_db = float(sound_setting(sound, "volume_db"))
+		p.pitch_scale = maxf(0.01, base_pitch(sound))
+		if not p.playing:
+			var stream: AudioStream = _streams[sound].duplicate()
+			if stream is AudioStreamOggVorbis:
+				stream.loop = true
+			p.stream = stream
+			p.play()
+	elif p != null and p.playing and not p.has_meta("fade"):
+		var fade := create_tween()
+		fade.tween_property(p, "volume_linear", 0.0, LOOP_FADE)
+		fade.tween_callback(p.stop)
+		fade.tween_callback(p.remove_meta.bind("fade"))
+		p.set_meta("fade", fade)
+
+
+## True while the looping sound `sound` is switched on.
+func is_looping(sound: String) -> bool:
+	var p: AudioStreamPlayer = _loops.get(sound)
+	return p != null and p.playing and not p.has_meta("fade")
 
 
 ## Plays the sound `sound` (or `sound:variant`) as its settings describe.

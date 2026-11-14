@@ -59,7 +59,7 @@ func add(kind: String, pos: Vector2, extra: Dictionary = {}) -> void:
 			var source: Variant = extra.get("source")
 			for target in extra.get("targets", []):
 				if target != source and is_instance_valid(target):
-					add("song_note", pos, {"unit": target, "to": target.position, "step": extra.get("step", 0)})
+					add("song_note", pos, {"unit": target, "to": target.position})
 			item.erase("targets")
 			item.erase("source")
 		"song_note":

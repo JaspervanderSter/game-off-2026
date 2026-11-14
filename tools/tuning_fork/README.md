@@ -34,7 +34,7 @@ open the game folder once with the folder button and it is remembered.
   filter box narrows the list. Unsaved sounds show `●` in amber; a sound with a
   settings problem (unknown key, missing or unreadable OGG) shows in orange.
 - **Edit**: one slider and number box per value (`volume_db`,
-  `volume_jitter_db`, `pitch`, `pitch_jitter`, `pitch_step`, `melody`,
+  `volume_jitter_db`, `pitch`, `pitch_jitter`, `pitch_step`,
   `cooldown_ms`), the description, and the reset arrow back to the game's
   default. Hover a value name for its meaning. Number boxes accept values beyond
   the slider range.
@@ -44,9 +44,10 @@ open the game folder once with the folder button and it is remembered.
   one.
 - **Play**: Play (or Space, or double-click in the list) plays the sound with
   the open tab's values, including the random variation, the step's
-  `pitch_step` and melody note, and the repeat delay. The series button plays
-  several steps from the step box at the chosen interval (harvest coins rising,
-  the bard melody); the loop button repeats it until Stop (Esc). The chart shows
+  `pitch_step` and the repeat delay. The series button plays several steps
+  from the step box at the chosen interval (harvest coins rising); the loop
+  button repeats it until Stop (Esc). A looping sound such as `bard_song`
+  plays once through here; the game loops it. The chart shows
   where the last plays landed: pitch across, volume up, the random range as a box.
 - **Auto-play** (speaker switch, top right): replays the sound a moment after
   each change, so dragging a slider and letting go is enough to hear it.
@@ -90,7 +91,7 @@ godot --headless --path tools/tuning_fork res://tests/run_tests.tscn
 
 Checks that every settings file of the newest prototype is written back
 unchanged, that the defaults, known keys and voice count match the game's
-`sfx.gd`, the pitch of steps, melody and variants, number formatting, and an
+`sfx.gd`, the pitch of steps and variants, number formatting, and an
 edit-save-reload cycle in a scratch folder (unknown keys kept, new variant,
 JSON created for a sound without one).
 

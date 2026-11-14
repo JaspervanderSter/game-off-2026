@@ -26,7 +26,6 @@ const HINTS := {
 	"pitch": "Playback pitch (1 = as recorded); pitch also changes speed",
 	"pitch_jitter": "Random pitch change per play, up to ± this amount",
 	"pitch_step": "Pitch added per step of a series (each harvest coin)",
-	"melody": "Semitones above the file, one per step, looping (e.g. 0 2 4 7)",
 	"cooldown_ms": "A repeat of the same sound sooner than this is skipped",
 	"fade_seconds": "Seconds of a full music fade in or out",
 	"frenzy_speed_per_level": "Battle music speed-up per frenzy level",
@@ -352,10 +351,7 @@ func _build_rows() -> void:
 		child.queue_free()
 	_rows.clear()
 	for key: String in current.defaults():
-		if key == "melody":
-			_add_melody_row()
-		else:
-			_add_number_row(key)
+		_add_number_row(key)
 
 
 func _add_number_row(key: String) -> void:
@@ -389,21 +385,6 @@ func _add_number_row(key: String) -> void:
 	row["spin"] = spin
 	_row_end(key, row)
 
-
-func _add_melody_row() -> void:
-	var row := _row_start("melody")
-	var edit := LineEdit.new()
-	edit.placeholder_text = "none (semitones, e.g. 0 2 4 7)"
-	edit.size_flags_horizontal = SIZE_EXPAND_FILL
-	edit.tooltip_text = HINTS["melody"]
-	edit.text_changed.connect(_set_melody_text)
-	_grid.add_child(edit)
-	var count := Label.new()
-	count.add_theme_color_override("font_color", DIM)
-	_grid.add_child(count)
-	row["edit"] = edit
-	row["count"] = count
-	_row_end("melody", row)
 
 
 func _row_start(key: String) -> Dictionary:
@@ -442,22 +423,12 @@ func _refresh_row(key: String) -> void:
 	row["check"].mouse_filter = MOUSE_FILTER_STOP if in_variant else MOUSE_FILTER_IGNORE
 	row["check"].set_pressed_no_signal(overridden)
 	row["label"].add_theme_color_override("font_color", Color.WHITE if overridden else DIM)
-	if key == "melody":
-		var edit: LineEdit = row["edit"]
-		var notes: Array = value if value is Array else []
-		if _melody_from_text(edit.text) != notes:
-			edit.text = " ".join(notes.map(func(n: Variant) -> String: return SoundLibrary.number_text(float(n), true)))
-		edit.editable = overridden
-		edit.remove_theme_color_override("font_color")
-		row["count"].text = "%d steps" % notes.size() if not notes.is_empty() else ""
-		row["reset"].disabled = not overridden or (not in_variant and notes.is_empty())
-	else:
-		var number := float(value)
-		row["slider"].set_value_no_signal(number)
-		row["spin"].set_value_no_signal(number)
-		row["slider"].editable = overridden
-		row["spin"].editable = overridden
-		row["reset"].disabled = not overridden or (not in_variant and is_equal_approx(number, float(current.defaults()[key])))
+	var number := float(value)
+	row["slider"].set_value_no_signal(number)
+	row["spin"].set_value_no_signal(number)
+	row["slider"].editable = overridden
+	row["spin"].editable = overridden
+	row["reset"].disabled = not overridden or (not in_variant and is_equal_approx(number, float(current.defaults()[key])))
 
 
 # --- Editing ---------------------------------------------------------------
@@ -472,33 +443,6 @@ func _set_value(key: String, value: float) -> void:
 		return
 	_target()[key] = int(roundf(value)) if key in SoundLibrary.INT_KEYS else snappedf(value, 0.0001)
 	_after_edit()
-
-
-func _set_melody_text(text: String) -> void:
-	if _updating or current == null:
-		return
-	var edit: LineEdit = _rows["melody"]["edit"]
-	var notes = _melody_from_text(text)
-	if notes == null:
-		edit.add_theme_color_override("font_color", WARNING)
-		return
-	edit.remove_theme_color_override("font_color")
-	if notes.is_empty() and variant == "":
-		current.data.erase("melody")
-	else:
-		_target()["melody"] = notes
-	_after_edit()
-
-
-## Semitones typed as "0 2 4" or "0, 2, 4"; null when a token is not a number.
-func _melody_from_text(text: String) -> Variant:
-	var notes := []
-	for token in text.replace(",", " ").split(" ", false):
-		if not token.is_valid_float():
-			return null
-		var n := token.to_float()
-		notes.append(int(n) if n == roundf(n) else n)
-	return notes
 
 
 func _set_override(key: String, on: bool) -> void:
@@ -516,8 +460,6 @@ func _reset_value(key: String) -> void:
 		return
 	if variant != "":
 		_target().erase(key)
-	elif key == "melody":
-		current.data.erase("melody")
 	else:
 		current.data[key] = current.defaults()[key]
 	_after_edit()
@@ -883,7 +825,7 @@ func _build_effect_box() -> Control:
 	play.flat = false
 	row.add_child(play)
 	row.add_child(_caption("step"))
-	_step_spin = _spin(0, 999, 1, 0, "Position in a series: adds pitch_step per step and walks the melody")
+	_step_spin = _spin(0, 999, 1, 0, "Position in a series: adds pitch_step per step")
 	_step_spin.value_changed.connect(func(_v: float) -> void: _refresh())
 	row.add_child(_step_spin)
 	row.add_child(VSeparator.new())

@@ -213,7 +213,6 @@ How each sound plays is data, not code. Its JSON file holds:
 | `pitch` | Playback pitch (1 = as recorded); pitch also changes speed |
 | `pitch_jitter` | Random pitch change per play, up to ± this amount |
 | `pitch_step` | Pitch added per step of a series (each harvest coin) |
-| `melody` | Semitones above the file, one per step, looping (bard) |
 | `cooldown_ms` | A repeat of the same sound sooner than this is skipped |
 | `variants` | Named uses of the same file with some values changed |
 
@@ -264,7 +263,7 @@ project's `sfx/` and `music/` folders.
 | `abilities` | `hop` | Rabbit leap |
 | `abilities` | `fear` | Skunk fear burst |
 | `abilities` | `blizzard` | Blizzard cast |
-| `abilities` | `note` | Bard song, one note per beat |
+| `abilities` | `bard_song` | Bard song, looping while a bard sings |
 | `shapeshift` | `shift_bless` | Shapeshift cast on an own creature |
 | `shapeshift` | `shift_hex` | Shapeshift cast on an enemy creature |
 | `duel` | `heart_break` | A half-heart breaks after a lost round |
@@ -278,8 +277,11 @@ settings:
   also changes speed: a higher pitch plays shorter.
 - The same effect cannot restart within 40 ms; at most 10 effects play at once
   (a fixed limit, not a setting).
-- `note` should be a C5. The game transposes it along a pentatonic melody
-  (C D E G A G E D), so one note is enough.
+- `bard_song` is a loop: it starts from its beginning on a bard's first song
+  beat, repeats while a living bard (either team) sings, and fades out over
+  0.25 s once none does or the combat ends. It plays on its own voice, without
+  random variation, at any length. The shipped 8 s loop renders the former bard
+  melody (C D E G A G E D, one note per second) from the old single note.
 - Harvest `coin_gain` plays 7 % higher for each successive coin.
 
 The final duel result uses `sfx/duel/victory.ogg` when the opponent has no hearts left
@@ -353,8 +355,8 @@ playtesting is still needed to judge each form's situational value.
   level 1).
 - Bard: sings a song instead of a local aura. Every second, a beat inspires every
   ally on the battlefield, the bard included, for 3 s: +35% basic attack speed.
-  Inspiration outlasts the bard's death until it expires. Each beat plays one note
-  of a looping pentatonic melody. A golden sound wave leaves the bard and a note
+  Inspiration outlasts the bard's death until it expires. From the first beat,
+  the looping bard song plays while a bard sings. A golden sound wave leaves the bard and a note
   flies to every ally, bursting in a golden ring. The bard hops on the beat;
   inspired creatures hop with it, stand on a golden light and are circled by a note.
 - Assassin purchase price is now 2 gold.

@@ -14,7 +14,6 @@ const SOUND_DEFAULTS := {
 	"pitch": 1.0,
 	"pitch_jitter": 0.08,
 	"pitch_step": 0.0,
-	"melody": [],
 	"cooldown_ms": 40,
 }
 const MUSIC_DEFAULTS := {
@@ -25,9 +24,9 @@ const MUSIC_DEFAULTS := {
 ## Keys a settings file may hold besides its values.
 const INFO_KEYS := ["description", "variants"]
 ## Keys written as whole numbers.
-const INT_KEYS := ["cooldown_ms", "melody"]
+const INT_KEYS := ["cooldown_ms"]
 ## Written key order: description, values (defaults order), other keys, variants.
-const VALUE_ORDER := ["volume_db", "volume_jitter_db", "pitch", "pitch_jitter", "pitch_step", "cooldown_ms", "melody"]
+const VALUE_ORDER := ["volume_db", "volume_jitter_db", "pitch", "pitch_jitter", "pitch_step", "cooldown_ms"]
 
 ## The game folder (holding sfx/ and music/), as an absolute path.
 var root := ""

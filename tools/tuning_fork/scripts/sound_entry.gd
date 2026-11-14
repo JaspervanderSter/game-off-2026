@@ -58,8 +58,6 @@ func load_settings() -> void:
 	has_json = FileAccess.file_exists(json_path)
 	data = {"description": ""}
 	data.merge(defaults().duplicate(true))
-	if not is_music:
-		data.erase("melody")
 	if has_json:
 		json_time = FileAccess.get_modified_time(json_path)
 		var parsed = JSON.parse_string(FileAccess.get_file_as_string(json_path))

@@ -950,7 +950,7 @@ func _test_sound_files() -> void:
 	var literal := RegEx.create_from_string("(?<!== )\"(\\w+)(?::(\\w+))?\"")
 	for path in _script_files("res://scripts/"):
 		for line in FileAccess.get_file_as_string(path).split("\n"):
-			if line.contains("Sfx.play("):
+			if line.contains("Sfx.play(") or line.contains("Sfx.set_loop("):
 				for m in literal.search_all(line):
 					played[m.get_string(1)] = true
 					if m.get_string(2) != "":
@@ -1007,12 +1007,9 @@ func _test_sound_settings() -> void:
 	check(is_equal_approx(Sfx.base_pitch("coin_gain:harvest", 0), 1.0)
 		and is_equal_approx(Sfx.base_pitch("coin_gain:harvest", 7), 1.49),
 		"harvest coins ring 0.07 higher per coin")
-	var melody := [0, 2, 4, 7, 9, 7, 4, 2]
-	var in_tune := true
-	for step in 10:
-		in_tune = in_tune and is_equal_approx(Sfx.base_pitch("note", step), pow(2.0, melody[step % 8] / 12.0))
-	check(in_tune and Sfx.sound_setting("note", "pitch_jitter") == 0.0 and Sfx.sound_setting("note", "cooldown_ms") == 0,
-		"bard notes follow the pentatonic melody, steady and never skipped")
+	check(is_equal_approx(Sfx.base_pitch("bard_song"), 1.0) and Sfx.sound_setting("bard_song", "pitch_jitter") == 0.0
+		and not Sfx.SOUND_DEFAULTS.has("melody"),
+		"the bard song loops at its recorded pitch, with no melody setting")
 	check(Sfx.sound_setting("victory", "pitch_jitter") == 0.0 and Sfx.sound_setting("defeat", "pitch_jitter") == 0.0,
 		"result recordings keep their original pitch")
 	check(is_equal_approx(Sfx.music_setting("volume_db"), -16.0) and is_equal_approx(Sfx.music_setting("fade_seconds"), 1.2),
@@ -1265,16 +1262,27 @@ func _test_bard_song() -> void:
 	var foe := b.spawn(1, "guardian", Vector2(300, 60))
 	var interval := far.attack_interval()
 	bard._tick_ability()
-	check(bard.ability_timer > 0.0 and not far.statuses.has("inspired"), "song waits for its first beat")
+	b.update_song()
+	check(bard.ability_timer > 0.0 and not far.statuses.has("inspired") and not Sfx.is_looping("bard_song"),
+		"song waits for its first beat, music included")
 	bard.ability_timer = 0.0
 	bard._tick_ability()
+	b.update_song()
+	check(Sfx.is_looping("bard_song") and b.song_playing, "the first beat starts the looping bard song")
 	check(far.statuses.has("inspired") and bard.statuses.has("inspired") and not foe.statuses.has("inspired"),
 		"one beat inspires every ally on the battlefield, the bard included, and no enemy")
 	check(is_equal_approx(far.statuses.inspired.t, 3.0) and is_equal_approx(bard.ability_timer, 1.0),
 		"song beats every second and inspires for three seconds")
 	check(is_equal_approx(far.attack_interval(), interval / 1.35), "inspired allies attack 35% faster")
+	var second := b.spawn(0, "bard", Vector2(80, 400))
+	second.singing = true
+	second.transform_to("duelist", true)
+	b.update_song()
+	check(Sfx.is_looping("bard_song") and not second.singing, "a bard turned into another form stops singing; another still sings")
 	b.damage(null, bard, bard.max_hp, "ability")
 	b._reap()
+	b.update_song()
+	check(not Sfx.is_looping("bard_song") and not b.song_playing, "the song fades out once no bard sings")
 	far._tick_statuses(2.9)
 	check(far.statuses.has("inspired"), "inspiration outlasts the bard's death until it expires")
 	far._tick_statuses(0.2)

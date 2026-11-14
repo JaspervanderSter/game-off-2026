@@ -69,10 +69,12 @@ Values in a sound's .json file:
   pitch_jitter      random pitch change on each play, up to +/- this amount
                     (0.08 = up to 8 % higher or lower)
   pitch_step        pitch added for each step of a series (each harvest coin)
-  melody            semitones above the file, one per step, looping (bard)
   cooldown_ms       the same sound repeated sooner than this is skipped
   variants          other uses of the same file with some values changed,
                     e.g. coin_gain's "harvest" and "compensation"
+
+abilities\bard_song.ogg is a loop: it plays from its start while a bard sings
+and fades out when none does. It can have any length.
 
 At most 10 effects play at once.
 

@@ -28,6 +28,8 @@ var time := 0.0
 var frenzy_level := 0
 var finished := false
 var result := {}
+## True while this battle has the bard song switched on.
+var song_playing := false
 var rng := RandomNumberGenerator.new()
 var casts := [0, 0] # successful casts per team, for tests and tuning
 # Per-team combat statistics (indexed by the team that received the effect),
@@ -92,8 +94,29 @@ func step(dt: float) -> void:
 	_separate()
 	_reap()
 	_check_end()
+	update_song()
 	if _projectile_layer:
 		_projectile_layer.queue_redraw()
+
+
+func _exit_tree() -> void:
+	if song_playing:
+		song_playing = false
+		Sfx.set_loop("bard_song", false)
+
+
+## The bard song loops from its start while a living bard (of either team) has
+## begun singing, and fades out once none sings or the battle is over.
+func update_song() -> void:
+	var on := false
+	if not finished:
+		for u in units:
+			if u.alive and u.singing and u.data.ability == "song":
+				on = true
+				break
+	if on != song_playing:
+		song_playing = on
+		Sfx.set_loop("bard_song", on)
 
 
 func frenzy_multiplier() -> float:
