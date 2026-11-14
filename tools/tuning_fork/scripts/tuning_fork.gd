@@ -159,12 +159,22 @@ func _input(event: InputEvent) -> void:
 
 # --- Folder and selection -------------------------------------------------
 
-## Newest prototype of this repository that has an sfx/ folder.
+## Newest prototype of this repository that has an sfx/ folder. The repository
+## is the nearest folder above the project (or, exported, above the executable)
+## that holds prototypes/.
 func _find_game_folder() -> String:
-	var repo := ProjectSettings.globalize_path("res://").path_join("../..").simplify_path()
-	var prototypes := repo.path_join("prototypes")
+	var start := ProjectSettings.globalize_path("res://")
+	if OS.has_feature("template"):
+		start = OS.get_executable_path().get_base_dir()
+	var prototypes := ""
+	var dir := start.simplify_path()
+	for i in 6:
+		if DirAccess.dir_exists_absolute(dir.path_join("prototypes")):
+			prototypes = dir.path_join("prototypes")
+			break
+		dir = dir.get_base_dir()
 	var found := ""
-	if DirAccess.dir_exists_absolute(prototypes):
+	if prototypes != "":
 		var folders := Array(DirAccess.get_directories_at(prototypes))
 		folders.sort()
 		for folder: String in folders:

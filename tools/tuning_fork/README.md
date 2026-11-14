@@ -14,6 +14,20 @@ folder holding `sfx/<category>/<name>.ogg|json` and `music/music.json`, such as
 the exported Windows build (`export/ShapeshiftersDuel/`). The tool remembers
 the last folder, the selected sound and the auto-play switch.
 
+## Export
+
+```powershell
+.\tools\tuning_fork\export_windows.ps1
+```
+
+Writes `export/TuningFork/TuningFork.exe` at the repository root (ignored by
+git): one executable with the fork icon, launched without Godot. The script
+finds Godot like the game's export script (`-Godot <path>` or `$env:GODOT`
+otherwise) and first regenerates `icon.ico` from `icon.svg` with
+`tools/make_windows_icon.gd`. Run from anywhere inside the repository, the
+executable finds the prototypes by looking upward from its folder; elsewhere,
+open the game folder once with the folder button and it is remembered.
+
 ## What it does
 
 - **List**: effects grouped by category folder, then the music settings. The
