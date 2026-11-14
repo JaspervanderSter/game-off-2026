@@ -190,122 +190,134 @@ zero. Phase changes use a 1.2-second crossfade with a smooth amplitude curve.
 Rapid reversals continue from the current volumes; selecting the same track
 preserves its playback position. Both streams loop in Godot, and combat x2 does
 not change music speed. Music volume is initially -16 dB to leave room for effects.
-Fade duration, volume and the frenzy speed-up are tuned in `music/music.json`
-(see "Sound effects").
+
+Music is the game's own system, apart from the sound events below and from
+Tuning Fork. `music/music.json` holds `volume_db`, `fade_seconds` and
+`frenzy_speed_per_level`; unknown keys are reported as warnings. It reloads
+when the game window regains focus, and an exported build applies a
+`music/music.json` beside its executable over the packed values, key by key.
 
 ## Sound effects
 
-All game audio is OGG Vorbis. Effects are sorted into category folders under
-`sfx/` (interface, coins, combat, abilities, shapeshift, duel); each effect is
-one or more sound files, `sfx/<category>/<name>.ogg` then `<name>_2.ogg`,
-`<name>_3.ogg`..., with a JSON file `<name>.json` beside them.
-`scripts/audio/sfx.gd` (autoload `Sfx`) lists every effect and its category in
-`Sfx.SOUNDS`, and `Sfx.play("<name>")` plays one of its files. Replacing a
-sound only means replacing its files under the same names; adding a numbered
-file adds a variation the game picks among. A different use of a sound, even
-slightly, is its own sound with its own files (the three coin sounds). The
-first versions were rendered once from the former procedural synthesis
-(22,050 Hz mono).
+Sound effects are Tuning Fork sound events, defined in
+[`tools/tuning_fork/docs/`](../../tools/tuning_fork/docs/Home.md). The runtime
+is the addon `addons/tuning_fork/` (autoload `Sfx`), which knows nothing about
+this game: the game calls `Sfx.play("<path>")`, and `Sfx.stop("<path>")` for
+the looping bard song.
 
-How each sound plays is data, not code. Its JSON file holds:
+An event is `sfx/<folder>/<name>.json` with one or more OGG Vorbis files beside
+it, `<name>.ogg` then `<name>_2.ogg`, `<name>_3.ogg`...; its path is
+`<folder>/<name>`. Every event under `sfx/` is found by itself; adding a
+numbered file adds a take the game picks among. A different use of a sound,
+even slightly, is its own event; `files_from` lets an event play another
+event's files with its own settings instead of copying them. The first
+versions were rendered once from the former procedural synthesis (22,050 Hz
+mono).
+
+How each event plays is data, not code. Its JSON file holds:
 
 | Key | Meaning |
 |---|---|
-| `description` | When the game plays the sound (for reading only) |
+| `description` | When the game plays the event (for reading only) |
+| `group` | Mixing group from `sfx/groups.json`: `effects` or `ui` |
+| `loop` | Plays until stopped instead of once |
+| `protected` | Plays on a voice of its own that no other sound can take |
+| `files_from` | Plays the files of this other event instead of its own |
 | `volume_db` | Loudness in dB (0 = as recorded) |
 | `volume_jitter_db` | Random loudness change per play, up to ± this many dB |
 | `pitch` | Playback pitch (1 = as recorded); pitch also changes speed |
 | `pitch_jitter` | Random pitch change per play, up to ± this amount |
-| `pitch_step` | Pitch added per step of a series (each harvest coin) |
-| `cooldown_ms` | A repeat of the same sound sooner than this is skipped |
-| `pick` | How each play chooses among the sound's files: `shuffle` or `random` |
+| `cooldown_ms` | A repeat of the same event sooner than this is skipped |
+| `pick` | How each play chooses among the files: `shuffle` or `random` |
 | `shuffle_refill_after` | `shuffle` only: deal the files again after this many plays (0 = after all) |
 
 With `shuffle`, every file plays once in a random order before any plays again;
 `shuffle_refill_after` above 0 deals the files again sooner, so fewer plays pass
 before a file can return. A new deal never starts with the file just played.
-With `random`, each play draws any file, repeats included. A sound with one file
-always plays it.
+With `random`, each play draws any file, repeats included. An event with one
+file always plays it. Missing keys fall back to `Sfx.SOUND_DEFAULTS`; unknown
+keys are reported as warnings. A path with no event, or an event without a
+file, plays nothing and warns once.
 
-`Sfx.play("coin_harvest", coin_index)` plays the harvest coin as step
-`coin_index` of a series; missing keys fall back to `Sfx.SOUND_DEFAULTS`.
-`music/music.json` holds `volume_db`, `fade_seconds` and
-`frenzy_speed_per_level`. Unknown keys are reported as warnings.
+`sfx/groups.json` lists the groups and their volume in dB; each group is a
+Godot audio bus of that name sent to Master. `Sfx.set_group_volume(group, db)`
+adds the game's own change (an options menu, for example).
 
 [Tuning Fork](../../tools/tuning_fork/README.md) (`tools/tuning_fork`) edits
-these files without opening them: it lists the sounds, shows their files as
-waveforms, adds dropped WAV or OGG files, plays them with these rules and saves
-the changed values back. Its copy of the defaults, file naming and playback
-rules must follow any change to `sfx.gd` or `phase_music.gd`.
+these files without opening them. Its copy of the defaults, file naming and
+playback rules must follow any change to `addons/tuning_fork/sfx.gd`.
 
-In a run from the Godot editor, a settings JSON file saved under `sfx/` or
-`music/` while the game runs reloads when the game window regains focus, so
-values tuned in Tuning Fork are heard without restarting. Sound files are
-imported by the editor and still need a restart.
+In a run from the Godot editor, the addon reads `sfx/` straight from disk:
+settings, groups, sound files and events saved while the game runs reload when
+the game window regains focus.
 
 The Windows build can be re-voiced and re-tuned without Godot.
 `export_windows.ps1` exports `export/ShapeshiftersDuel/` and
 `export/ShapeshiftersDuel-Windows.zip` at the repository root:
-`ShapeshiftersDuel.exe`, an `sfx/` folder with every effect's `.ogg` files and
-`.json` in their category folders plus a `README.txt` explaining the values, and
+`ShapeshiftersDuel.exe`, an `sfx/` folder with every event's `.json` and `.ogg`
+files and `groups.json`, plus a `README.txt` explaining the values, and
 `music/music.json`. The executable carries the game icon, `icon.ico`, which the
 script first regenerates from `icon.svg` with `tools/make_windows_icon.gd`; after
 changing `icon.svg`, run that script before exporting from the editor. An
-exported desktop build reads these files beside its executable in place of the
-packed ones: the sound files of a sound there replace all its packed files (so
+exported desktop build reads these files beside its executable on top of the
+packed ones: the sound files of an event there replace all its packed files (so
 files can be added or removed there too; once none is left, the packed files
-play again), and a JSON file applies over the packed values key by key. Changed files reload when the game window regains
-focus; a missing or unreadable file keeps the packed or current version. Web
-builds use only the packed files. Approved replacements are copied back into the
+play again), a JSON file applies over the packed values key by key, and an
+event that exists only there plays too. Changed files reload when the game
+window regains focus; an unreadable file keeps the current version. Web builds
+use only the packed files. Approved replacements are copied back into the
 project's `sfx/` and `music/` folders.
 
-| Folder | File | Played when |
+| Event | Group | Played when |
 |---|---|---|
-| `interface` | `click` | Interface click: difficulty, fight, picking up a creature, offer lock, reroll, restart |
-| `interface` | `fail` | Impossible action: not enough gold, locked difficulty, fizzled cast, invalid drop |
-| `interface` | `buy` | Purchase, starting composition, recharge upgrade, player sale |
-| `interface` | `combine` | Merge without a new star |
-| `interface` | `merge` | Merge that grants a star |
-| `interface` | `difficulty_unlock` | The lock of a newly unlocked difficulty opens |
-| `coins` | `coin_gain` | Coin received from an enemy sale |
-| `coins` | `coin_harvest` | Each landing harvest coin, rising |
-| `coins` | `coin_compensation` | Coin given for a lost heart |
-| `coins` | `coin_pop` | A peasant pops its harvest coins at the start of combat |
-| `combat` | `hit` | Melee hit, dive, charge, fireball impact |
-| `combat` | `shoot` | A projectile is fired |
-| `combat` | `death` | A creature dies |
-| `abilities` | `hop` | Rabbit leap |
-| `abilities` | `fear` | Skunk fear burst |
-| `abilities` | `blizzard` | Blizzard cast |
-| `abilities` | `bard_song` | Bard song, looping while a bard sings |
-| `shapeshift` | `shift_bless` | Shapeshift cast on an own creature |
-| `shapeshift` | `shift_hex` | Shapeshift cast on an enemy creature |
-| `duel` | `heart_break` | A half-heart breaks after a lost round |
-| `duel` | `victory` | Final duel victory |
-| `duel` | `defeat` | Final duel defeat |
+| `ui/click` | ui | Interface click: difficulty, fight, picking up a creature, offer lock, reroll, restart |
+| `ui/fail` | ui | Impossible action: not enough gold, locked difficulty, fizzled cast, invalid drop |
+| `ui/buy` | ui | Purchase, starting composition, recharge upgrade, player sale |
+| `ui/combine` | ui | Merge without a new star |
+| `ui/merge` | ui | Merge that grants a star |
+| `ui/difficulty_unlock` | ui | The lock of a newly unlocked difficulty opens |
+| `coins/gain` | effects | Coin received from an enemy sale |
+| `coins/harvest/1` to `/8` | effects | Landing harvest coins 1 to 8 of a peasant, each higher; later coins replay `/8` |
+| `coins/compensation` | effects | Coin given for a lost heart |
+| `coins/pop` | effects | A peasant pops its harvest coins at the start of combat |
+| `combat/hit` | effects | Melee hit, dive, charge, fireball impact |
+| `combat/shoot` | effects | A projectile is fired |
+| `combat/death` | effects | A creature dies |
+| `abilities/hop` | effects | Rabbit leap |
+| `abilities/fear` | effects | Skunk fear burst |
+| `abilities/blizzard` | effects | Blizzard cast |
+| `abilities/bard_song` | effects | Bard song, looping while a bard sings |
+| `shapeshift/bless` | effects | Shapeshift cast on an own creature |
+| `shapeshift/hex` | effects | Shapeshift cast on an enemy creature |
+| `duel/heart_break` | effects | A half-heart breaks after a lost round |
+| `duel/victory` | effects | Final duel victory |
+| `duel/defeat` | effects | Final duel defeat |
 
 Playback details that replacement sounds should allow for, with the shipped
 settings:
 
 - Effects get a random pitch variation (±8 % by default) on every play. Pitch
   also changes speed: a higher pitch plays shorter.
-- The same effect cannot restart within 40 ms; at most 10 effects play at once
-  (a fixed limit, not a setting).
-- `bard_song` is a loop: it starts from its beginning on a bard's first song
-  beat, repeats while a living bard (either team) sings, and fades out over
-  0.25 s once none does or the combat ends. It plays on its own voice, without
-  random variation, at any length. The shipped 8 s loop renders the former bard
+- The same event cannot restart within 40 ms; at most 10 effects play at once
+  (a fixed limit of the runtime, not a setting); looping and protected events
+  have voices of their own.
+- `abilities/bard_song` has `loop` on: it starts from its beginning on a bard's
+  first song beat, repeats while a living bard (either team) sings, and fades
+  out over 0.25 s once none does or the combat ends. It plays without random
+  variation, at any length. The shipped 8 s loop renders the former bard
   melody (C D E G A G E D, one note per second) from the old single note.
-- `coin_harvest` plays 7 % higher for each successive coin.
-- The three coin sounds started as copies of the same recording, with their
-  former variant settings: `coin_harvest` ±2 % pitch, `coin_compensation` ±5 %.
+- `coins/harvest/2` to `/8` play the file of `coins/harvest/1` (`files_from`),
+  each 0.07 higher in pitch than the one before.
+- The coin sounds started as copies of the same recording, with their former
+  variant settings: harvest coins ±2 % pitch, `coins/compensation` ±5 %.
 
-The final duel result uses `sfx/duel/victory.ogg` when the opponent has no hearts left
-and `sfx/duel/defeat.ogg` when the player has no hearts left. These recordings start
+The final duel result uses `duel/victory` when the opponent has no hearts left
+and `duel/defeat` when the player has no hearts left. These recordings start
 only on entering the game-over screen, after the final heart-loss sequence.
 Intermediate rounds and draws play neither recording; heart and coin effects
-provide round feedback. Each recording plays once at its original pitch on a
-dedicated voice. Music has faded out during resolution and stays silent at game over.
+provide round feedback. Each recording plays once at its original pitch and is
+`protected`, so effects cannot cut it. Music has faded out during resolution
+and stays silent at game over.
 
 ## Choices made for this prototype (3 November 2026)
 
@@ -537,7 +549,8 @@ half-heart damage, whole-heart compensation carried across rounds, lethal loss
 without gold, reward presentation, blizzard area/duration, recharge upgrades,
 weighted outcome distributions and AI purchasing/merging/casting decisions,
 looping music, fades, crossfade reversals and phase-to-track transitions,
-sound settings, replacement files beside the executable and settings saved
+sound events, groups, files shared with files_from, missing-event warnings,
+replacement files beside the executable and sound files saved
 during an editor run,
 round reset, several
 abilities, then simulates 20 AI-vs-AI duels with and without casting and prints

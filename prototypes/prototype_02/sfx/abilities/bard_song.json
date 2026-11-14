@@ -1,10 +1,12 @@
 {
 	"description": "Bard song, looping from its start while a bard sings in combat; stops when no bard sings.",
+	"group": "effects",
+	"loop": true,
+	"protected": false,
 	"volume_db": -13.0,
 	"volume_jitter_db": 0.0,
 	"pitch": 1.0,
 	"pitch_jitter": 0.0,
-	"pitch_step": 0.0,
 	"cooldown_ms": 0,
 	"pick": "shuffle",
 	"shuffle_refill_after": 0

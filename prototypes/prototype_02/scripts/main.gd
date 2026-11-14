@@ -112,14 +112,14 @@ func choose_difficulty(level: int) -> void:
 	if phase != Phase.DIFFICULTY or hud.unlock_animation_active():
 		return
 	if not is_difficulty_unlocked(level):
-		Sfx.play("fail")
+		Sfx.play("ui/fail")
 		return
 	difficulty = level
 	enemy.ai_level = difficulty
 	offered_packs = player_deck.deal(PACK_CHOICES, rng)
 	player_deck.save_state()
 	phase = Phase.PACK
-	Sfx.play("click")
+	Sfx.play("ui/click")
 
 
 func is_difficulty_unlocked(level: int) -> bool:
@@ -154,12 +154,12 @@ func _save_difficulty_progress(level: int) -> bool:
 
 func _reset_difficulty_progress() -> void:
 	if not _save_difficulty_progress(Difficulty.APPRENTICE):
-		Sfx.play("fail")
+		Sfx.play("ui/fail")
 		return
 	difficulty = Difficulty.APPRENTICE
 	unlocked_difficulty = Difficulty.APPRENTICE
 	new_duel()
-	Sfx.play("click")
+	Sfx.play("ui/click")
 
 
 ## `slot` is the card position (0 to 2) among the offered compositions.
@@ -169,7 +169,7 @@ func choose_pack(slot: int) -> void:
 	player.take_starting_pack(CreatureDB.PACKS[offered_packs[slot]])
 	enemy.take_starting_pack(CreatureDB.PACKS[enemy_deck.deal(1, rng)[0]])
 	enemy_deck.save_state()
-	Sfx.play("buy")
+	Sfx.play("ui/buy")
 	start_round()
 
 
@@ -189,7 +189,7 @@ func start_round() -> void:
 
 func start_combat() -> void:
 	if phase != Phase.PREP or enemy_preparing or drag != null or player.field_count() == 0:
-		Sfx.play("fail")
+		Sfx.play("ui/fail")
 		return
 	hud.clear_loss_rewards()
 	battle = Battle.new()
@@ -212,7 +212,7 @@ func start_combat() -> void:
 	phase = Phase.COMBAT
 	music.set_frenzy_level(0)
 	music.transition_to("battle")
-	Sfx.play("click")
+	Sfx.play("ui/click")
 
 
 func _physics_process(dt: float) -> void:
@@ -259,14 +259,14 @@ func _finish_round() -> void:
 		if player.hp > 0:
 			_unlock_next_difficulty()
 			hud.begin_victory()
-		Sfx.play("defeat" if player.hp == 0 else "victory")
+		Sfx.play("duel/defeat" if player.hp == 0 else "duel/victory")
 	else:
 		start_round()
 
 
 func _on_unit_died(u: Unit) -> void:
 	fx.add("rocket", u.position, {"form": u.form_id, "team": u.team})
-	Sfx.play("death")
+	Sfx.play("combat/death")
 
 
 ## Blessing (own creature) and hex (enemy creature) have distinct effects and
@@ -274,7 +274,7 @@ func _on_unit_died(u: Unit) -> void:
 func _on_unit_transformed(u: Unit, caster: int, _from: String) -> void:
 	var blessing := u.team == caster
 	fx.add("shift_bless" if blessing else "shift_hex", u.position)
-	Sfx.play("shift_bless" if blessing else "shift_hex")
+	Sfx.play("shapeshift/bless" if blessing else "shapeshift/hex")
 	u.flash_t = 0.12
 	_shake(4.0 if blessing else 6.0, 0.22)
 
@@ -329,16 +329,16 @@ func _advance_enemy_preparation(dt: float) -> void:
 		if origin.distance_to(dest) > 0.1:
 			enemy_moves[c.uid] = {"from": origin, "to": dest, "t": 0.0}
 	if action.kind == "buy":
-		Sfx.play("buy")
+		Sfx.play("ui/buy")
 	elif action.kind == "merge":
 		for c in enemy.fielded():
 			if c.uid == action.uid:
 				fx.add("merge" if action.promoted else "combine", Rules.cell_center(c.cell))
-		Sfx.play("merge" if action.promoted else "combine")
+		Sfx.play("ui/merge" if action.promoted else "ui/combine")
 	elif action.kind == "sell":
-		Sfx.play("coin_gain")
+		Sfx.play("coins/gain")
 	else:
-		Sfx.play("buy" if action.kind == "upgrade" else "click")
+		Sfx.play("ui/buy" if action.kind == "upgrade" else "ui/click")
 
 
 func enemy_display_position(c: OwnedCreature) -> Vector2:
@@ -458,10 +458,10 @@ func _left_press(pos: Vector2) -> void:
 					return
 		Phase.PREP:
 			if Hud.SHIFT_UPGRADE_RECT.has_point(pos):
-				Sfx.play("buy" if player.upgrade_shift_recharge() else "fail")
+				Sfx.play("ui/buy" if player.upgrade_shift_recharge() else "ui/fail")
 				return
 			if Hud.REROLL_RECT.has_point(pos):
-				Sfx.play("click" if player.reroll(rng) else "fail")
+				Sfx.play("ui/click" if player.reroll(rng) else "ui/fail")
 				return
 			if pos.distance_to(Rules.FIGHT_CENTER) < Rules.FIGHT_RADIUS:
 				start_combat()
@@ -475,16 +475,16 @@ func _left_press(pos: Vector2) -> void:
 						shop_drag_active = false
 						drag = OwnedCreature.new(player.offers[i])
 					else:
-						Sfx.play("fail")
+						Sfx.play("ui/fail")
 					return
 			drag = _owned_at(pos)
 			if drag != null:
-				Sfx.play("click")
+				Sfx.play("ui/click")
 		Phase.COMBAT:
 			_cast_at(pos)
 		Phase.OVER:
 			if pos.distance_to(Hud.RESTART_POS) < 46:
-				Sfx.play("click")
+				Sfx.play("ui/click")
 				new_duel()
 
 
@@ -500,7 +500,7 @@ func _left_release(pos: Vector2) -> void:
 		return
 	if Rules.SHOP_RECT.has_point(pos):
 		player.sell(c)
-		Sfx.play("buy")
+		Sfx.play("ui/buy")
 		return
 	var recipient := _owned_at(pos)
 	var combining := player.can_merge(c, recipient)
@@ -514,7 +514,7 @@ func _left_release(pos: Vector2) -> void:
 	if ok and combining:
 		_merge_feedback(recipient, previous_stars)
 	else:
-		Sfx.play("click" if ok else "fail")
+		Sfx.play("ui/click" if ok else "ui/fail")
 
 
 func _release_shop_offer(pos: Vector2) -> void:
@@ -538,25 +538,25 @@ func _release_shop_offer(pos: Vector2) -> void:
 		if slot >= 0:
 			bought = player.buy_to_slot(index, slot)
 	if bought == null:
-		Sfx.play("fail")
+		Sfx.play("ui/fail")
 	elif combining:
 		_merge_feedback(bought, previous_stars)
 	else:
-		Sfx.play("buy")
+		Sfx.play("ui/buy")
 
 
 func _merge_feedback(recipient: OwnedCreature, previous_stars: int) -> void:
 	var ranked_up := recipient.stars > previous_stars
 	var centre := Rules.BOARD_POS + Rules.cell_center(recipient.cell) if recipient.is_fielded() else bench_slot_rect(recipient.slot).get_center()
 	fx.add("merge" if ranked_up else "combine", centre - Rules.BOARD_POS)
-	Sfx.play("merge" if ranked_up else "combine")
+	Sfx.play("ui/merge" if ranked_up else "ui/combine")
 
 
 func _right_press(pos: Vector2) -> void:
 	if phase == Phase.PREP:
 		for i in Rules.SHOP_SIZE:
 			if Hud.offer_rect(i).has_point(pos):
-				Sfx.play("click" if player.toggle_lock(i) else "fail")
+				Sfx.play("ui/click" if player.toggle_lock(i) else "ui/fail")
 				return
 
 
@@ -568,7 +568,7 @@ func _cast_at(pos: Vector2) -> void:
 	var u := battle.unit_at(pos - Rules.BOARD_POS)
 	if u == null or not battle.cast(0, u):
 		fx.add("fizzle", pos - Rules.BOARD_POS)
-		Sfx.play("fail")
+		Sfx.play("ui/fail")
 
 
 # --- Hover ---------------------------------------------------------------------------

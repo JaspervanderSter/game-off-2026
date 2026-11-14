@@ -10,9 +10,10 @@ Saved changes reach a running game without restarting it.
 - **What:** everything when possible: event [[Settings|settings]],
   [[Groups|group]] volumes, added, replaced and removed
   [[Sound files|sound files]], new and removed [[Event|events]].
-- **Where:** in a game run from the Godot editor (from the project's `sfx/`
-  folder) and in an exported build (from the `sfx/` folder beside the
-  executable).
+- **Where:** in a game run from the Godot editor, which reads the project's
+  `sfx/` folder straight from disk (not through the Godot import), and in an
+  exported build (from the `sfx/` folder beside the executable, on top of
+  the packed files).
 - **Fallback:** a change that cannot be reloaded needs a restart; the rule
   for people is "if in doubt, restart the game".
 

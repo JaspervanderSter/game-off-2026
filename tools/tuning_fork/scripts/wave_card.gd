@@ -20,7 +20,8 @@ var _voice_pitch := 1.0
 var _style: StyleBoxFlat
 
 
-func setup(file_index: int, path: String, file_stream: AudioStream) -> void:
+## `removable` false hides the bin button (files borrowed from another event).
+func setup(file_index: int, path: String, file_stream: AudioStream, removable := true) -> void:
 	index = file_index
 	stream = file_stream
 	custom_minimum_size = Vector2(250, 0)
@@ -72,6 +73,7 @@ func setup(file_index: int, path: String, file_stream: AudioStream) -> void:
 	remove.focus_mode = FOCUS_NONE
 	remove.tooltip_text = "Move this file to the recycle bin"
 	remove.pressed.connect(func() -> void: remove_requested.emit(index))
+	remove.visible = removable
 	row.add_child(remove)
 
 

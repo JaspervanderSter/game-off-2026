@@ -20,5 +20,9 @@ sfx/combat/hit_3.ogg
   copied; WAV files are converted to OGG (oggenc2, quality 5).
 - Effects such as reverb or filters are made in the audio editor before the
   file is exported; Tuning Fork plays files as they are ([[Out of scope]]).
+- An event can play the files of another event instead of its own, with its
+  own settings: `"files_from": "coins/harvest/1"`. It then has no files of
+  its own, and the event it names plays its own files (no chains). The
+  [[Tool]] shows the borrowed files and the event they come from.
 - A looping event plays one picked file from its start, over and over
   ([[Playback]]).

@@ -19,8 +19,9 @@ That is the whole interface for the programmer. No handles, no parameters
 2. Pick a [[Sound files|file]] by `pick`.
 3. Apply `pitch` and `volume_db`, each with its random jitter, plus the
    [[Groups|group]] volume.
-4. Play it on a free voice. When every voice is busy, the oldest effect
-   stops. The voice count is a runtime-wide limit.
+4. Play it on the next shared voice: when every voice is busy, the oldest
+   effect stops. The voice count is a runtime-wide limit. A `protected`
+   event plays on a voice of its own that no other sound can take.
 
 ## Loops
 

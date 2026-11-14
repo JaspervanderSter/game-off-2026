@@ -1,10 +1,12 @@
 {
 	"description": "Rabbit leap.",
+	"group": "effects",
+	"loop": false,
+	"protected": false,
 	"volume_db": -8.0,
 	"volume_jitter_db": 0.0,
 	"pitch": 1.0,
 	"pitch_jitter": 0.08,
-	"pitch_step": 0.0,
 	"cooldown_ms": 40,
 	"pick": "shuffle",
 	"shuffle_refill_after": 0

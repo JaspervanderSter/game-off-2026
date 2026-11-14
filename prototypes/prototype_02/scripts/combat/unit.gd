@@ -133,7 +133,7 @@ func _ally_shift_effect() -> void:
 			for e in battle.enemies_near(self, position, radius):
 				e.scare(position, data.fear_duration)
 			battle.emit_fx("fear", position, {"radius": radius})
-			Sfx.play("fear")
+			Sfx.play("abilities/fear")
 
 
 ## Fear: the creature stops attacking and using abilities, and flees from
@@ -379,7 +379,7 @@ func _attack(t: Unit) -> void:
 		return
 	lunge_dir = (t.position - position).normalized()
 	lunge_t = 0.18
-	Sfx.play("hit")
+	Sfx.play("combat/hit")
 	if data.ability == "cleave":
 		for e in battle.enemies_near(self, t.position, data.radius * CELL):
 			battle.damage(self, e, attack_damage(), "melee")
@@ -419,7 +419,7 @@ func _tick_ability() -> void:
 					jump_t = 0.5
 					ability_timer = data.cd
 					battle.emit_fx("hop", position)
-					Sfx.play("hop")
+					Sfx.play("abilities/hop")
 		"blizzard":
 			if ability_timer <= 0.0 and channel_t <= 0.0:
 				var centre := battle.best_blizzard_center(self)
@@ -486,7 +486,7 @@ func _tick_channel(dt: float) -> void:
 	ability_timer = data.cd
 	if data.ability == "blizzard":
 		battle.add_blizzard(self, channel_centre)
-		Sfx.play("blizzard")
+		Sfx.play("abilities/blizzard")
 	else:
 		var prey := channel_target
 		channel_target = null
@@ -515,7 +515,7 @@ func _tick_dive(dt: float) -> void:
 	if edge_dist(dive_target) <= 2.0:
 		battle.damage(self, dive_target, data.power, "ability")
 		battle.emit_fx("impact", dive_target.position)
-		Sfx.play("hit")
+		Sfx.play("combat/hit")
 		target = dive_target
 		dive_target = null
 
@@ -535,7 +535,7 @@ func _tick_charge(dt: float) -> void:
 			target.dash_vel = lunge_dir * data.knock * CELL / 0.25
 			target.dash_t = 0.25
 		battle.emit_fx("impact", target.position)
-		Sfx.play("hit")
+		Sfx.play("combat/hit")
 
 
 ## Archers step away from melee attackers while reloading.

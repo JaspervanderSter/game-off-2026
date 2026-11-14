@@ -11,8 +11,9 @@ The rules every feature of [[Home|Tuning Fork]] is checked against.
    [[Event|events]] alone. The programmer only writes the [[Event path]] in
    the game's code ([[Workflow]]).
 4. **One event, one intent.** If two sounds have a different intent, even
-   slightly, they are two events. Files are duplicated rather than shared;
-   the game passes no values to an event ([[Settings]]).
+   slightly, they are two events; one event can play another's files with
+   its own settings (`files_from`) rather than copying them. The game passes
+   no values to an event ([[Settings]]).
 5. **Files are the truth.** Everything lives in plain OGG and JSON files next
    to each other ([[File format]]), readable and editable without the tool,
    friendly to version control.

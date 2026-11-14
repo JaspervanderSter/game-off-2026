@@ -1,8 +1,7 @@
 class_name SoundEntry
 extends RefCounted
-## One sound of the library: its JSON settings and, for an effect, its OGG
-## files (`<name>.ogg`, `<name>_2.ogg`...). The music entry holds
-## music/music.json; the library holds its tracks.
+## One sound event of the library: its JSON settings and its OGG files
+## (`<name>.ogg`, `<name>_2.ogg`...), found by its path "<folders>/<name>".
 ##
 ## Settings change in memory and are written by save(). File operations
 ## (add_file, remove_file) change the folder at once.
@@ -10,9 +9,12 @@ extends RefCounted
 ## Extensions add_file accepts; other than OGG, they are converted with oggenc.
 const ADDABLE := ["ogg", "wav"]
 
+## Event path, "<folders>/<name>": what the game plays.
+var path := ""
+## File name of the event, the last part of its path.
 var name := ""
-var category := ""
-var is_music := false
+## Folders of the path, "" at the top of sfx/.
+var folder := ""
 ## Folder holding the sound's files.
 var dir := ""
 var json_path := ""
@@ -36,7 +38,7 @@ var _files_signature := ""
 
 
 func defaults() -> Dictionary:
-	return SoundLibrary.MUSIC_DEFAULTS if is_music else SoundLibrary.SOUND_DEFAULTS
+	return SoundLibrary.SOUND_DEFAULTS
 
 
 ## The settings as they would be written.
@@ -60,6 +62,8 @@ func load_settings() -> void:
 	has_json = FileAccess.file_exists(json_path)
 	data = {"description": ""}
 	data.merge(defaults().duplicate(true))
+	# An event plays its own files unless told otherwise; the key stays out.
+	data.erase("files_from")
 	if has_json:
 		json_time = FileAccess.get_modified_time(json_path)
 		var parsed = JSON.parse_string(FileAccess.get_file_as_string(json_path))
@@ -94,7 +98,7 @@ func save() -> Error:
 ## File names of the sound's OGG files in its folder, in number order.
 func list_files() -> Array[String]:
 	var numbered := {}
-	if not is_music and DirAccess.dir_exists_absolute(dir):
+	if DirAccess.dir_exists_absolute(dir):
 		for file in DirAccess.get_files_at(dir):
 			var number := SoundLibrary.file_number(file, name)
 			if number > 0:
@@ -136,6 +140,8 @@ func json_changed_on_disk() -> bool:
 ## Copies (OGG) or converts (WAV, with oggenc) `source` into the sound's next
 ## numbered file. Returns an error message, or "" on success.
 func add_file(source: String) -> String:
+	if str(setting("files_from")) != "":
+		return "%s plays the files of %s: clear files_from to give it files of its own" % [path, setting("files_from")]
 	var extension := source.get_extension().to_lower()
 	if not extension in ADDABLE:
 		return "%s: only %s files can be added" % [source.get_file(), " and ".join(ADDABLE).to_upper()]

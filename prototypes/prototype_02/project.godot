@@ -20,7 +20,7 @@ config/windows_native_icon="res://icon.ico"
 
 [autoload]
 
-Sfx="*res://scripts/audio/sfx.gd"
+Sfx="*res://addons/tuning_fork/sfx.gd"
 
 [display]
 
@@ -33,3 +33,7 @@ window/stretch/mode="canvas_items"
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.16, 0.12, 0.1, 1)
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/tuning_fork/plugin.cfg")

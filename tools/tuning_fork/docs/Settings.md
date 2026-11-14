@@ -9,6 +9,8 @@ a tooltip and a reset to its default.
 | `description` | When the game plays the event, in a sentence | `""` |
 | `group` | The mixing [[Groups\|group]] it plays in | `"effects"` |
 | `loop` | Plays until stopped instead of once ([[Playback]]) | `false` |
+| `protected` | Plays on a voice of its own that no other sound can take | `false` |
+| `files_from` | Path of another event whose [[Sound files\|files]] it plays, with its own settings | none |
 | `volume_db` | Loudness in decibels: 0 as recorded, -6 about half | `-8.0` |
 | `volume_jitter_db` | Random loudness change per play, up to ± this | `0.0` |
 | `pitch` | 1 as recorded, 2 one octave up (also plays faster) | `1.0` |

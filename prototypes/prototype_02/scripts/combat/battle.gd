@@ -102,7 +102,7 @@ func step(dt: float) -> void:
 func _exit_tree() -> void:
 	if song_playing:
 		song_playing = false
-		Sfx.set_loop("bard_song", false)
+		Sfx.stop("abilities/bard_song")
 
 
 ## The bard song loops from its start while a living bard (of either team) has
@@ -116,7 +116,10 @@ func update_song() -> void:
 				break
 	if on != song_playing:
 		song_playing = on
-		Sfx.set_loop("bard_song", on)
+		if on:
+			Sfx.play("abilities/bard_song")
+		else:
+			Sfx.stop("abilities/bard_song")
 
 
 func frenzy_multiplier() -> float:
@@ -259,7 +262,7 @@ func spawn_projectile(src: Unit, t: Unit, fireball := false) -> void:
 		"burn_dps": src.data.get("burn_dps", 0.0) * src.stat_mult(),
 		"burn_duration": src.data.get("burn_duration", 0.0),
 	})
-	Sfx.play("shoot")
+	Sfx.play("combat/shoot")
 
 
 func _update_projectiles(dt: float) -> void:
@@ -288,7 +291,7 @@ func _update_projectiles(dt: float) -> void:
 			_projectile_hit(p, src, t, "ability" if p.kind == "fireball" else "ranged")
 			if p.kind == "fireball":
 				emit_fx("blast", p.aim, {"radius": CELL * 0.8})
-				Sfx.play("hit")
+				Sfx.play("combat/hit")
 			elif p.bounces > 0:
 				_chain_bolt(p, t)
 

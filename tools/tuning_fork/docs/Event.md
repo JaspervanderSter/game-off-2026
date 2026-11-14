@@ -18,9 +18,11 @@ An event plays **once** or **loops** until the game stops it ([[Playback]]).
 
 An event is **one intent** ([[Principles]]). Variations of the same intent
 are extra files of the same event. A sound with a different intent, even a
-close one, is another event, with its own copies of the files if needed.
+close one, is another event. It can have files of its own, or play the
+files of another event with its own settings (`files_from`, [[Sound files]]).
 The game never passes values to an event: rising coin sounds are several
-events (`coins/harvest_1`, `coins/harvest_2`...), not one event with a pitch
+events (`coins/harvest/1` to `coins/harvest/8`, each a little higher, all
+playing the file of the first), not one event with a pitch
 parameter.
 
 An event can exist before the game uses it, and before it has any file: the

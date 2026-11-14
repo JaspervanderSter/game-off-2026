@@ -1,7 +1,7 @@
 class_name PlayScatter
 extends Control
 ## Where the last plays of an effect landed: pitch across, volume (dB) up.
-## The box is the random range around the base pitch and volume of the last step.
+## The box is the random range around the event's pitch and volume.
 
 const MAX_POINTS := 24
 const BACKGROUND := Color("16181d")
