@@ -11,6 +11,10 @@ extends Node
 ## key by key, so a sound designer can tune the game without re-exporting.
 ## Changed files reload when the game window regains focus.
 ##
+## Runs from the Godot editor read res:// straight from the project folder, so
+## there a JSON file saved under `sfx/` or `music/` (by hand or with the
+## Tuning Fork tool) also reloads when the game window regains focus.
+##
 ## A JSON file may hold variants: `play("coin_gain:harvest")` plays coin_gain.ogg
 ## with the values of its "harvest" variant, then of the sound, then defaults.
 
@@ -65,6 +69,10 @@ var _override_times := {}
 ## Settings of each sound by name, merged packed + replacement.
 var _settings := {}
 var _music := {}
+## True in runs from the editor, whose res:// is the project folder on disk.
+var _watch_project := false
+## Modification time of each project settings file already loaded, by path.
+var _project_times := {}
 
 
 func _ready() -> void:
@@ -84,6 +92,10 @@ func _ready() -> void:
 	_music = read_settings(MUSIC_SETTINGS, MUSIC_DEFAULTS)
 	if OS.has_feature("template") and not OS.has_feature("web"):
 		_override_root = OS.get_executable_path().get_base_dir()
+	_watch_project = OS.has_feature("editor")
+	if _watch_project:
+		for path: String in project_settings_files():
+			_project_times[path] = FileAccess.get_modified_time(path)
 	load_overrides()
 
 
@@ -97,9 +109,39 @@ static func sound_file(sound_name: String, extension: String) -> String:
 	return "%s/%s%s" % [SOUNDS[sound_name], sound_name, extension]
 
 
+## Project settings files (res://) and the sound each one tunes ("" for music).
+static func project_settings_files() -> Dictionary:
+	var files := {MUSIC_SETTINGS: ""}
+	for sound_name in SOUNDS:
+		files[DIR + sound_file(sound_name, ".json")] = sound_name
+	return files
+
+
+## Editor runs: reloads each project settings file saved since its last load.
+## A file that cannot be read keeps the previous values and is retried later.
+func reload_project_settings() -> void:
+	var files := project_settings_files()
+	for path: String in files:
+		var time := FileAccess.get_modified_time(path)
+		if time == _project_times.get(path, -1):
+			continue
+		var sound_name: String = files[path]
+		var data := read_settings(path, SOUND_DEFAULTS if sound_name != "" else MUSIC_DEFAULTS)
+		if data.is_empty():
+			push_warning("Could not reload settings %s" % path)
+			continue
+		_project_times[path] = time
+		if sound_name == "":
+			_music = data
+		else:
+			_settings[sound_name] = data
+
+
 ## Loads each replacement file that is new or changed since its last load.
 ## A file that cannot be read keeps the previous values and is retried later.
 func load_overrides() -> void:
+	if _watch_project:
+		reload_project_settings()
 	if _override_root == "":
 		return
 	for sound_name in SOUNDS:

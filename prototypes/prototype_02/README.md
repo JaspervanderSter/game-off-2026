@@ -223,6 +223,16 @@ values of its `harvest` variant, falling back to the sound's own values and then
 `fade_seconds` and `frenzy_speed_per_level`. Unknown keys are reported as
 warnings.
 
+[Tuning Fork](../../tools/tuning_fork/README.md) (`tools/tuning_fork`) edits
+these files without opening them: it lists the sounds, plays them with these
+rules and saves the changed values back. Its copy of the defaults and playback
+rules must follow any change to `sfx.gd` or `phase_music.gd`.
+
+In a run from the Godot editor, a settings JSON file saved under `sfx/` or
+`music/` while the game runs reloads when the game window regains focus, so
+values tuned in Tuning Fork are heard without restarting. Sound files are
+imported by the editor and still need a restart.
+
 The Windows build can be re-voiced and re-tuned without Godot.
 `export_windows.ps1` exports `export/ShapeshiftersDuel/` and
 `export/ShapeshiftersDuel-Windows.zip` at the repository root:
@@ -509,6 +519,8 @@ half-heart damage, whole-heart compensation carried across rounds, lethal loss
 without gold, reward presentation, blizzard area/duration, recharge upgrades,
 weighted outcome distributions and AI purchasing/merging/casting decisions,
 looping music, fades, crossfade reversals and phase-to-track transitions,
+sound settings, replacement files beside the executable and settings saved
+during an editor run,
 round reset, several
 abilities, then simulates 20 AI-vs-AI duels with and without casting and prints
 the average combat and duel lengths.

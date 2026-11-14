@@ -967,6 +967,7 @@ func _test_sound_files() -> void:
 	check(untuned.is_empty(), "every played sound variant is defined in its JSON file %s" % [untuned])
 	_test_sound_settings()
 	_test_sound_overrides()
+	_test_project_settings_reload()
 
 
 func _files_under(dir: String) -> Array[String]:
@@ -1016,6 +1017,34 @@ func _test_sound_settings() -> void:
 		"result recordings keep their original pitch")
 	check(is_equal_approx(Sfx.music_setting("volume_db"), -16.0) and is_equal_approx(Sfx.music_setting("fade_seconds"), 1.2),
 		"music settings come from music.json")
+
+
+## Editor runs reload the project's settings files saved since their last load.
+## A forgotten modification time stands in for a save; no file is written.
+func _test_project_settings_reload() -> void:
+	check(Sfx._watch_project == OS.has_feature("editor"), "only editor runs watch the project's settings files")
+	var kept_settings: Dictionary = Sfx._settings.duplicate(true)
+	var kept_music: Dictionary = Sfx._music.duplicate(true)
+	var kept_times: Dictionary = Sfx._project_times.duplicate()
+	for path: String in Sfx.project_settings_files():
+		Sfx._project_times[path] = FileAccess.get_modified_time(path)
+	var hit_path: String = Sfx.DIR + Sfx.sound_file("hit", ".json")
+	Sfx._settings["hit"] = {"volume_db": 5.0}
+	Sfx._settings["click"] = {"volume_db": 5.0}
+	Sfx._music = {"volume_db": 0.0}
+	Sfx._project_times.erase(hit_path)
+	Sfx._project_times.erase(Sfx.MUSIC_SETTINGS)
+	Sfx.reload_project_settings()
+	var on_disk := Sfx.read_settings(hit_path, Sfx.SOUND_DEFAULTS)
+	var music_on_disk := Sfx.read_settings(Sfx.MUSIC_SETTINGS, Sfx.MUSIC_DEFAULTS)
+	check(is_equal_approx(Sfx.sound_setting("hit", "volume_db"), on_disk["volume_db"])
+		and is_equal_approx(Sfx.music_setting("volume_db"), music_on_disk["volume_db"]),
+		"settings files saved during an editor run reload")
+	check(is_equal_approx(Sfx.sound_setting("click", "volume_db"), 5.0),
+		"unchanged settings files are not reloaded")
+	Sfx._settings = kept_settings
+	Sfx._music = kept_music
+	Sfx._project_times = kept_times
 
 
 ## An exported build reads sound files and settings beside its executable
