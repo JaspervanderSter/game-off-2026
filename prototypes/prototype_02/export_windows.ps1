@@ -24,8 +24,10 @@ function Find-Godot {
 		$cmd = Get-Command $name -ErrorAction SilentlyContinue
 		if ($cmd) { return $cmd.Source }
 	}
-	$candidates = Get-ChildItem -Path "$env:USERPROFILE\Tools\Godot", "C:\Godot" -Filter "Godot_v4*_console.exe" -Recurse -Depth 1 -ErrorAction SilentlyContinue
-	if ($candidates) { return ($candidates | Sort-Object Name -Descending | Select-Object -First 1).FullName }
+	$candidates = Get-ChildItem -Path "$env:USERPROFILE\Tools\Godot", "C:\Godot*" -Filter "Godot_v4*_console.exe" -Recurse -Depth 1 -ErrorAction SilentlyContinue
+	if ($candidates) {
+		return ($candidates | Sort-Object { [version]($_.BaseName -replace '^Godot_v([\d.]+).*', '$1') } -Descending | Select-Object -First 1).FullName
+	}
 	throw "Godot 4 not found. Pass -Godot <path to Godot_v4.x_console.exe> or set `$env:GODOT."
 }
 
@@ -36,6 +38,7 @@ New-Item -ItemType Directory -Force (Join-Path $Out "sfx"), (Join-Path $Out "mus
 & $exe --headless --audio-driver Dummy --path $project --script res://tools/make_windows_icon.gd
 if ($LASTEXITCODE -ne 0) { throw "Icon generation failed." }
 & $exe --headless --audio-driver Dummy --path $project --import | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Godot import failed. Check the errors above." }
 & $exe --headless --audio-driver Dummy --path $project --export-release "Windows Desktop" (Join-Path $Out "ShapeshiftersDuel.exe")
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $Out "ShapeshiftersDuel.exe"))) { throw "Godot export failed." }
 
