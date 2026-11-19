@@ -44,6 +44,12 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
 .site-nav .brand {
   margin-right: auto; color: #f3d690; font: normal 20px/1.4 Georgia, serif;
 }
+.site-nav .itch-link {
+  display: inline-flex; align-items: center; padding: 8px 15px;
+  background: #c63d4b; border: 1px solid #fa5c5c99; border-radius: 7px;
+  color: #fff; font-weight: 600;
+}
+.site-nav .itch-link:hover { background: #b63442; color: #fff; border-color: #fa5c5c; }
 main { max-width: 1180px; margin: auto; padding: 48px 32px 80px; }
 h1 {
   margin: 8px 0 22px; color: #f8edd3; font: normal 58px/1.15 Georgia, serif;
@@ -83,6 +89,12 @@ figcaption, .caption { margin-top: 10px; }
 }
 .resource-group { margin-top: 42px; }
 .home-actions { margin-top: -10px; margin-bottom: 40px; }
+.itch-promo { width: 552px; max-width: 100%; flex-shrink: 1; }
+.itch-promo iframe {
+  display: block; width: 100%; height: 167px; border: 0; border-radius: 8px;
+  background: #222; box-shadow: 0 10px 28px #0004;
+}
+.audio-sections { margin-top: 22px; }
 
 /* Player and contributor documents */
 .document-page main { max-width: 1120px; }
@@ -240,18 +252,21 @@ footer { display: flex; justify-content: space-between; gap: 20px; padding: 22px
 }
 
 </style>
-<link rel="stylesheet" href="assets/site.css?v=35b388e86d5d">
+<link rel="stylesheet" href="assets/site.css?v=da390ce1a7de">
 </head><body class="document-page">
 <nav class="site-nav" aria-label="Site navigation">
 <a class="brand" href="index.html">Shapeshifters Duel</a>
 <a href="how-to-play.html">Quick guide</a><a href="audio.html">Sound &amp; music</a>
-<a href="https://spacemonkeyc.itch.io/shapeshifter-duel">Play on itch.io</a>
+<a class="itch-link" href="https://spacemonkeyc.itch.io/shapeshifter-duel">Play on itch.io</a>
 </nav><main><header class="page-heading">
   <p class="eyebrow">Working together</p>
   <h1>Sound &amp; music</h1>
   <p class="lead">Help give the wizard duel its sound: playful magic, lively creatures and clear feedback in a busy fight.</p>
-  <div class="action-links">
-    <a class="action-link" href="https://spacemonkeyc.itch.io/shapeshifter-duel">Play &amp; download on itch.io</a>
+  <div class="itch-promo">
+<iframe title="Shapeshifter Duel on itch.io" src="https://itch.io/embed/5294617?dark=true" width="552" height="167">
+<a href="https://spacemonkeyc.itch.io/shapeshifter-duel">Play Shapeshifter Duel on itch.io</a>
+</iframe></div>
+  <div class="action-links audio-sections">
     <a href="#sound-effects">Sound effects</a>
     <a href="#music">Music</a>
   </div>

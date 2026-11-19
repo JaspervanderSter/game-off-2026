@@ -72,3 +72,9 @@ All three pages use `page_theme.py`, embed the shared theme for standalone use,
 and refresh the homepage's versioned local links. The game's itch.io page is the
 public entry point for both Windows downloads; do not hardcode temporary CDN
 download URLs. Verify all six website pages and the local cross-links after changes.
+
+The homepage, quick guide and audio page embed the official itch.io project
+widget (`https://itch.io/embed/5294617?dark=true`). It supplies the current cover,
+title and play button from itch.io without embedding or starting the game itself.
+Keep the direct itch.io navigation link available alongside the widget. Widget
+styles belong in the shared CSS; its internal content remains controlled by itch.io.

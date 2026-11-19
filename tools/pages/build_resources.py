@@ -9,9 +9,14 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 DOCS = ROOT / "docs"
 ITCH = "https://spacemonkeyc.itch.io/shapeshifter-duel"
+ITCH_WIDGET = f'''<div class="itch-promo">
+<iframe title="Shapeshifter Duel on itch.io" src="https://itch.io/embed/5294617?dark=true" width="552" height="167">
+<a href="{ITCH}">Play Shapeshifter Duel on itch.io</a>
+</iframe></div>'''
 
 
 def write_page(filename, title, body, body_class="document-page"):
+    body = body.replace("@@ITCH_WIDGET@@", ITCH_WIDGET)
     page = f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -21,7 +26,7 @@ def write_page(filename, title, body, body_class="document-page"):
 <nav class="site-nav" aria-label="Site navigation">
 <a class="brand" href="index.html">Shapeshifters Duel</a>
 <a href="how-to-play.html">Quick guide</a><a href="audio.html">Sound &amp; music</a>
-<a href="{ITCH}">Play on itch.io</a>
+<a class="itch-link" href="{ITCH}">Play on itch.io</a>
 </nav><main>{body}</main></body></html>'''
     (DOCS / filename).write_text(page, encoding="utf-8")
     print(f"Built {filename}")
