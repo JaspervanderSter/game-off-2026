@@ -50,9 +50,9 @@ def build():
     page = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Shapeshifters Duel — Character Guide</title>
+<title>Shapeshifter Duel — Character Guide</title>
 @@THEME@@</head><body class="guide-page"><nav class="site-nav" aria-label="Guide navigation">
-<a class="brand" href="../../index.html">Shapeshifters Duel</a>
+<a class="brand" href="../../index.html">Shapeshifter Duel</a>
 <a href="#fantasy-fighters">Fantasy fighters</a><a href="#animal-forms">Animal forms</a>
 </nav><main>""" + "\n".join(parts) + "</main></body></html>"
     page = page.replace("@@THEME@@", stylesheet("../../assets/site.css"))

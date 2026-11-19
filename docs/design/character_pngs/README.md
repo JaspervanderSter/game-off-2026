@@ -1,6 +1,6 @@
 # Character PNG reference pack
 
-All 24 current Shapeshifters Duel forms, rendered directly from the prototype's
+All 24 current Shapeshifter Duel forms, rendered directly from the prototype's
 procedural artwork. Each PNG has a transparent background and a centred pivot.
 Filenames use the game's form IDs (`guardian`, `rabbit`, `rhino`, etc.).
 

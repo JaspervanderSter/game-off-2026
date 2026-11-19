@@ -46,10 +46,10 @@ def video(name, label, poster):
 
 html = '''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Shapeshifters Duel | Character exploration brief</title>
+<title>Shapeshifter Duel | Character exploration brief</title>
 @@THEME@@</head><body class="brief-page">
-<nav class="site-nav" aria-label="Brief sections"><a class="brand" href="../index.html">Shapeshifters Duel / Artist brief</a><a href="#characters">Characters</a><a href="#motion">Motion</a><a href="#request">Your exploration</a></nav><main class="wrap">
-<section class="hero" id="game"><p class="eyebrow">01 / The game</p><h1>Character Design for Shapeshifters Duel</h1>
+<nav class="site-nav" aria-label="Brief sections"><a class="brand" href="../index.html">Shapeshifter Duel / Artist brief</a><a href="#characters">Characters</a><a href="#motion">Motion</a><a href="#request">Your exploration</a></nav><main class="wrap">
+<section class="hero" id="game"><p class="eyebrow">01 / The game</p><h1>Character Design for Shapeshifter Duel</h1>
 <p class="lead">Current artwork, animation references and a first exploration</p>
 <div class="meta"><span class="tag">2D heroic fantasy</span><span class="tag">Character exploration</span><span class="tag">19 November 2026</span></div>
 <figure class="hero-shot"><img src="@@PREP@@" alt="Current prototype: small creature tokens on a board, with the shop on the right"><figcaption>The prototype during preparation. <a href="@@PREP@@" download="Shapeshifters-Duel-board.png">Save the screenshot for your sketches</a>.</figcaption></figure>
@@ -74,7 +74,7 @@ html = '''<!doctype html>
 <div class="two"><div class="brief-card"><h3>What to share</h3><ol><li><strong>A few words on your art direction and animation.</strong> What would suit the game's mood, stay manageable for a jam, and be fun for you to make? Would you keep the current animation approach or add a few simple character animations? No animation to produce.</li><li><strong>A visual reference.</strong> A game screenshot, a few reference images or a small mock-up to explain your direction. Choose one format.</li><li><strong>A first take on the Guardian and the Rabbit.</strong> One pose each, readable at gameplay size. Rough sketches are welcome.</li></ol></div>
 <div><p class="time">Up to 1–2 hours.</p><p>Less is welcome. Keep it light rather than polishing or expanding the scope.</p><p>If another fantasy fighter / animal combination inspires you more, suggest it before starting.</p><p><strong>Open to exploration:</strong> style, palette, proportions and expression, within a 2D heroic fantasy world. Top-down or slight perspective can be explored.</p></div></div>
 <div class="terms"><p>This is a small game jam project: a chance to get to know each other and see if we enjoy working together, with no pressure to carry on afterwards.</p><p>If I'd like to use your work in the game, I'll talk it through with you first. And of course, if we decide to work together, you'll be credited on the game's itch.io page, as I've always done for my game jams.</p></div>
-</section><footer><span>Shapeshifters Duel / First character exploration</span><span>Working brief · 19 November 2026 · Prototype visuals</span></footer>
+</section><footer><span>Shapeshifter Duel / First character exploration</span><span>Working brief · 19 November 2026 · Prototype visuals</span></footer>
 </main><script>
 const large=document.getElementById('large'),small=document.getElementById('small');
 function setSize(compact){document.querySelectorAll('.roster').forEach(r=>r.classList.toggle('small',compact));large.setAttribute('aria-pressed',String(!compact));small.setAttribute('aria-pressed',String(compact));}

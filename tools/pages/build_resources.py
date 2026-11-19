@@ -16,11 +16,11 @@ def write_page(filename, title, body, body_class="document-page"):
     page = f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Shapeshifters Duel - {title}</title>
+<title>Shapeshifter Duel - {title}</title>
 {stylesheet("assets/site.css")}
 </head><body class="{body_class}">
 <nav class="site-nav" aria-label="Site navigation">
-<a class="brand" href="index.html">Shapeshifters Duel</a>
+<a class="brand" href="index.html">Shapeshifter Duel</a>
 <a href="how-to-play.html">Quick guide</a><a href="audio.html">Sound &amp; music</a>
 <a class="itch-link" href="{ITCH}">Play on itch.io</a>
 </nav><main>{body}</main></body></html>'''

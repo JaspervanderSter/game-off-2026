@@ -1,4 +1,4 @@
-# Pitch — Shapeshifters Duel
+# Pitch — Shapeshifter Duel
 
 **Status: working draft for discussion, not an approved specification.** Written
 on 19 November 2026 from design notes and the current prototype. The detailed
@@ -25,7 +25,7 @@ learning that web of transformations is what turns a gamble into a plan.
 
 ## Project introduction for 2D artists
 
-Shapeshifters Duel is a 2D heroic fantasy game in which two wizards face off across a game board, using small bands of fighters as their pieces. Between rounds, the player recruits and positions their team; once combat begins, the creatures fight on their own while the wizards meddle with a single spell: shapeshifting. A heavily armoured guardian might become a turtle, or a dangerous enemy might suddenly find itself fighting as a rabbit. Each transformation changes the creature's role and can turn an apparently settled battle into a fresh scramble. The intended atmosphere is playful, mischievous and a little absurd: a magical contest with expressive characters, sudden transformations and defeated creatures flying off the board in a puff of smoke. For the 2D art, the central challenge is to give both fantasy fighters and animals distinct personalities and immediately readable silhouettes, so players can follow the action as the board keeps changing. Character style, palette and the precise camera angle remain open for discussion with the artists joining the project.
+Shapeshifter Duel is a 2D heroic fantasy game in which two wizards face off across a game board, using small bands of fighters as their pieces. Between rounds, the player recruits and positions their team; once combat begins, the creatures fight on their own while the wizards meddle with a single spell: shapeshifting. A heavily armoured guardian might become a turtle, or a dangerous enemy might suddenly find itself fighting as a rabbit. Each transformation changes the creature's role and can turn an apparently settled battle into a fresh scramble. The intended atmosphere is playful, mischievous and a little absurd: a magical contest with expressive characters, sudden transformations and defeated creatures flying off the board in a puff of smoke. For the 2D art, the central challenge is to give both fantasy fighters and animals distinct personalities and immediately readable silhouettes, so players can follow the action as the board keeps changing. Character style, palette and the precise camera angle remain open for discussion with the artists joining the project.
 
 This introduction provides setting and tone for prospective contributors. See [[Artist Brief]] for a first visual exploration with prototype screenshots, and [[Art Direction]] for visual preferences and open decisions. A production asset list should be agreed separately.
 

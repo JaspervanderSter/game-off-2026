@@ -1,4 +1,4 @@
-# Shapeshifters Duel - First Character Exploration
+# Shapeshifter Duel - First Character Exploration
 
 19 November 2026 · Working brief for 2D artists
 

@@ -4,6 +4,10 @@ Published pages live under `docs/`. This directory holds their Python builders
 and the source captures used by the artist brief. Commit these sources together
 with any regenerated HTML. No hosting or deployment change is needed.
 
+Use **Shapeshifter Duel** (singular) as the displayed game title, matching the
+itch.io listing and cover. Existing executable and archive filenames retain
+their canonical names.
+
 ## Shared visual theme
 
 `docs/assets/site.css` defines the colours, typography, panels and responsive
