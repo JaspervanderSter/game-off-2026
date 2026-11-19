@@ -292,8 +292,12 @@ files can be added or removed there too; once none is left, the packed files
 play again), a JSON file applies over the packed values key by key, and an
 event that exists only there plays too. Changed files reload when the game
 window regains focus; an unreadable file keeps the current version. Web builds
-use only the packed files. Approved replacements are copied back into the
-project's `sfx/` and `music/` folders.
+use only the packed files and force Godot's Stream playback for both music
+and effects (`audio/general/default_playback_type.web = 0`), bypassing the
+browser's default Sample playback. This override does not affect Windows.
+The Web preset includes the earlier sound set's JSON files as well, so the
+in-game sound comparison works with packed resources. Approved replacements
+are copied back into the project's `sfx/` and `music/` folders.
 
 | Event | Group | Played when |
 |---|---|---|

@@ -22,6 +22,10 @@ config/windows_native_icon="res://icon.ico"
 
 Sfx="*res://addons/tuning_fork/sfx.gd"
 
+[audio]
+
+general/default_playback_type.web=0
+
 [display]
 
 window/size/viewport_width=1280
