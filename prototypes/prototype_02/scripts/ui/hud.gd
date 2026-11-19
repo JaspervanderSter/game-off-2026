@@ -4,7 +4,16 @@ extends Node2D
 
 const ENEMY_BLOCK := Rect2(24, 84, 300, 140)
 const PLAYER_BLOCK := Rect2(24, 376, 300, 156)
-const ROUND_POS := Vector2(174, 300)
+# Round frieze centred above the board, clear of the combat timer bar (y 50).
+const FRIEZE_CENTER := Vector2(640, 26)
+const FRIEZE_STEP := 36.0
+const FRIEZE_PAST := 7 # finished rounds shown left of the current one
+const FRIEZE_FUTURE := 3
+const FRIEZE_RADIUS := 17.0
+const FRIEZE_PIP := 9.0
+const FRIEZE_SLIDE := 0.45
+const FRIEZE_LINE := Color(0.42, 0.35, 0.28)
+const FRIEZE_DRAW := Color(0.55, 0.5, 0.45)
 const RESTART_POS := Vector2(640, 420)
 const VICTORY_POS := Vector2(640, 255)
 const UNLOCK_CLICK := 0.48
@@ -51,6 +60,8 @@ var difficulty_halo: Texture2D
 var pack_halo: Texture2D
 var choice_hover := PackedFloat32Array()
 var choice_phase := -1
+var frieze_round := 0
+var frieze_time := FRIEZE_SLIDE
 
 
 func _ready() -> void:
@@ -62,6 +73,7 @@ func _ready() -> void:
 func _process(dt: float) -> void:
 	advance_loss_rewards(dt)
 	advance_harvest(dt)
+	advance_round_frieze(dt)
 	if game.phase == game.Phase.OVER:
 		victory.advance(dt)
 	elif game.phase == game.Phase.DIFFICULTY:
@@ -85,6 +97,16 @@ func _advance_choice_hover(dt: float) -> void:
 		var selectable: bool = not picking_difficulty or (game.is_difficulty_unlocked(i) and not unlock_animation_active())
 		var target := 1.0 if selectable and rect.has_point(mouse) else 0.0
 		choice_hover[i] = move_toward(choice_hover[i], target, dt / CHOICE_HALO_FADE)
+
+
+## The frieze slides one step left when the next round of the same duel begins;
+## a new duel snaps back to round 1.
+func advance_round_frieze(dt: float) -> void:
+	var shown := maxi(1, game.round_num)
+	if shown != frieze_round:
+		frieze_time = 0.0 if frieze_round > 0 and shown == frieze_round + 1 else FRIEZE_SLIDE
+		frieze_round = shown
+	frieze_time = minf(frieze_time + dt, FRIEZE_SLIDE)
 
 
 func begin_difficulty_unlock(level: int) -> void:
@@ -295,7 +317,7 @@ static func charge_pos(i: int) -> Vector2:
 func _draw() -> void:
 	_draw_wizard(game.enemy, ENEMY_BLOCK)
 	_draw_wizard(game.player, PLAYER_BLOCK)
-	_draw_round_counter()
+	_draw_round_frieze()
 	match game.phase:
 		game.Phase.DIFFICULTY, game.Phase.PACK:
 			draw_rect(get_viewport_rect(), Color(0, 0, 0, 0.45))
@@ -492,10 +514,50 @@ func _spinning_coin(p: Vector2, r: float, spin: float) -> void:
 	draw_circle(p + Vector2(-r * 0.3, -r * 0.35), r * 0.18, Color(1, 1, 0.9, 0.8))
 
 
-func _draw_round_counter() -> void:
-	draw_circle(ROUND_POS, 22, Color(0.15, 0.1, 0.1))
-	draw_arc(ROUND_POS, 22, 0, TAU, 24, Color(0.6, 0.5, 0.4), 2.0, true)
-	draw_string(font, ROUND_POS + Vector2(-20, 8), str(maxi(1, game.round_num)), HORIZONTAL_ALIGNMENT_CENTER, 40, 22, Color(0.9, 0.85, 0.75))
+## Finished rounds as pips in the winner's colour (grey for a draw), the current
+## round as a gold medallion with its number, upcoming rounds as fading dashes.
+## Once the round resolves, the medallion's ring takes the winner's colour.
+func _draw_round_frieze() -> void:
+	var current := maxi(1, game.round_num)
+	var winners: Array[int] = game.round_winners
+	var k := smoothstep(0.0, 1.0, frieze_time / FRIEZE_SLIDE)
+	var center := FRIEZE_CENTER + Vector2(FRIEZE_STEP * (1.0 - k), 0)
+	# The oldest pip fades out while the frieze slides.
+	var oldest := maxi(1, current - FRIEZE_PAST - (1 if k < 1.0 else 0))
+	draw_line(center - Vector2((current - oldest) * FRIEZE_STEP, 0),
+		center + Vector2(FRIEZE_FUTURE * FRIEZE_STEP, 0), FRIEZE_LINE, 3.0, true)
+	for r in range(oldest, current):
+		var p := center - Vector2((current - r) * FRIEZE_STEP, 0)
+		var alpha := 1.0 - k if current - r > FRIEZE_PAST else 1.0
+		var winner: int = winners[r - 1] if r - 1 < winners.size() else -1
+		var col := Icons.team_color(winner) if winner >= 0 else FRIEZE_DRAW
+		draw_circle(p, FRIEZE_PIP, Color(col, alpha))
+		draw_arc(p, FRIEZE_PIP, 0, TAU, 20, Color(0, 0, 0, 0.35 * alpha), 1.5, true)
+	for i in FRIEZE_FUTURE:
+		var p := center + Vector2((i + 1) * FRIEZE_STEP, 0)
+		_dashed_ring(p, FRIEZE_PIP - 1.0, Color(FRIEZE_LINE.lightened(0.2), 0.75 * (1.0 - float(i) / FRIEZE_FUTURE)))
+	# Current round: pops up from pip size while sliding into the centre.
+	var s := lerpf(FRIEZE_PIP / FRIEZE_RADIUS, 1.0, k)
+	var radius := FRIEZE_RADIUS * s
+	var resolved: bool = winners.size() >= current and game.phase in [game.Phase.RESOLVE, game.Phase.OVER]
+	if resolved:
+		var winner: int = winners[current - 1]
+		var col := Icons.team_color(winner) if winner >= 0 else FRIEZE_DRAW
+		draw_arc(center, radius + 4, 0, TAU, 32, col, 4.0, true)
+	else:
+		var pulse := fmod(Time.get_ticks_msec() / 1000.0, 1.6) / 1.6
+		draw_arc(center, radius + 2 + 6 * pulse, 0, TAU, 32, Color(Icons.GOLD, 0.7 * (1.0 - pulse)), 3.0, true)
+	draw_circle(center, radius, Color(0.15, 0.1, 0.12))
+	draw_arc(center, radius, 0, TAU, 32, Icons.GOLD, 3.0, true)
+	var font_size := int(round(22 * s))
+	draw_string(font, center + Vector2(-20, 8 * s), str(current), HORIZONTAL_ALIGNMENT_CENTER, 40, font_size, Color(1.0, 0.92, 0.7))
+
+
+func _dashed_ring(p: Vector2, radius: float, color: Color) -> void:
+	const DASHES := 8
+	for i in DASHES:
+		var a := TAU * i / DASHES
+		draw_arc(p, radius, a, a + TAU / DASHES * 0.55, 4, color, 2.0, true)
 
 
 ## Offers, reroll, fight button and spell upgrade slide together off the right

@@ -30,6 +30,7 @@ func _ready() -> void:
 	_test_loss_gold()
 	_test_peasant_harvest()
 	_test_fight_layout_animation()
+	_test_round_frieze()
 	_test_shop_drag_and_enemy_preparation()
 	_test_phase_music()
 	_test_result_recordings()
@@ -744,6 +745,33 @@ func _test_fight_layout_animation() -> void:
 	game._advance_ui(0.1)
 	check(game.phase == game.Phase.PREP and game.shop_out < 1.0 and game.bench_dock < 1.0,
 		"next round slides the shop and bench back")
+	game.free()
+
+
+func _test_round_frieze() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	var hud: Hud = game.hud
+	game.choose_difficulty(Difficulty.APPRENTICE)
+	game.choose_pack(0)
+	hud.advance_round_frieze(0.0)
+	check(game.round_num == 1 and game.round_winners.is_empty() and hud.frieze_time == Hud.FRIEZE_SLIDE,
+		"round frieze opens on round 1 without sliding")
+	game._on_battle_ended({"winner": 0, "survivors": 2})
+	game.phase = game.Phase.PREP
+	game.start_round()
+	hud.advance_round_frieze(0.1)
+	check(game.round_winners == [0] and hud.frieze_round == 2 and hud.frieze_time < Hud.FRIEZE_SLIDE,
+		"a finished round is recorded and the frieze slides to the next one")
+	hud.advance_round_frieze(1.0)
+	check(hud.frieze_time == Hud.FRIEZE_SLIDE, "frieze slide settles")
+	game._on_battle_ended({"winner": 1, "survivors": 1})
+	game._on_battle_ended({"winner": -1, "survivors": 0})
+	check(game.round_winners == [0, 1, -1], "frieze keeps winners and draws in order")
+	game.new_duel()
+	hud.advance_round_frieze(0.0)
+	check(game.round_winners.is_empty() and hud.frieze_round == 1 and hud.frieze_time == Hud.FRIEZE_SLIDE,
+		"new duel snaps the frieze back to round 1")
 	game.free()
 
 

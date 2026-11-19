@@ -20,6 +20,8 @@ var player: WizardState
 var enemy: WizardState
 var states: Array[WizardState] = []
 var round_num := 0
+## Winner of each finished round, in order: 0 player, 1 enemy, -1 draw.
+var round_winners: Array[int] = []
 var difficulty := Difficulty.APPRENTICE
 var unlocked_difficulty := Difficulty.APPRENTICE
 var newly_unlocked_difficulty := -1
@@ -96,6 +98,7 @@ func new_duel() -> void:
 	enemy.ai_level = difficulty
 	states = [player, enemy]
 	round_num = 0
+	round_winners.clear()
 	drag = null
 	shop_drag_index = -1
 	shop_drag_active = false
@@ -240,6 +243,7 @@ func _on_battle_ended(result: Dictionary) -> void:
 	last_damage = 0
 	last_damage_team = -1
 	var winner: int = result.winner
+	round_winners.append(winner)
 	if winner >= 0:
 		var loser := states[1 - winner]
 		var hp_before := loser.hp

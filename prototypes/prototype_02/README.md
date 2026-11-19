@@ -44,6 +44,11 @@ collision sizes and combat stats are unaffected by this visual scale.
 A white dashed ring = shapeshift immunity. Small pips beside a creature = status
 effects (green rim positive, red rim negative). Hearts = wizard health.
 A half-filled heart represents 0.5 health; the starting total remains 10 hearts.
+The round frieze above the board shows the current round as a numbered gold
+medallion, the last seven finished rounds as pips in the winner's colour (grey
+for a draw) and the next rounds as fading dashed rings. When a round resolves,
+the medallion's ring takes the winner's colour; when the next round starts, the
+frieze slides one step left.
 
 ## Rules implemented
 
