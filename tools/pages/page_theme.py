@@ -3,6 +3,7 @@ from pathlib import Path
 import hashlib
 import re
 from urllib.parse import unquote, urlsplit
+from itch_card import render_itch_card
 
 STYLESHEET = Path(__file__).resolve().parents[2] / "docs/assets/site.css"
 
@@ -18,6 +19,9 @@ def refresh_homepage():
     docs = STYLESHEET.parent.parent
     homepage = docs / "index.html"
     page = homepage.read_text(encoding="utf-8")
+    page = re.sub(r'<!-- itch-card:start -->.*?<!-- itch-card:end -->',
+                  lambda _: '<!-- itch-card:start -->' + render_itch_card() + '<!-- itch-card:end -->',
+                  page, flags=re.S)
     urls = set(re.findall(r'href="([^"#?]+)(?:\?v=[a-f0-9]+)?"', page))
     for url in sorted(urls):
         if urlsplit(url).scheme:

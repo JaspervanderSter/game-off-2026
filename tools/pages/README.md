@@ -73,8 +73,10 @@ and refresh the homepage's versioned local links. The game's itch.io page is the
 public entry point for both Windows downloads; do not hardcode temporary CDN
 download URLs. Verify all six website pages and the local cross-links after changes.
 
-The homepage, quick guide and audio page embed the official itch.io project
-widget (`https://itch.io/embed/5294617?dark=true`). It supplies the current cover,
-title and play button from itch.io without embedding or starting the game itself.
-Keep the direct itch.io navigation link available alongside the widget. Widget
-styles belong in the shared CSS; its internal content remains controlled by itch.io.
+The homepage, quick guide and audio page use `itch_card.py` for their itch game
+card. The official cover is saved as `assets/itch-cover.jpg` from the game's
+itch.io page and embedded in the HTML. The homepage's marked card block is
+refreshed automatically. The card links directly to itch.io and stays readable
+without a third-party iframe, which was rate-limited during verification.
+Update the source cover if the itch listing changes. Card and button styles
+belong in the shared CSS.

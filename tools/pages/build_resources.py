@@ -4,19 +4,15 @@ import base64
 import re
 
 from page_theme import refresh_homepage, stylesheet
+from itch_card import ITCH, render_itch_card
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 DOCS = ROOT / "docs"
-ITCH = "https://spacemonkeyc.itch.io/shapeshifter-duel"
-ITCH_WIDGET = f'''<div class="itch-promo">
-<iframe title="Shapeshifter Duel on itch.io" src="https://itch.io/embed/5294617?dark=true" width="552" height="167">
-<a href="{ITCH}">Play Shapeshifter Duel on itch.io</a>
-</iframe></div>'''
 
 
 def write_page(filename, title, body, body_class="document-page"):
-    body = body.replace("@@ITCH_WIDGET@@", ITCH_WIDGET)
+    body = body.replace("@@ITCH_CARD@@", render_itch_card())
     page = f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
