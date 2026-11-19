@@ -592,9 +592,11 @@ func _draw() -> void:
 	scale_k += beat_k * (0.16 if is_singer else 0.06)
 	var inspired := statuses.has("inspired")
 
-	# Ground shadow and team base.
+	# Ground shadow and team base (painted into pixel art sprites).
+	var sprite := ArtStyle.creature_texture(form_id, team)
 	draw_circle(Vector2(0, r * 0.75), r * 0.95, Color(0, 0, 0, 0.25))
-	Icons.team_base(self, p, r * scale_k, team, hovered)
+	if sprite == null:
+		Icons.team_base(self, p, r * scale_k, team, hovered)
 	if inspired:
 		# Golden ring around inspired creatures, flaring on each beat; it fades
 		# during the last second of inspiration.
@@ -609,7 +611,11 @@ func _draw() -> void:
 		p += Vector2(0, -8)
 	if jump_t > 0.0:
 		p += Vector2(0, -sin(jump_t / 0.5 * PI) * 30.0)
-	Icons.creature(self, form_id, p, image_r * 0.92 * scale_k)
+	if sprite != null:
+		# The whole sprite token jumps, and grows with temporary levels.
+		Icons.sprite_token(self, sprite, p, image_r * scale_k, hovered)
+	else:
+		Icons.creature(self, form_id, p, image_r * 0.92 * scale_k)
 	if shell_t > 0.0:
 		draw_arc(p, image_r * 1.15, 0, TAU, 32, Color(0.5, 1.0, 0.6, 0.9), 4.0, true)
 	if parry_ready:

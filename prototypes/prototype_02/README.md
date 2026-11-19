@@ -176,6 +176,33 @@ All confirmed rules and delegated defaults of the design note, notably:
   or active blizzard continues after the caster changes form.
 - Death: the entity is removed; a visual-only copy is rocketed off the board.
 
+## Art styles (19 November 2026)
+
+The game draws two art styles. The procedural vector art in
+`scripts/ui/icons.gd` is the default. The pixel art, still in progress, is
+switched on and off in game with **Ctrl+Shift+P**. An icon at the top right
+announces the switch: a smooth ring for vector, a blocky ring for pixel. The
+choice is saved in `user://art_style.cfg`, so it stays across restarts. Releases
+include the sprites, but players only see them after the key combination.
+
+`scripts/core/art_style.gd` finds every PNG under `sprites/` (any subfolder)
+and keeps the artist's file names:
+
+- `<Name>-A.png` is the red enemy team (team 1); `<Name>-B.png` is the blue
+  player team (team 0).
+- `<Name>` is the creature id in PascalCase (`frost_mage` → `FrostMage`).
+  `ArtStyle.FILE_NAMES` lists the exceptions (`crossbowman` → `Crossbow`).
+- Each sprite is a full token: a team disc with a 24-pixel radius, centred in
+  the image, with the creature on it. The sprite replaces both the vector team
+  base and the creature drawing. Sprites use nearest filtering, and a draw
+  scale close to a whole number snaps to it.
+- A creature without a sprite keeps its vector drawing, so the pixel style is
+  always complete. The tests fail when a sprite name matches no creature and team.
+
+So far, only creature tokens have sprites. Status icons, projectiles and
+interface icons stay vector in both styles. `res://tests/capture.tscn -- --pixel-art`
+takes the visual smoke screenshots in the pixel style.
+
 ## Music
 
 `scripts/audio/phase_music.gd` plays the supplied looping OGG tracks in `music/`:

@@ -13,7 +13,10 @@ func _ready() -> void:
 			capture_dir = arg.trim_prefix("--capture-dir=")
 	DirAccess.make_dir_recursive_absolute(capture_dir)
 	PackDeck.save_path = capture_dir.path_join("pack_decks.cfg")
-	game = load("res://main.tscn").instantiate()
+	# Vector art unless --pixel-art asks for the pixel art sprites.
+	ArtStyle.save_path = capture_dir.path_join("art_style.cfg")
+	ArtStyle.set_style(ArtStyle.Style.PIXEL if "--pixel-art" in OS.get_cmdline_user_args() else ArtStyle.Style.VECTOR)
+	game =load("res://main.tscn").instantiate()
 	add_child(game)
 	await _frames(10)
 	get_viewport().warp_mouse(Hud.difficulty_rect(Difficulty.ADEPT).get_center())

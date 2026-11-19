@@ -10,6 +10,10 @@ var _checks := 0
 func _ready() -> void:
 	# Games created by the tests deal from scratch decks, never the player's.
 	PackDeck.save_path = "user://pack_decks_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
+	# Nor do they read or change the player's art style.
+	ArtStyle.save_path = "user://art_style_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
+	ArtStyle.reload()
+	_test_art_style()
 	_test_network()
 	_test_charges()
 	_test_transformation_rules()
@@ -49,6 +53,51 @@ func check(cond: bool, label: String) -> void:
 	if not cond:
 		_failures += 1
 		printerr("FAIL: " + label)
+
+
+func _test_art_style() -> void:
+	check(ArtStyle.current() == ArtStyle.Style.VECTOR, "the game starts in the vector art style")
+	check(ArtStyle.creature_texture("archer", 0) == null, "the vector style draws no sprites")
+	check(ArtStyle.sprite_name("archer", 0) == "Archer-B" and ArtStyle.sprite_name("archer", 1) == "Archer-A",
+		"blue player sprites end in -B, red enemy sprites in -A")
+	check(ArtStyle.sprite_name("frost_mage", 0) == "FrostMage-B", "sprite names are the ids in PascalCase")
+	check(ArtStyle.has_sprite("crossbowman", 1), "the crossbowman uses the artist's Crossbow sprite")
+	for path in ArtStyle._paths.values():
+		var name: String = path.get_file().get_basename()
+		var known := false
+		for id in CreatureDB.all_ids():
+			for team in 2:
+				known = known or ArtStyle.sprite_name(id, team) == name
+		check(known, "sprite %s matches a creature and a team" % path)
+
+	check(ArtStyle.toggle() == ArtStyle.Style.PIXEL, "the toggle switches to the pixel art")
+	var sprite := ArtStyle.creature_texture("archer", 0)
+	check(sprite != null and sprite.get_size() == Vector2(64, 64), "the pixel style loads the archer sprite")
+	for id in CreatureDB.all_ids():
+		if not ArtStyle.has_sprite(id, 0):
+			check(ArtStyle.creature_texture(id, 0) == null, "creatures without a sprite keep the vector art")
+			break
+	ArtStyle.reload()
+	check(ArtStyle.is_pixel(), "the pixel art choice survives a restart")
+	check(ArtStyle.toggle() == ArtStyle.Style.VECTOR, "the toggle switches back to the vector art")
+	ArtStyle.reload()
+	check(not ArtStyle.is_pixel(), "the vector art choice survives a restart")
+
+	# The in-game shortcut switches the style and back.
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	var key := InputEventKey.new()
+	key.keycode = KEY_P
+	key.ctrl_pressed = true
+	key.shift_pressed = true
+	key.pressed = true
+	game._input(key)
+	check(ArtStyle.is_pixel(), "Ctrl+Shift+P switches to the pixel art")
+	game._input(key)
+	check(not ArtStyle.is_pixel(), "Ctrl+Shift+P switches back to the vector art")
+	game.queue_free()
+	DirAccess.remove_absolute(ArtStyle.save_path)
+	ArtStyle.reload()
 
 
 func _new_battle() -> Battle:

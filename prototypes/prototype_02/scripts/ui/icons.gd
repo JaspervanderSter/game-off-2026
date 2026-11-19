@@ -269,9 +269,22 @@ static func team_base(ci: CanvasItem, p: Vector2, r: float, team: int, highlight
 
 
 ## Full token used outside combat (prep board, reserve, shop, tooltip).
+## In the pixel art style, a creature's sprite replaces both base and drawing.
 static func token(ci: CanvasItem, id: String, p: Vector2, r: float, team: int, highlight := false) -> void:
+	var sprite := ArtStyle.creature_texture(id, team)
+	if sprite != null:
+		sprite_token(ci, sprite, p, r, highlight)
+		return
 	team_base(ci, p, r, team, highlight)
 	creature(ci, id, p, r * 0.92)
+
+
+## Pixel art token whose painted team disc has radius r, with the same
+## highlight ring as team_base.
+static func sprite_token(ci: CanvasItem, sprite: Texture2D, p: Vector2, r: float, highlight := false) -> void:
+	ArtStyle.draw_token(ci, sprite, p, r)
+	if highlight:
+		ci.draw_arc(p, r + 5.0, 0, TAU, 32, Color(1, 1, 1, 0.8), 2.0, true)
 
 
 # --- Combat overlays ----------------------------------------------------------

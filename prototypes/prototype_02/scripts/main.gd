@@ -56,6 +56,7 @@ var board_view: BoardView
 var fx: FxLayer
 var hud: Hud
 var music: PhaseMusic
+var art_style_flash: ArtStyleFlash
 
 
 func _ready() -> void:
@@ -74,6 +75,11 @@ func _ready() -> void:
 	hud.game = self
 	hud.z_index = 20
 	add_child(hud)
+	var top := CanvasLayer.new()
+	top.layer = 10
+	add_child(top)
+	art_style_flash = ArtStyleFlash.new()
+	top.add_child(art_style_flash)
 	_load_difficulty_progress()
 	player_deck.load_state()
 	enemy_deck.load_state()
@@ -411,6 +417,10 @@ func _owned_at(pos: Vector2) -> OwnedCreature:
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
+	if event.keycode == KEY_P and event.ctrl_pressed and event.shift_pressed:
+		toggle_art_style()
+		get_viewport().set_input_as_handled()
+		return
 	if event.keycode != KEY_ENTER or not event.alt_pressed or Engine.is_embedded_in_editor():
 		return
 	var window := get_window()
@@ -419,6 +429,18 @@ func _input(event: InputEvent) -> void:
 	else:
 		window.mode = Window.MODE_FULLSCREEN
 	get_viewport().set_input_as_handled()
+
+
+func _exit_tree() -> void:
+	ArtStyle.reload() # release the cached sprites before the engine shuts down
+
+
+## Hidden Ctrl+Shift+P switch between the vector art (default) and the work in
+## progress pixel art; the choice is remembered (see ArtStyle).
+func toggle_art_style() -> void:
+	var style := ArtStyle.toggle()
+	propagate_call("queue_redraw")
+	art_style_flash.show_style(style)
 
 
 func _unhandled_input(event: InputEvent) -> void:
