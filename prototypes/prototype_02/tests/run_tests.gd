@@ -14,6 +14,11 @@ func _ready() -> void:
 	ArtStyle.save_path = "user://art_style_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
 	ArtStyle.reload()
 	_test_art_style()
+	# Nor the player's sound set.
+	SoundSet.save_path = "user://sound_set_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
+	SoundSet.reload()
+	SoundSet.apply()
+	_test_sound_set()
 	_test_network()
 	_test_charges()
 	_test_transformation_rules()
@@ -99,6 +104,49 @@ func _test_art_style() -> void:
 	game.queue_free()
 	DirAccess.remove_absolute(ArtStyle.save_path)
 	ArtStyle.reload()
+
+
+func _test_sound_set() -> void:
+	check(not SoundSet.is_legacy() and Sfx.overlay() == "", "the game starts with the current sound effects")
+	var current_hits := Sfx.files_of("combat/hit").size()
+	var current_click: float = Sfx.files_of("ui/click")[0].get_length()
+	for file in _files_under(SoundSet.LEGACY_DIR):
+		var event := file.trim_prefix(SoundSet.LEGACY_DIR).trim_suffix(".import").get_basename()
+		check(Sfx.event_paths().has(event), "earlier sound %s belongs to a current event" % file)
+
+	check(SoundSet.toggle() == SoundSet.Set.LEGACY and Sfx.overlay() == SoundSet.LEGACY_DIR,
+		"the toggle lays the earlier sounds over the current ones")
+	var click: float = Sfx.files_of("ui/click")[0].get_length()
+	check(current_hits == 3 and Sfx.files_of("combat/hit").size() == 1, "the earlier sounds had a single hit take")
+	check(not is_equal_approx(click, current_click), "the earlier click replaces the current one")
+	check(is_equal_approx(Sfx.files_of("ui/battle_start")[0].get_length(), click)
+		and is_equal_approx(Sfx.files_of("ui/place")[0].get_length(), click)
+		and is_equal_approx(float(Sfx.setting("ui/battle_start", "pitch_jitter")), 0.08),
+		"starting a fight and placing a creature play the earlier click")
+	check(is_equal_approx(Sfx.files_of("ui/purchase_confirmed")[0].get_length(), Sfx.files_of("ui/buy")[0].get_length())
+		and is_equal_approx(Sfx.files_of("ui/insufficient_gold")[0].get_length(), Sfx.files_of("ui/fail")[0].get_length()),
+		"purchases play the earlier buy sound and missing gold the earlier fail sound")
+	SoundSet.reload()
+	check(SoundSet.is_legacy(), "the earlier sounds choice survives a restart")
+
+	# The in-game shortcut switches the set and back.
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	check(Sfx.overlay() == SoundSet.LEGACY_DIR, "the game applies the saved sound set on start")
+	var key := InputEventKey.new()
+	key.keycode = KEY_S
+	key.ctrl_pressed = true
+	key.shift_pressed = true
+	key.pressed = true
+	game._input(key)
+	check(not SoundSet.is_legacy() and Sfx.files_of("combat/hit").size() == current_hits,
+		"Ctrl+Shift+S switches back to the current sounds")
+	game._input(key)
+	check(SoundSet.is_legacy() and Sfx.files_of("combat/hit").size() == 1, "Ctrl+Shift+S switches to the earlier sounds")
+	game.queue_free()
+	SoundSet.set_set(SoundSet.Set.CURRENT)
+	DirAccess.remove_absolute(SoundSet.save_path)
+	SoundSet.reload()
 
 
 func _new_battle() -> Battle:

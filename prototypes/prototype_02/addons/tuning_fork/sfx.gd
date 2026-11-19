@@ -77,6 +77,11 @@ var _roots: Array[String] = []
 ## Whether files of each root are read from disk (load_from_file) rather than
 ## loaded as imported resources.
 var _from_disk: Array[bool] = []
+## Folder laid over all the roots (set_overlay), as given and as read; "" when
+## none.
+var _overlay := ""
+var _overlay_root := ""
+var _overlay_from_disk := false
 ## Loaded sound files by absolute path: [modified time, stream].
 var _file_cache := {}
 ## Paths and modification times of the watched folders at the last load.
@@ -153,6 +158,26 @@ func stop(path: String) -> void:
 func set_group_volume(group: String, volume_db: float) -> void:
 	_group_offsets[group] = volume_db
 	_apply_groups()
+
+
+## Lays the folder `root` (a res:// folder laid out like sfx/) over every other
+## folder read, or removes it with "". Like the folder beside the executable,
+## its sound files replace all the files of their event and its JSON files
+## apply key by key. For hearing another set of sounds, such as an earlier
+## one, against the current set in the running game. Applies at once.
+func set_overlay(root: String) -> void:
+	if root == _overlay:
+		return
+	_overlay = root
+	_overlay_from_disk = root != "" and OS.has_feature("editor")
+	_overlay_root = ProjectSettings.globalize_path(root) if _overlay_from_disk else root
+	if enabled:
+		reload(true)
+
+
+## The folder set_overlay laid over the others, or "".
+func overlay() -> String:
+	return _overlay
 
 
 ## True while the looping event at `path` plays and is not fading out.
@@ -275,17 +300,22 @@ static func settings_problems(data: Dictionary, known: Dictionary) -> Array[Stri
 
 ## Reads every root again if any file in a watched root changed since the last
 ## load: settings, groups and the sound files that changed. A file that cannot
-## be read keeps the previous values.
-func reload() -> void:
+## be read keeps the previous values. `force` reads them even when unchanged.
+func reload(force := false) -> void:
 	var signature := _watched_signature()
-	if signature == _signature and not _settings.is_empty():
+	if signature == _signature and not _settings.is_empty() and not force:
 		return
 	_signature = signature
 	var settings := {}
 	var own_files := {}
 	var groups := {}
-	for r in _roots.size():
-		var root := _roots[r]
+	var roots := _roots.duplicate()
+	var from_disk := _from_disk.duplicate()
+	if _overlay != "":
+		roots.append(_overlay_root)
+		from_disk.append(_overlay_from_disk)
+	for r in roots.size():
+		var root: String = roots[r]
 		var root_groups := _read_groups(root.path_join(GROUPS_FILE))
 		for group_name: String in root_groups:
 			groups[group_name] = groups.get(group_name, {}).merged(root_groups[group_name], true)
@@ -305,7 +335,7 @@ func reload() -> void:
 			if not entry.files.is_empty():
 				var streams := []
 				for file: String in entry.files:
-					var stream := _load_file(file, _from_disk[r])
+					var stream := _load_file(file, from_disk[r])
 					if stream != null:
 						streams.append(stream)
 				own_files[path] = streams
@@ -407,6 +437,8 @@ func _watched_signature() -> String:
 	for r in _roots.size():
 		if _from_disk[r]:
 			_list_times(_roots[r], parts)
+	if _overlay_from_disk:
+		_list_times(_overlay_root, parts)
 	return ";".join(parts)
 
 

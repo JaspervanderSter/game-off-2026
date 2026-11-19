@@ -56,11 +56,12 @@ var board_view: BoardView
 var fx: FxLayer
 var hud: Hud
 var music: PhaseMusic
-var art_style_flash: ArtStyleFlash
+var switch_flash: SwitchFlash
 
 
 func _ready() -> void:
 	rng.randomize()
+	SoundSet.apply()
 	music = PhaseMusic.new()
 	add_child(music)
 	board_view = BoardView.new()
@@ -78,8 +79,8 @@ func _ready() -> void:
 	var top := CanvasLayer.new()
 	top.layer = 10
 	add_child(top)
-	art_style_flash = ArtStyleFlash.new()
-	top.add_child(art_style_flash)
+	switch_flash = SwitchFlash.new()
+	top.add_child(switch_flash)
 	_load_difficulty_progress()
 	player_deck.load_state()
 	enemy_deck.load_state()
@@ -421,6 +422,10 @@ func _input(event: InputEvent) -> void:
 		toggle_art_style()
 		get_viewport().set_input_as_handled()
 		return
+	if event.keycode == KEY_S and event.ctrl_pressed and event.shift_pressed:
+		toggle_sound_set()
+		get_viewport().set_input_as_handled()
+		return
 	if event.keycode != KEY_ENTER or not event.alt_pressed or Engine.is_embedded_in_editor():
 		return
 	var window := get_window()
@@ -440,7 +445,13 @@ func _exit_tree() -> void:
 func toggle_art_style() -> void:
 	var style := ArtStyle.toggle()
 	propagate_call("queue_redraw")
-	art_style_flash.show_style(style)
+	switch_flash.show_art_style(style)
+
+
+## Hidden Ctrl+Shift+S switch between the current sound effects (default) and
+## the earlier ones, to compare them; the choice is remembered (see SoundSet).
+func toggle_sound_set() -> void:
+	switch_flash.show_sound_set(SoundSet.toggle())
 
 
 func _unhandled_input(event: InputEvent) -> void:

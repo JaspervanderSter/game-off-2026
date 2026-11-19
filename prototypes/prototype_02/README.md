@@ -350,6 +350,38 @@ provide round feedback. Each recording plays once at its original pitch and is
 `protected`, so effects cannot cut it. Music has faded out during resolution
 and stays silent at game over.
 
+### Comparing with the earlier sounds (20 November 2026)
+
+**Ctrl+Shift+S** switches in game between the current sound effects (the
+default) and the earlier ones, to compare a game with each. An icon at the top
+right announces the switch: a speaker with sparkling waves for the current
+sounds, a speaker with a turning-back arrow for the earlier ones. The choice is
+saved in `user://sound_set.cfg`, so it stays across restarts. Releases include
+both sets.
+
+`sfx_legacy/` holds the sounds as they were before the duel sound effects of
+14 November 2026 (commit `b770cb4`), laid out like `sfx/`. `SoundSet`
+(`scripts/core/sound_set.gd`) lays it over `sfx/` with `Sfx.set_overlay`: a
+sound file there replaces all the files of its event, and a JSON file there
+applies key by key.
+
+- `combat/hit`, `duel/victory`, `duel/defeat`, `shapeshift/bless`,
+  `shapeshift/hex` and `ui/click` get their earlier file back; `combat/hit`
+  has a single take again.
+- Four events did not exist then. They play the file the game used for the
+  same moment, with the former ±8 % pitch variation:
+  - `ui/battle_start` and `ui/place` play the earlier click.
+  - `ui/purchase_confirmed` plays `ui/buy`.
+  - `ui/insufficient_gold` plays `ui/fail`.
+- The events the game plays did change. For example, buying a creature by
+  dropping it on the board now plays both the purchase and the placement
+  sounds, where it used to play only the purchase sound. A reroll now plays
+  the purchase sound instead of the click. The earlier set compares the sounds,
+  not those changes.
+
+A sound event added later has nothing in `sfx_legacy/` and sounds the same in
+both sets. The tests fail when a file in `sfx_legacy/` matches no current event.
+
 ## Choices made for this prototype (3 November 2026)
 
 Answers given by the user while scoping the implementation:

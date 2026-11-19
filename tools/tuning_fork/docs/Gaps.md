@@ -17,3 +17,13 @@ and its project window.
   the next time it starts ([[Hot reload]]).
 - **Tool:** it plays groups at their groups.json volume; the game's own
   changes (`Sfx.set_group_volume`) exist only in the game.
+
+## Beyond the definition
+
+- **Runtime:** `Sfx.set_overlay("res://<folder>/")` lays another folder laid
+  out like `sfx/` over every folder the runtime reads. It works like the
+  `sfx/` folder beside the executable: its sound files replace all the files
+  of their event, and its JSON files apply key by key. `Sfx.set_overlay("")`
+  removes it. Shapeshifters Duel uses it to compare its sounds with an earlier
+  set (Ctrl+Shift+S). [[Playback]] lists only `play`, `stop` and
+  `set_group_volume` as the programmer's calls, and the tool ignores overlays.
