@@ -6,6 +6,8 @@ Open the repository as an Obsidian vault to follow the internal links.
 
 ## Notes
 
+- [[Pitch]] — working pitch draft based on the prototype; not an approved specification.
+- [[Artist Brief]] — first character exploration, with a standalone HTML brief showing the current roster and animated gameplay clips.
 - [[Prototype 02]] — prototype-specific scope, learning questions and experiment proposals (draft).
 - [[Roster and Transformation Map]] — Prototype 02 creature sheets, proposed statistics and editable Obsidian Canvas maps.
 - [[Game Vision]] — core concept, references and design priorities.
