@@ -10,3 +10,10 @@ export/
 
 # Balance suite outputs (generated on demand)
 prototypes/prototype_02/balance/results/
+
+# Regenerable character reference exports (keep sources and published HTML)
+/docs/design/character_pngs/64/
+/docs/design/character_pngs/512/
+
+# Python generator caches
+__pycache__/
