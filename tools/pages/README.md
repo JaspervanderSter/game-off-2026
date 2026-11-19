@@ -13,6 +13,10 @@ rules use the `home-page`, `brief-page` and `guide-page` body classes.
 All pages load this stylesheet. The two builders also embed a fallback copy via
 `page_theme.py`, preserving standalone sharing of the generated HTML. Rebuild
 both documents after editing the shared CSS so their offline copies stay current.
+Stylesheet URLs and homepage links include a content-based version to avoid
+reusing stale cached pages. Both builders refresh these links automatically.
+After a manual homepage edit, run `python tools/pages/page_theme.py` to refresh
+them without rebuilding the documents.
 
 ## Build the artist brief
 

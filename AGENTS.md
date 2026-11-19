@@ -32,6 +32,21 @@ the definition differ, update `Gaps.md`.
 
 Write shared project documentation in English. Conversation with the user may remain in French.
 
+## Project website and shared theme
+
+All public HTML pages under `docs/`, including new pages, must use the shared
+game theme in `docs/assets/site.css`. Preserve the dark board background,
+purple-and-gold palette, typography and panel treatment; add page-specific
+layout rules there rather than introducing an independent visual theme.
+
+Read `tools/pages/README.md` before editing website pages or their builders.
+Generated pages must use `tools/pages/page_theme.py` for the shared stylesheet
+and standalone fallback. Rebuild both HTML documents after a theme change,
+refresh the homepage's versioned links, and commit sources with generated HTML.
+Verify the homepage, artist brief and character guide on desktop and mobile,
+including media and stylesheet loading. Verify the deployed pages before
+reporting a publication complete; a successful push alone is insufficient.
+
 ## In-game interface
 
 Use icons and animation for in-game labels, controls, and announcements. Display

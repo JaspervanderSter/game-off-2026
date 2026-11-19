@@ -7,7 +7,7 @@ from pathlib import Path
 import base64
 import io
 from PIL import Image, ImageDraw, ImageFont
-from page_theme import stylesheet
+from page_theme import refresh_homepage, stylesheet
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = Path(__file__).resolve().parent / "assets/artist_brief"
@@ -98,4 +98,5 @@ for key, value in replacements.items():
 assert "@@" not in html
 out = ROOT / "docs/design/Artist Brief.html"
 out.write_text(html, encoding="utf-8")
+refresh_homepage()
 print(f"Built {out} ({out.stat().st_size:,} bytes)")

@@ -4,7 +4,7 @@ from pathlib import Path
 import base64
 import html
 import re
-from page_theme import stylesheet
+from page_theme import refresh_homepage, stylesheet
 
 PACK = Path(__file__).resolve().parents[2] / "docs/design/character_pngs"
 
@@ -58,6 +58,7 @@ def build():
     page = page.replace("@@THEME@@", stylesheet("../../assets/site.css"))
     target = PACK / "Character Guide.html"
     target.write_text(page, encoding="utf-8")
+    refresh_homepage()
     print(f"Built {target}: {len(ids)} illustrated character descriptions")
 
 
