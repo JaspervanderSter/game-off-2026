@@ -9,10 +9,12 @@ with any regenerated HTML. No hosting or deployment change is needed.
 `docs/assets/site.css` defines the colours, typography, panels and responsive
 layouts for the homepage, artist brief and character guide. Page-specific layout
 rules use the `home-page`, `brief-page` and `guide-page` body classes.
+Player and audio pages use `document-page`, with `tuning-guide` for the tutorial.
 
 All pages load this stylesheet. The two builders also embed a fallback copy via
 `page_theme.py`, preserving standalone sharing of the generated HTML. Rebuild
 both documents after editing the shared CSS so their offline copies stay current.
+Also run the resource builder below when the theme changes.
 Stylesheet URLs and homepage links include a content-based version to avoid
 reusing stale cached pages. Both builders refresh these links automatically.
 After a manual homepage edit, run `python tools/pages/page_theme.py` to refresh
@@ -52,3 +54,21 @@ embeds the 24 large character illustrations in `Character Guide.html`.
 
 See `docs/design/character_pngs/README.md` for reference sizes and ZIP packaging.
 The resources homepage, `docs/index.html`, is maintained directly.
+
+## Build the player and audio pages
+
+```powershell
+python tools/pages/build_resources.py
+```
+
+This generates `docs/how-to-play.html`, `docs/audio.html` and
+`docs/tuning-fork.html`. The first two read the English HTML fragments under
+`content/`; the quick guide embeds the preparation screenshot. The tutorial
+reuses `tools/tuning_fork/guide/Getting started.html`, adapting the website framing
+and the event-selection step for collaborators working on existing sounds.
+Keep the original tutorial as the source for the five-step workflow.
+
+All three pages use `page_theme.py`, embed the shared theme for standalone use,
+and refresh the homepage's versioned local links. The game's itch.io page is the
+public entry point for both Windows downloads; do not hardcode temporary CDN
+download URLs. Verify all six website pages and the local cross-links after changes.

@@ -41,9 +41,9 @@ layout rules there rather than introducing an independent visual theme.
 
 Read `tools/pages/README.md` before editing website pages or their builders.
 Generated pages must use `tools/pages/page_theme.py` for the shared stylesheet
-and standalone fallback. Rebuild both HTML documents after a theme change,
+and standalone fallback. Rebuild all generated HTML documents after a theme change,
 refresh the homepage's versioned links, and commit sources with generated HTML.
-Verify the homepage, artist brief and character guide on desktop and mobile,
+Verify the homepage and all changed pages on desktop and mobile,
 including media and stylesheet loading. Verify the deployed pages before
 reporting a publication complete; a successful push alone is insufficient.
 

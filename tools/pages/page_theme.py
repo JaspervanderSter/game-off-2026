@@ -2,7 +2,7 @@
 from pathlib import Path
 import hashlib
 import re
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit
 
 STYLESHEET = Path(__file__).resolve().parents[2] / "docs/assets/site.css"
 
@@ -18,9 +18,13 @@ def refresh_homepage():
     docs = STYLESHEET.parent.parent
     homepage = docs / "index.html"
     page = homepage.read_text(encoding="utf-8")
-    for url in ("assets/site.css", "design/Artist%20Brief.html",
-                "design/character_pngs/Character%20Guide.html"):
+    urls = set(re.findall(r'href="([^"#?]+)(?:\?v=[a-f0-9]+)?"', page))
+    for url in sorted(urls):
+        if urlsplit(url).scheme:
+            continue
         target = docs / unquote(url)
+        if target == homepage or target.suffix not in (".html", ".css"):
+            continue
         version = hashlib.sha256(target.read_bytes()).hexdigest()[:12]
         page = re.sub(r'href="' + re.escape(url) + r'(?:\?v=[a-f0-9]+)?"',
                       f'href="{url}?v={version}"', page)
