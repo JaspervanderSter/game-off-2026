@@ -4,6 +4,16 @@ Published pages live under `docs/`. This directory holds their Python builders
 and the source captures used by the artist brief. Commit these sources together
 with any regenerated HTML. No hosting or deployment change is needed.
 
+## Shared visual theme
+
+`docs/assets/site.css` defines the colours, typography, panels and responsive
+layouts for the homepage, artist brief and character guide. Page-specific layout
+rules use the `home-page`, `brief-page` and `guide-page` body classes.
+
+All pages load this stylesheet. The two builders also embed a fallback copy via
+`page_theme.py`, preserving standalone sharing of the generated HTML. Rebuild
+both documents after editing the shared CSS so their offline copies stay current.
+
 ## Build the artist brief
 
 From the repository root, with Python, Pillow and Windows' Segoe UI font:

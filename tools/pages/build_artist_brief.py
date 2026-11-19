@@ -7,6 +7,7 @@ from pathlib import Path
 import base64
 import io
 from PIL import Image, ImageDraw, ImageFont
+from page_theme import stylesheet
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = Path(__file__).resolve().parent / "assets/artist_brief"
@@ -46,19 +47,8 @@ def video(name, label, poster):
 html = '''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Shapeshifters Duel | Character exploration brief</title>
-<style>
-:root{--paper:#f6f2e9;--ink:#242538;--muted:#656575;--purple:#6650a4;--line:#ded8ce;--night:#181c2d;--gold:#f0cd76}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#e8e3da;color:var(--ink);font:17px/1.6 'Segoe UI',Arial,sans-serif}a{color:var(--purple)}
-.wrap{max-width:1120px;margin:auto;background:var(--paper);box-shadow:0 0 75px #24253812}nav{display:flex;gap:25px;align-items:center;padding:18px 48px;border-bottom:1px solid var(--line);font-size:13px}nav strong{margin-right:auto}nav a{text-decoration:none}
-section{padding:52px 64px;border-top:1px solid var(--line)}.hero{border:0;padding-top:48px}.eyebrow{color:var(--purple);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px}h1{font-size:60px;line-height:1.03;letter-spacing:-2.3px;margin:0 0 24px;max-width:720px}h2{font-size:34px;line-height:1.16;letter-spacing:-.8px;margin:0 0 18px}h3{font-size:20px;line-height:1.3;margin:0 0 12px}p{margin:0 0 17px}.lead{font-size:22px;line-height:1.5;max-width:800px}.intro{max-width:780px}.meta{font-size:13px;color:var(--muted)}.tag{display:inline-block;border:1px solid #c4b7d9;border-radius:20px;padding:4px 12px;font-size:12px;margin-right:6px}
-figure{margin:0}img{max-width:100%;height:auto;display:block}figcaption,.caption{font-size:13px;color:var(--muted);line-height:1.5;margin-top:10px}.hero-shot{margin:30px -20px 16px}.hero-shot img{border-radius:10px;border:1px solid #cbc2b5}.two{display:grid;grid-template-columns:1fr 1fr;gap:32px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.note{padding:17px 20px;border-left:3px solid var(--purple);background:#ece6f3;font-size:15px;margin-top:24px}.section-head{display:flex;justify-content:space-between;align-items:center;gap:18px}.roster{display:grid;grid-template-columns:repeat(6,1fr);gap:22px 10px;padding:26px 20px;border-radius:12px;background:var(--night);margin:18px 0 28px}.token{text-align:center}.token img{width:112px;height:112px;object-fit:contain;margin:auto;transition:width .18s,height .18s}.token figcaption{color:#e5e2ec;font-size:12px;min-height:36px;padding:0 3px}.roster.small .token img{width:52px;height:52px}.toolbar{display:flex;gap:7px}button{font:600 12px 'Segoe UI',sans-serif;background:transparent;color:var(--purple);border:1px solid #c2b7d4;border-radius:20px;padding:7px 13px;cursor:pointer}button[aria-pressed=true]{background:var(--purple);color:white;border-color:var(--purple)}button:focus-visible,a:focus-visible{outline:3px solid #e0ac39;outline-offset:4px}
-.sample{background:#eae4f2;border-radius:12px;padding:25px;display:flex;align-items:center;gap:24px;margin:25px 0}.pair{display:flex;align-items:center;gap:16px;flex-shrink:0}.pair img{width:100px}.arrow{color:var(--purple);font-size:30px}.sample p{margin:0;font-size:15px}.motion-card{background:white;border:1px solid var(--line);border-radius:12px;overflow:hidden}.motion-card video{display:block;width:100%;aspect-ratio:592/448;object-fit:contain;background:var(--night)}.motion-card .copy{padding:20px}.motion-card p{font-size:15px}.motion-card h3{font-size:18px}.motion-card .caption{font-size:12px}.full-video{width:100%;display:block;border-radius:10px;background:var(--night);margin-top:18px;aspect-ratio:16/9}
-.request{background:#fffdf8}.request .eyebrow{color:#8a6523}.brief-card{padding:26px;border:1px solid var(--line);border-radius:12px;background:#f6f2e9}.brief-card ol{padding-left:20px;margin:0}.brief-card li{margin:0 0 15px}.brief-card li:last-child{margin:0}.checks{padding-left:20px;font-size:16px}.checks li{margin-bottom:10px}.time{font-size:26px;color:var(--purple);font-weight:700;margin:0 0 12px}.terms{font-size:14px;color:var(--muted);padding-top:25px;border-top:1px solid var(--line);margin-top:30px}footer{font-size:12px;color:var(--muted);padding:20px 64px;border-top:1px solid var(--line);display:flex;justify-content:space-between}
-@media(max-width:760px){nav{padding:15px 22px;gap:12px;flex-wrap:wrap}nav strong{width:100%}section{padding:34px 24px}h1{font-size:44px}h2{font-size:28px}.lead{font-size:19px}.hero-shot{margin:22px 0}.two,.three{grid-template-columns:1fr}.roster{grid-template-columns:repeat(3,1fr);padding:20px 10px}.token img{width:90px;height:90px}.section-head{display:block}.toolbar{margin-bottom:18px}.sample{display:block}.pair{justify-content:center;margin-bottom:18px}footer{padding:20px 24px;display:flex;flex-direction:column;gap:6px}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.token img{transition:none}}
-@media print{body{background:white;font-size:11pt}.wrap{max-width:none;box-shadow:none}nav,.toolbar{display:none}section{padding:24px 0;break-inside:avoid}.roster{print-color-adjust:exact}.three{grid-template-columns:repeat(3,1fr)}video{display:none}.motion-card:before{content:'Animation available in the HTML brief';display:block;padding:15px;font-size:10pt}.hero-shot{margin:20px 0}h1{font-size:36pt}}
-</style></head><body><main class="wrap">
-<nav aria-label="Brief sections"><strong>SHAPESHIFTERS DUEL / ARTIST BRIEF</strong><a href="#characters">Characters</a><a href="#motion">Motion</a><a href="#request">Your exploration</a></nav>
+@@THEME@@</head><body class="brief-page">
+<nav class="site-nav" aria-label="Brief sections"><a class="brand" href="../index.html">Shapeshifters Duel / Artist brief</a><a href="#characters">Characters</a><a href="#motion">Motion</a><a href="#request">Your exploration</a></nav><main class="wrap">
 <section class="hero" id="game"><p class="eyebrow">01 / The game</p><h1>Character Design for Shapeshifters Duel</h1>
 <p class="lead">Current artwork, animation references and a first exploration</p>
 <div class="meta"><span class="tag">2D heroic fantasy</span><span class="tag">Character exploration</span><span class="tag">19 November 2026</span></div>
@@ -93,6 +83,7 @@ large.addEventListener('click',()=>setSize(false));small.addEventListener('click
 
 # Posters use the exact opening frame of each clip, so playback does not jump.
 replacements = {
+    "@@THEME@@": stylesheet("../assets/site.css"),
     "@@PREP@@": uri(ASSETS / "preparation.png"),
     "@@ROSTER@@": uri(ASSETS / "roster.png"),
     "@@FANTASY@@": cards(0, 12), "@@ANIMALS@@": cards(12, 24),
