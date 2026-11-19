@@ -178,12 +178,11 @@ All confirmed rules and delegated defaults of the design note, notably:
 
 ## Art styles (19 November 2026)
 
-The game draws two art styles. The procedural vector art in
-`scripts/ui/icons.gd` is the default. The pixel art, still in progress, is
-switched on and off in game with **Ctrl+Shift+P**. An icon at the top right
-announces the switch: a smooth ring for vector, a blocky ring for pixel. The
-choice is saved in `user://art_style.cfg`, so it stays across restarts. Releases
-include the sprites, but players only see them after the key combination.
+The game draws two art styles. The pixel art, still in progress, is the default
+(since 20 November 2026). **Ctrl+Shift+P** switches to the procedural vector art
+in `scripts/ui/icons.gd` and back. An icon at the top right announces the
+switch: a smooth ring for vector, a blocky ring for pixel. The choice is saved
+in `user://art_style.cfg`, so it stays across restarts.
 
 `scripts/core/art_style.gd` finds every PNG under `sprites/` (any subfolder)
 and keeps the artist's file names:
@@ -200,8 +199,9 @@ and keeps the artist's file names:
   always complete. The tests fail when a sprite name matches no creature and team.
 
 So far, only creature tokens have sprites. Status icons, projectiles and
-interface icons stay vector in both styles. `res://tests/capture.tscn -- --pixel-art`
-takes the visual smoke screenshots in the pixel style.
+interface icons stay vector in both styles. `res://tests/capture.tscn` takes
+the visual smoke screenshots in the pixel style; add `-- --vector-art` for the
+vector style.
 
 ## Music
 

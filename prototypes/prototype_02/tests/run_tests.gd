@@ -56,8 +56,7 @@ func check(cond: bool, label: String) -> void:
 
 
 func _test_art_style() -> void:
-	check(ArtStyle.current() == ArtStyle.Style.VECTOR, "the game starts in the vector art style")
-	check(ArtStyle.creature_texture("archer", 0) == null, "the vector style draws no sprites")
+	check(ArtStyle.current() == ArtStyle.Style.PIXEL, "the game starts in the pixel art style")
 	check(ArtStyle.sprite_name("archer", 0) == "Archer-B" and ArtStyle.sprite_name("archer", 1) == "Archer-A",
 		"blue player sprites end in -B, red enemy sprites in -A")
 	check(ArtStyle.sprite_name("frost_mage", 0) == "FrostMage-B", "sprite names are the ids in PascalCase")
@@ -70,18 +69,20 @@ func _test_art_style() -> void:
 				known = known or ArtStyle.sprite_name(id, team) == name
 		check(known, "sprite %s matches a creature and a team" % path)
 
-	check(ArtStyle.toggle() == ArtStyle.Style.PIXEL, "the toggle switches to the pixel art")
 	var sprite := ArtStyle.creature_texture("archer", 0)
 	check(sprite != null and sprite.get_size() == Vector2(64, 64), "the pixel style loads the archer sprite")
 	for id in CreatureDB.all_ids():
 		if not ArtStyle.has_sprite(id, 0):
 			check(ArtStyle.creature_texture(id, 0) == null, "creatures without a sprite keep the vector art")
 			break
-	ArtStyle.reload()
-	check(ArtStyle.is_pixel(), "the pixel art choice survives a restart")
-	check(ArtStyle.toggle() == ArtStyle.Style.VECTOR, "the toggle switches back to the vector art")
+
+	check(ArtStyle.toggle() == ArtStyle.Style.VECTOR, "the toggle switches to the vector art")
+	check(ArtStyle.creature_texture("archer", 0) == null, "the vector style draws no sprites")
 	ArtStyle.reload()
 	check(not ArtStyle.is_pixel(), "the vector art choice survives a restart")
+	check(ArtStyle.toggle() == ArtStyle.Style.PIXEL, "the toggle switches back to the pixel art")
+	ArtStyle.reload()
+	check(ArtStyle.is_pixel(), "the pixel art choice survives a restart")
 
 	# The in-game shortcut switches the style and back.
 	var game = load("res://main.tscn").instantiate()
@@ -92,9 +93,9 @@ func _test_art_style() -> void:
 	key.shift_pressed = true
 	key.pressed = true
 	game._input(key)
-	check(ArtStyle.is_pixel(), "Ctrl+Shift+P switches to the pixel art")
+	check(not ArtStyle.is_pixel(), "Ctrl+Shift+P switches to the vector art")
 	game._input(key)
-	check(not ArtStyle.is_pixel(), "Ctrl+Shift+P switches back to the vector art")
+	check(ArtStyle.is_pixel(), "Ctrl+Shift+P switches back to the pixel art")
 	game.queue_free()
 	DirAccess.remove_absolute(ArtStyle.save_path)
 	ArtStyle.reload()

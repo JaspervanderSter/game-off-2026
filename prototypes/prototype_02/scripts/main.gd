@@ -435,8 +435,8 @@ func _exit_tree() -> void:
 	ArtStyle.reload() # release the cached sprites before the engine shuts down
 
 
-## Hidden Ctrl+Shift+P switch between the vector art (default) and the work in
-## progress pixel art; the choice is remembered (see ArtStyle).
+## Hidden Ctrl+Shift+P switch between the pixel art (default) and the vector
+## art; the choice is remembered (see ArtStyle).
 func toggle_art_style() -> void:
 	var style := ArtStyle.toggle()
 	propagate_call("queue_redraw")

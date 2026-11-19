@@ -2,11 +2,11 @@ class_name ArtStyle
 extends RefCounted
 ## Chooses between the two art styles the game can draw.
 ##
-## VECTOR (the default) is the procedural art in Icons. PIXEL draws the pixel
-## art sprites found under res://sprites/ and falls back to the vector art for
-## everything that has no sprite yet, so the game stays complete while the
-## pixel art is in progress. The choice is toggled in game (see main.gd) and
-## survives restarts through `save_path`.
+## PIXEL (the default) draws the pixel art sprites found under res://sprites/
+## and falls back to the procedural vector art in Icons for everything that has
+## no sprite yet, so the game stays complete while the pixel art is in
+## progress. VECTOR draws only the vector art. The choice is toggled in game
+## (see main.gd) and survives restarts through `save_path`.
 ##
 ## Sprite files keep the artist's names: <Name>-A.png is the red team (team 1),
 ## <Name>-B.png the blue team (team 0), in any folder under res://sprites/.
@@ -36,9 +36,9 @@ static var _textures := {} # path -> CanvasTexture
 static func current() -> Style:
 	if _style < 0:
 		var config := ConfigFile.new()
-		_style = Style.VECTOR
-		if config.load(save_path) == OK and config.get_value("art", "style", "vector") == "pixel":
-			_style = Style.PIXEL
+		_style = Style.PIXEL
+		if config.load(save_path) == OK and config.get_value("art", "style", "pixel") == "vector":
+			_style = Style.VECTOR
 	return _style as Style
 
 
