@@ -8,6 +8,20 @@ changes, during verification, or as part of `tests/`. Run it only when the user
 explicitly asks for a balance run or balance data. Use `tests/run_tests.tscn` for
 normal verification.
 
+## Release exports
+
+For Windows exports, run `prototypes/prototype_02/export_windows.ps1` for
+Shapeshifters Duel and `tools/tuning_fork/export_windows.ps1` for Tuning Fork.
+Use the scripts' default output paths so each run refreshes its build in place.
+Pass `-Godot` if needed to locate the editor. Leave `-Out` unset unless the user
+explicitly requests a different destination.
+
+Keep only `export/ShapeshiftersDuel/`, `export/TuningFork/`, their respective
+`ShapeshiftersDuel-Windows.zip` and `TuningFork-Windows.zip` archives, and any
+requested Web exports under `export/`. Upload the canonical archives when
+publishing. Use a temporary directory outside `export/` for logs, test data,
+screenshots, extracted copies, and other working files.
+
 ## Tuning Fork definition
 
 `tools/tuning_fork/docs/` (start at `Home.md`) defines what Tuning Fork and
