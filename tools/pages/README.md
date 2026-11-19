@@ -36,8 +36,12 @@ python tools/pages/build_artist_brief.py
 This rebuilds `docs/design/Artist Brief.html` and the labelled `roster.png`.
 `assets/artist_brief/` contains the original token atlas, preparation screenshot,
 four gameplay recordings and their opening-frame posters. Keep these inputs:
-they cannot all be regenerated from the character PNG exporter. The HTML embeds
-its media and remains usable offline. `docs/design/Artist Brief.md` is the
+they cannot all be regenerated from the character PNG exporter. The HTML links to
+separate, versioned media under `docs/assets/artist-brief/`. The complete text
+loads first; images and video posters are requested after its first paint, and
+videos use `preload="none"` so they download only when played. Keep the HTML and
+the `docs/assets/` directory together for offline sharing; the HTML alone no
+longer contains its media. `docs/design/Artist Brief.md` is the
 companion design note; its text and the HTML template are maintained separately.
 
 ## Build the character guide

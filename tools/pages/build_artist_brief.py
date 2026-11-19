@@ -1,31 +1,42 @@
-"""Build a standalone character brief with embedded prototype art and videos.
+"""Build a lightweight character brief with separately cached prototype media.
 
 Run with Python + Pillow after capturing the media in tools/pages/assets/artist_brief/.
-The HTML works offline and can be shared as a single file.
+For offline sharing, keep the HTML and docs/assets directories together.
 """
 from pathlib import Path
-import base64
+import hashlib
 import io
 from PIL import Image, ImageDraw, ImageFont
 from page_theme import refresh_homepage, stylesheet
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = Path(__file__).resolve().parent / "assets/artist_brief"
+PUBLISHED = ROOT / "docs/assets/artist-brief"
+PUBLISHED.mkdir(parents=True, exist_ok=True)
 
 NAMES = ["Pitchfork Peasant", "Shield Guardian", "Berserker", "Duelist", "Assassin", "Spearman",
          "Archer", "Crossbowman", "Pyromancer", "Frost Mage", "Cleric", "Bard",
          "Turtle", "Rhinoceros", "Gorilla", "Wolf", "Leopard", "Rabbit",
          "Snake", "Skunk", "Eagle", "Hedgehog", "Deer", "Peacock"]
 
-def uri(path):
-    path = Path(path)
-    mime = "video/mp4" if path.suffix == ".mp4" else "image/png"
-    return f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode()
+def publish(name, data):
+    (PUBLISHED / name).write_bytes(data)
+    version = hashlib.sha256(data).hexdigest()[:12]
+    return f"../assets/artist-brief/{name}?v={version}"
 
-def image_uri(im):
+def media_url(name):
+    return publish(name, (ASSETS / name).read_bytes())
+
+def token_url(i):
     buf = io.BytesIO()
-    im.save(buf, format="PNG")
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    tokens[i].save(buf, format="PNG")
+    return publish(f"token-{i:02d}.png", buf.getvalue())
+
+def image(url, alt, width, height):
+    # No media request until the complete text has been parsed and painted.
+    attrs = f'alt="{alt}" width="{width}" height="{height}" decoding="async"'
+    return (f'<img data-src="{url}" {attrs}>'
+            f'<noscript><img src="{url}" {attrs}></noscript>')
 
 atlas = Image.open(ASSETS / "roster_tokens.png").convert("RGBA")
 tokens = [atlas.crop(((i % 6) * 256, (i // 6) * 256, (i % 6 + 1) * 256, (i // 6 + 1) * 256)) for i in range(24)]
@@ -39,10 +50,10 @@ for i, (im, name) in enumerate(zip(tokens, NAMES)):
 sheet.save(ASSETS / "roster.png")
 
 def cards(start, end):
-    return "".join(f'<figure class="token"><img src="{image_uri(tokens[i])}" alt="Current {NAMES[i]} token"><figcaption>{NAMES[i]}</figcaption></figure>' for i in range(start, end))
+    return "".join(f'<figure class="token">{image(token_url(i), f"Current {NAMES[i]} token", 256, 256)}<figcaption>{NAMES[i]}</figcaption></figure>' for i in range(start, end))
 
 def video(name, label, poster):
-    return f'<video controls muted loop playsinline preload="metadata" aria-label="{label}" poster="{uri(ASSETS / poster)}"><source src="{uri(ASSETS / name)}" type="video/mp4">Your browser cannot play this video.</video>'
+    return f'<video controls muted loop playsinline preload="none" aria-label="{label}" data-poster="{media_url(poster)}"><source src="{media_url(name)}" type="video/mp4">Your browser cannot play this video.</video>'
 
 html = '''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -52,7 +63,7 @@ html = '''<!doctype html>
 <section class="hero" id="game"><p class="eyebrow">01 / The game</p><h1>Character Design for Shapeshifter Duel</h1>
 <p class="lead">Current artwork, animation references and a first exploration</p>
 <div class="meta"><span class="tag">2D heroic fantasy</span><span class="tag">Character exploration</span><span class="tag">19 November 2026</span></div>
-<figure class="hero-shot"><img src="@@PREP@@" alt="Current prototype: small creature tokens on a board, with the shop on the right"><figcaption>The prototype during preparation. <a href="@@PREP@@" download="Shapeshifters-Duel-board.png">Save the screenshot for your sketches</a>.</figcaption></figure>
+<figure class="hero-shot">@@PREP_IMAGE@@<figcaption>The prototype during preparation. <a href="@@PREP@@" download="Shapeshifters-Duel-board.png">Save the screenshot for your sketches</a>.</figcaption></figure>
 <div class="two"><div><h3>You are the wizard.</h3><p>Recruit a small band of fantasy fighters and place them on a board. They fight automatically; you intervene by transforming allies or enemies into a random new form. A shield-bearing guardian can become a rabbit. A new body means a new combat role.</p></div><div><h3>Playful, mischievous, a little absurd.</h3><p>We want expressive characters and surprising magical accidents, with clear tactical action underneath. The current game is a single-player duel against an AI wizard.</p><p class="meta">Super Auto Pets informs the playful atmosphere; Teamfight Tactics informs the board and automatic combat. Neither dictates the character style.</p></div></div>
 </section>
 <section id="characters"><p class="eyebrow">02 / What exists today</p><div class="section-head"><h2>Two families. One cast apart.</h2><div class="toolbar" role="group" aria-label="Character preview size"><button id="large" aria-pressed="true">Enlarged</button><button id="small" aria-pressed="false">Approx. gameplay size</button></div></div>
@@ -60,7 +71,7 @@ html = '''<!doctype html>
 <h3>Fantasy fighters</h3><div class="roster">@@FANTASY@@</div>
 <h3>Animal forms</h3><div class="roster">@@ANIMALS@@</div>
 <p class="meta">Blue and red circles identify the two teams. <a href="@@ROSTER@@" download="Shapeshifters-Duel-current-characters.png">Save the character reference sheet</a>.</p>
-<div class="sample"><div class="pair"><img src="@@GUARDIAN@@" alt="Current Shield Guardian"><span class="arrow" aria-label="can transform into">→</span><img src="@@RABBIT@@" alt="Current Rabbit"></div><p><strong>A useful starting pair: Shield Guardian + Rabbit.</strong><br>Armoured strength versus agility: a solid guardian and a quick, unexpectedly fierce rabbit. The rabbit should look less powerful, but still ready to fight. Keep their on-board size comparable so both remain easy to read. This is one possible transformation, not a fixed pair.</p></div>
+<div class="sample"><div class="pair">@@GUARDIAN@@<span class="arrow" aria-label="can transform into">→</span>@@RABBIT@@</div><p><strong>A useful starting pair: Shield Guardian + Rabbit.</strong><br>Armoured strength versus agility: a solid guardian and a quick, unexpectedly fierce rabbit. The rabbit should look less powerful, but still ready to fight. Keep their on-board size comparable so both remain easy to read. This is one possible transformation, not a fixed pair.</p></div>
 </section>
 <section id="motion"><p class="eyebrow">03 / Animation</p><h2>An approach to explore together.</h2><p class="intro">For the prototype, I move, rotate and scale static drawings to keep the workload small. Dedicated character animations could be interesting too, with a different scope. These clips show the current approach.</p>
 <div class="three">
@@ -79,15 +90,22 @@ html = '''<!doctype html>
 const large=document.getElementById('large'),small=document.getElementById('small');
 function setSize(compact){document.querySelectorAll('.roster').forEach(r=>r.classList.toggle('small',compact));large.setAttribute('aria-pressed',String(!compact));small.setAttribute('aria-pressed',String(compact));}
 large.addEventListener('click',()=>setSize(false));small.addEventListener('click',()=>setSize(true));
+// Two frames let the browser paint the complete brief before requesting images.
+requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  document.querySelectorAll('img[data-src]').forEach(img=>{img.src=img.dataset.src;});
+  document.querySelectorAll('video[data-poster]').forEach(video=>{video.poster=video.dataset.poster;});
+}));
 </script></body></html>'''
 
 # Posters use the exact opening frame of each clip, so playback does not jump.
 replacements = {
     "@@THEME@@": stylesheet("../assets/site.css"),
-    "@@PREP@@": uri(ASSETS / "preparation.png"),
-    "@@ROSTER@@": uri(ASSETS / "roster.png"),
+    "@@PREP@@": media_url("preparation.png"),
+    "@@PREP_IMAGE@@": image(media_url("preparation.png"), "Current prototype: small creature tokens on a board, with the shop on the right", *Image.open(ASSETS / "preparation.png").size),
+    "@@ROSTER@@": media_url("roster.png"),
     "@@FANTASY@@": cards(0, 12), "@@ANIMALS@@": cards(12, 24),
-    "@@GUARDIAN@@": image_uri(tokens[1]), "@@RABBIT@@": image_uri(tokens[17]),
+    "@@GUARDIAN@@": image(token_url(1), "Current Shield Guardian", 256, 256),
+    "@@RABBIT@@": image(token_url(17), "Current Rabbit", 256, 256),
     "@@MOTION@@": video("motion.mp4", "Current combat movement and bard hops", "motion_poster.png"),
     "@@SHIFT@@": video("shapeshift.mp4", "Current friendly and enemy shapeshift effects", "shapeshift_poster.png"),
     "@@EXIT@@": video("exit.mp4", "Current defeated creature spinning away with smoke", "exit_poster.png"),
