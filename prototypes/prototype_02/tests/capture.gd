@@ -71,6 +71,12 @@ func _ready() -> void:
 	await _seconds(game.SCROLL_UNROLL_TIME)
 	game.hover_info = {}
 	await _shot("02_prep")
+	# The other battlefield environments, then back to the forest.
+	for environment in Terrain.ENVIRONMENTS.size():
+		game.cycle_environment()
+		if game.board_view.environment != Terrain.DEFAULT:
+			await _frames(2)
+			await _shot("02_prep_" + game.board_view.environment)
 	if "--merges-only" in OS.get_cmdline_user_args():
 		get_tree().quit()
 		return

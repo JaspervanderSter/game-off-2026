@@ -1,0 +1,14 @@
+[remap]
+
+importer="image"
+type="Image"
+uid="uid://pugwb8bbbu1r"
+path="res://.godot/imported/light-grass-3.png-821a26a0852f7008e4704bf7e6a55018.image"
+
+[deps]
+
+source_file="res://tiles/forest/light-grass-3.png"
+dest_files=["res://.godot/imported/light-grass-3.png-821a26a0852f7008e4704bf7e6a55018.image"]
+
+[params]
+

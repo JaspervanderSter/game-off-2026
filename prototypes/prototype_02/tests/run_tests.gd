@@ -94,8 +94,9 @@ func _test_terrain() -> void:
 	for environment: String in Terrain.ENVIRONMENTS:
 		var set := Terrain.tiles(environment)
 		check(set.has("light"), "%s has light tiles" % environment)
-		var plain := ""
+		var plain := Terrain._commonest(set.get("light", {}), Terrain.ENVIRONMENTS[environment].kinds)
 		for family: String in set:
+			check(set[family].get(plain, []).size() >= 5, "%s has five plain %s drawings, so neighbours never repeat" % [environment, family])
 			for kind: String in set[family]:
 				check(Terrain.ENVIRONMENTS[environment].kinds.has(kind), "%s tile kind %s has a weight" % [environment, kind])
 				for path: String in set[family][kind]:
@@ -123,19 +124,21 @@ func _test_terrain() -> void:
 				for n: Vector2i in [Vector2i(x + 1, y), Vector2i(x, y + 1), Vector2i(x + 1, y + 1), Vector2i(x - 1, y + 1)]:
 					if n.x >= 0 and n.x < Rules.COLS and n.y < Rules.ROWS:
 						var other: String = grid[n.y][n.x].get_file().split("-")[1]
-						if other == kind and kind != "grass":
+						if other == kind and kind != plain:
 							rare_neighbours += 1
 		check(repeats == 0, "%s never repeats a drawing on touching cells (%d)" % [environment, repeats])
 		check(rare_neighbours == 0, "%s never puts rare details side by side (%d)" % [environment, rare_neighbours])
-		if environment == "meadow":
+		if environment == "forest":
 			check(kinds.get("grass", 0) > Rules.ROWS * Rules.COLS / 2 and kinds.has("clover"),
-				"the meadow is mostly plain grass with some clover %s" % kinds)
+				"the forest is mostly plain grass with some clover %s" % kinds)
 		var board := Terrain.board_image(environment, 7)
 		check(board.get_size() == Vector2i(Rules.BOARD_SIZE), "%s board image has the board size" % environment)
 		check(board.get_pixel(1, 1).a == 1.0 and board.get_pixelv(Vector2i(Rules.BOARD_SIZE) - Vector2i.ONE).a == 1.0,
 			"%s board image is fully covered" % environment)
-	for tint: Color in Terrain.ENVIRONMENTS.meadow.tints:
-		check(tint.r <= 1.0 and tint.g <= 1.0 and tint.b <= 1.0, "terrain tints only darken")
+		for tint: Color in Terrain.ENVIRONMENTS[environment].tints:
+			check(tint.r <= 1.0 and tint.g <= 1.0 and tint.b <= 1.0, "%s tints only darken" % environment)
+	check(Terrain.ENVIRONMENTS.has(Terrain.DEFAULT), "the default environment exists")
+	check(Terrain.ENVIRONMENTS.keys() == ["forest", "town", "school"], "the three battlefield environments")
 
 
 func _test_art_style() -> void:

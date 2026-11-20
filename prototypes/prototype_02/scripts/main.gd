@@ -503,6 +503,10 @@ func _input(event: InputEvent) -> void:
 		toggle_sound_set()
 		get_viewport().set_input_as_handled()
 		return
+	if event.keycode == KEY_T and event.ctrl_pressed and event.shift_pressed:
+		cycle_environment()
+		get_viewport().set_input_as_handled()
+		return
 	if event.keycode != KEY_ENTER or not event.alt_pressed or Engine.is_embedded_in_editor():
 		return
 	var window := get_window()
@@ -529,6 +533,13 @@ func toggle_art_style() -> void:
 ## the earlier ones, to compare them; the choice is remembered (see SoundSet).
 func toggle_sound_set() -> void:
 	switch_flash.show_sound_set(SoundSet.toggle())
+
+
+## Hidden Ctrl+Shift+T switch to the next battlefield environment (forest,
+## town, school), to compare them; not remembered.
+func cycle_environment() -> void:
+	var ids: Array = Terrain.ENVIRONMENTS.keys()
+	board_view.set_environment(ids[(ids.find(board_view.environment) + 1) % ids.size()])
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -1,0 +1,14 @@
+[remap]
+
+importer="image"
+type="Image"
+uid="uid://c1wn3pw1hoeby"
+path="res://.godot/imported/dark-stone-4.png-74807165b9e5e380cbe297c982be5ebd.image"
+
+[deps]
+
+source_file="res://tiles/town/dark-stone-4.png"
+dest_files=["res://.godot/imported/dark-stone-4.png-74807165b9e5e380cbe297c982be5ebd.image"]
+
+[params]
+

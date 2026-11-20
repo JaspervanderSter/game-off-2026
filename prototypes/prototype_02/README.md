@@ -254,13 +254,22 @@ vector style.
 
 ## Battlefield terrain (20 November 2026)
 
-The board is an outdoor field assembled cell by cell from whole-zone tiles: each
-tile shows one kind of ground, with no transition inside it. The terrain is
-scenery only and never affects the rules, so it stays quiet: an even light and
-dark grass checker, a few grass blades, and rarer tiles with clover or two tiny
-flowers. Details keep clear of the cell centre, where tokens stand, and of the
-tile edges. The enemy half is very slightly warmer than the player half, and a
-thin dark green line marks the middle.
+The board is assembled cell by cell from whole-zone tiles: each tile shows one
+kind of ground, with no transition inside it. The terrain is scenery only and
+never affects the rules, so it stays quiet. Details keep clear of the cell
+centre, where tokens stand. The enemy half is very slightly warmer than the
+player half, and a thin line marks the middle. The game has three environments:
+
+| Environment | Tiles | Light family | Dark family |
+|---|---|---|---|
+| `forest` (default) | 18 | Light grass with a few blades | Darker grass with a few blades |
+| `town` | 12 | Desaturated stones of all sizes, softened joints | The same stones, a shade darker |
+| `school` | 10 | Slate slab with a chamfered double gold fillet and gold corner studs | Quiet slate slab with an engraved square and gold studs |
+
+In the forest, rarer tiles carry clover or two tiny flowers. The town and the
+school have no decoration beyond each tile's faint tone. The game does not yet
+choose an environment; the hidden **Ctrl+Shift+T** switch cycles forest, town
+and school to compare them (not remembered).
 
 `scripts/ui/terrain.gd` (`Terrain`) defines the environments. Each one is a
 folder `tiles/<environment>/` of 72 x 72 PNG tiles named
@@ -269,7 +278,7 @@ folder `tiles/<environment>/` of 72 x 72 PNG tiles named
 - **family**: `light` on cells where x + y is even, `dark` on the others (the
   checker). An environment without `dark` tiles uses its `light` tiles everywhere.
 - **kind**: how often the tile appears, from the relative weights in
-  `Terrain.ENVIRONMENTS` (meadow: grass 0.72, clover 0.2, flowers 0.08). The
+  `Terrain.ENVIRONMENTS` (forest: grass 0.72, clover 0.2, flowers 0.08). The
   commonest kind is the plain ground; touching cells never share a rarer kind.
 - **n**: interchangeable drawings of a kind. Touching cells of the same family
   never repeat a drawing, as long as the plain kind has at least five drawings
@@ -282,9 +291,10 @@ the same every game) and composed once into a single image, drawn with one call
 per half. The tiles are imported as **Image** resources, not textures, so the
 board can be composed from their pixels; set this importer on hand-painted tiles.
 
-`tools/make_terrain_tiles.gd` draws the generated tiles (18 for the meadow: per
-family, five grass, two clover, two flowers). Every drawing is seeded, so a new
-run rewrites identical files. It needs a rendering window; import afterwards:
+`tools/make_terrain_tiles.gd` draws all the tiles from one recipe per
+environment (per family: forest five grass, two clover, two flowers; town six
+stones; school five slabs). Every drawing is seeded, so a new run rewrites
+identical files. It needs a rendering window; import afterwards:
 
 ```
 godot --path . --minimized --script res://tools/make_terrain_tiles.gd

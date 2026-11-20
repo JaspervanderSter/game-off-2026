@@ -1,0 +1,14 @@
+[remap]
+
+importer="image"
+type="Image"
+uid="uid://b5n5jytdflxao"
+path="res://.godot/imported/light-stone-3.png-274ec559adeddd26ed0c4c561f659feb.image"
+
+[deps]
+
+source_file="res://tiles/town/light-stone-3.png"
+dest_files=["res://.godot/imported/light-stone-3.png-274ec559adeddd26ed0c4c561f659feb.image"]
+
+[params]
+

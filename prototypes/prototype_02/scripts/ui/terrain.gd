@@ -20,13 +20,24 @@ extends RefCounted
 ## generated tiles; hand-painted ones can join them.
 
 const TILE_DIR := "res://tiles"
-const DEFAULT := "meadow"
+const DEFAULT := "forest"
+## In the order the hidden Ctrl+Shift+T switch cycles through them.
 const ENVIRONMENTS := {
-	"meadow": {
+	"forest": {
 		"kinds": {"grass": 0.72, "clover": 0.2, "flowers": 0.08},
 		# Player half (team 0), enemy half (team 1).
 		"tints": [Color(0.937, 1.0, 1.0), Color(1.0, 0.988, 0.96)],
 		"midline": Color(0.31, 0.42, 0.21, 0.8),
+	},
+	"town": {
+		"kinds": {"stone": 1.0},
+		"tints": [Color(0.961, 0.99, 1.0), Color(1.0, 1.0, 0.96)],
+		"midline": Color(0.49, 0.467, 0.431, 0.9),
+	},
+	"school": {
+		"kinds": {"slab": 1.0},
+		"tints": [Color(0.961, 0.99, 1.0), Color(1.0, 1.0, 0.96)],
+		"midline": Color(0.36, 0.33, 0.44, 0.9),
 	},
 }
 

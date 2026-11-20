@@ -24,6 +24,13 @@ func _ready() -> void:
 	add_child(background)
 
 
+## Shows another environment's terrain.
+func set_environment(id: String) -> void:
+	environment = id
+	_terrain = null
+	get_node("Background").queue_redraw()
+
+
 func _process(_dt: float) -> void:
 	var key := _redraw_key()
 	if key != _key:
