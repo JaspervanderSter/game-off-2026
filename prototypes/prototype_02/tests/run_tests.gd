@@ -1829,6 +1829,13 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 			and row.end.y <= Hud.SCROLL_TOP + Hud.SCROLL_LENGTH, "wand upgrade row %d sits on the scroll" % i)
 	check(Rules.FIGHT_CENTER.x + Rules.FIGHT_RADIUS + 8 <= 1280 and Rules.FIGHT_CENTER.y + Rules.FIGHT_RADIUS + 8 <= 720,
 		"fight button fits in the bottom-right corner")
+	check(Hud.fight_glint(0.0) == 0.0 and is_equal_approx(Hud.fight_glint(Hud.FIGHT_GLINT_SWEEP * 0.5), 0.5)
+		and Hud.fight_glint(Hud.FIGHT_GLINT_SWEEP + 0.01) == -1.0
+		and is_equal_approx(Hud.fight_glint(Hud.FIGHT_GLINT_PERIOD + 0.36), 0.36 / Hud.FIGHT_GLINT_SWEEP),
+		"fight button glint sweeps once at the start of every period")
+	var hud: Hud = game.hud
+	game.player.creatures.clear()
+	check(not hud._fight_ready(), "fight button is idle without a fielded creature")
 	game.new_duel()
 	check(not game.player.shift_recharge_upgraded and game.player.upgrades.is_empty(),
 		"new duel resets permanent duel upgrades")

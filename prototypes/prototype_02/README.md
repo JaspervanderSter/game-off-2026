@@ -26,7 +26,7 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 | Place / move / swap | Drag between your half of the board (bottom) and the reserve slots |
 | Combine / merge | Drag onto an identical creature of the same star rank; gold highlights show compatible targets |
 | Sell | Drag a creature onto the creature stall (refund = price) |
-| Start combat | Round crossed-swords button in the bottom-right corner (or Space) |
+| Start combat | Round sword-and-wand button in the bottom-right corner (or Space) |
 | Toggle fullscreen | Alt+Enter |
 | Toggle performance counter | Shift+F8 (click the game first in a browser) |
 | Shapeshift | Left-click (or tap) any living creature during combat, friend or foe |
@@ -102,7 +102,12 @@ All confirmed rules and delegated defaults of the design note, notably:
   a merchant stall (striped scalloped awning, wooden frame) holds the three
   creature offers and the reroll; below it, a purple scroll between two
   gold-knobbed rods holds the wand upgrades. The round fight button sits alone in
-  the bottom-right corner.
+  the bottom-right corner: a medallion split vertically, red on the left and wand
+  purple on the right, behind a sword (tip up-left) crossed with a wand (star
+  up-right), both outlined in dark. When a click would start the fight, a band of
+  light sweeps across it every 4 s (0.72 s sweep) and hovering enlarges it by 7%
+  and brightens its gold ring. Otherwise it is grey and still, with a turning arc
+  while the opponent prepares.
 - When the fight begins, the shop column (stall, scroll, fight button) slides off
   the right edge and the bench shrinks to half size and docks at the bottom of
   the screen, where hovering it still shows the creature card. Both stay away

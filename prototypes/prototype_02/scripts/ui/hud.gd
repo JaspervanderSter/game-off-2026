@@ -35,6 +35,10 @@ const SCROLL_X := Vector2(976, 1252) # parchment left and right edges, clear of 
 const UPGRADE_TOP := 400.0
 const UPGRADE_SIZE := Vector2(260, 38)
 const UPGRADE_STEP := 44.0
+# Ready fight button: a light glint sweeps across it once per period.
+const FIGHT_GLINT_PERIOD := 4.0
+const FIGHT_GLINT_SWEEP := 0.72
+const FIGHT_HOVER_SCALE := 1.07
 const PACK_TOP := 222.0
 const PACK_CARD_SIZE := Vector2i(176, 168)
 const DIFFICULTY_CARD_SIZE := Vector2i(168, 260)
@@ -397,6 +401,10 @@ func _shop_key() -> Array:
 	key.append(Rules.SHOP_RECT.has_point(mouse))
 	if game.enemy_preparing:
 		key.append(Time.get_ticks_msec()) # the spinner around the fight button turns
+	elif _fight_ready() and fight_glint(Time.get_ticks_msec() / 1000.0) >= 0.0:
+		key.append(Time.get_ticks_msec()) # the glint crosses the fight button
+	else:
+		key.append(-1)
 	return key
 
 
@@ -752,17 +760,56 @@ func _draw_shop() -> void:
 
 
 func _draw_fight_button() -> void:
-	var ok: bool = game.player.field_count() > 0 and not game.enemy_preparing and game.drag == null
-	var hovered := Rules.FIGHT_CENTER.distance_to(get_global_mouse_position()) < Rules.FIGHT_RADIUS
-	var base := Color(0.6, 0.15, 0.12) if ok else Color(0.25, 0.2, 0.2)
-	if hovered and ok:
-		base = base.lightened(0.2)
-	Shapes.circle(_ci, Rules.FIGHT_CENTER, Rules.FIGHT_RADIUS, base)
-	Shapes.arc(_ci, Rules.FIGHT_CENTER, Rules.FIGHT_RADIUS, 0, TAU, 40, Icons.GOLD if ok else Color(0.4, 0.35, 0.3), 4.0, true)
-	Icons.swords(_ci, Rules.FIGHT_CENTER, Rules.FIGHT_RADIUS * 0.52, Color(0.95, 0.92, 0.85) if ok else Color(0.5, 0.45, 0.4))
+	var ok := _fight_ready()
+	var hovered := ok and Rules.FIGHT_CENTER.distance_to(get_global_mouse_position()) < Rules.FIGHT_RADIUS
+	var c := Rules.FIGHT_CENTER
+	var r := Rules.FIGHT_RADIUS * (FIGHT_HOVER_SCALE if hovered else 1.0)
+	# Medallion split vertically: red combat half left, purple magic half right.
+	var left := Color(0.6, 0.16, 0.12) if ok else Color(0.25, 0.2, 0.2)
+	var right := Color(0.29, 0.16, 0.4) if ok else Color(0.22, 0.2, 0.25)
+	var half := PackedVector2Array()
+	for i in 17:
+		half.append(c + Vector2.from_angle(PI * 0.5 + PI * i / 16.0) * r)
+	_ci.draw_colored_polygon(half, left)
+	for i in half.size():
+		half[i] = c * 2.0 - half[i]
+	_ci.draw_colored_polygon(half, right)
+	var ring := Icons.GOLD if ok else Color(0.4, 0.35, 0.3)
+	Shapes.line(_ci, c + Vector2(0, -r), c + Vector2(0, r), ring, 2.0)
+	Icons.sword_and_wand(_ci, c, r, not ok)
+	var sweep := fight_glint(Time.get_ticks_msec() / 1000.0) if ok else -1.0
+	if sweep >= 0.0:
+		_draw_fight_glint(c, r, sweep)
+	Shapes.arc(_ci, c, r, 0, TAU, 40, ring.lightened(0.45) if hovered else ring, 4.0, true)
 	if game.enemy_preparing:
 		var t := Time.get_ticks_msec() / 1000.0
 		Shapes.arc(_ci, Rules.FIGHT_CENTER, Rules.FIGHT_RADIUS + 8, t * 3, t * 3 + PI * 1.4, 32, Icons.GOLD, 3, true)
+
+
+## True when a click on the fight button would start the combat.
+func _fight_ready() -> bool:
+	return game.player.field_count() > 0 and not game.enemy_preparing and game.drag == null
+
+
+## Progress (0 to 1) of the light glint across the ready fight button at time t,
+## or -1 between two sweeps: one FIGHT_GLINT_SWEEP-long pass every FIGHT_GLINT_PERIOD.
+static func fight_glint(t: float) -> float:
+	var phase := fmod(t, FIGHT_GLINT_PERIOD)
+	return phase / FIGHT_GLINT_SWEEP if phase < FIGHT_GLINT_SWEEP else -1.0
+
+
+## A slanted band of light crossing the medallion from left to right, clipped
+## to its disc.
+func _draw_fight_glint(c: Vector2, r: float, sweep: float) -> void:
+	var disc := PackedVector2Array()
+	for i in 32:
+		disc.append(c + Vector2.from_angle(TAU * i / 32.0) * r)
+	var along := Vector2.from_angle(-PI * 0.5 + deg_to_rad(25.0)) * r * 2.0
+	var across := Vector2(r * 0.15, 0)
+	var mid := c + Vector2(lerpf(-1.5, 1.5, smoothstep(0.0, 1.0, sweep)) * r, 0)
+	var band := PackedVector2Array([mid - along - across, mid + along - across, mid + along + across, mid - along + across])
+	for piece in Geometry2D.intersect_polygons(disc, band):
+		_ci.draw_colored_polygon(piece, Color(1, 1, 1, 0.35))
 
 
 ## Purple scroll of wand upgrades between two rods. The bottom rod travels down

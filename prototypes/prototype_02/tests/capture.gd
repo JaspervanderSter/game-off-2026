@@ -80,6 +80,14 @@ func _ready() -> void:
 		return
 	while game.enemy_preparing:
 		await _frames(1)
+	# The ready fight button, mid-glint, then hovered.
+	while absf(Hud.fight_glint(Time.get_ticks_msec() / 1000.0) - 0.45) > 0.06:
+		await _frames(1)
+	await _shot("02d_fight_glint")
+	get_viewport().warp_mouse(Rules.FIGHT_CENTER)
+	await _frames(3)
+	await _shot("02e_fight_hover")
+	get_viewport().warp_mouse(Vector2(340, 650))
 	game.start_combat()
 	await _seconds(2.0)
 	# Cast on the first ally and the first enemy.

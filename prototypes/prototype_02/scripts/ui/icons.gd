@@ -515,6 +515,57 @@ static func swords(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
 	Shapes.line(ci, p + Vector2(r * 0.75, r * 0.35), p + Vector2(r * 0.35, r * 0.75), col, r * 0.2, true)
 
 
+## Fight button emblem for a medallion of radius r: a sword, tip to the upper
+## left, crossed with a wand, star to the upper right. dim greys it out.
+static func sword_and_wand(ci: CanvasItem, p: Vector2, r: float, dim := false) -> void:
+	var steel := Color(0.95, 0.92, 0.85)
+	var edge := Color(0.79, 0.76, 0.69)
+	var gold := GOLD
+	var grip := Color(0.42, 0.25, 0.13)
+	var wood := Color(0.66, 0.43, 0.24)
+	var glow := Color(1.0, 0.96, 0.69)
+	if dim:
+		steel = Color(0.5, 0.45, 0.4)
+		edge = Color(0.42, 0.38, 0.34)
+		gold = Color(0.45, 0.4, 0.33)
+		grip = Color(0.3, 0.25, 0.22)
+		wood = Color(0.33, 0.28, 0.24)
+		glow = Color(0.55, 0.5, 0.45)
+	# Sword along u (pommel to tip), wand along w (handle to star); v and x across.
+	var u := Vector2(-1, -1).normalized()
+	var v := u.orthogonal()
+	var w := Vector2(1, -1).normalized()
+	var x := w.orthogonal()
+	var star := p + w * 0.62 * r
+	# A dark outline pass (o > 0) under the coloured pass keeps both readable on
+	# either half of the medallion.
+	var draw_tools := func(o: float, outline := Color()) -> void:
+		var pick := func(col: Color) -> Color: return outline if o > 0.0 else col
+		_blade_quad(ci, p, u, v, -0.25 * r - o, 0.68 * r, 0.075 * r + o, pick.call(steel))
+		ci.draw_colored_polygon(PackedVector2Array([p + u * 0.68 * r + v * (0.075 * r + o),
+			p + u * (0.84 * r + o * 1.6), p + u * 0.68 * r - v * (0.075 * r + o)]), pick.call(steel))
+		if o == 0.0:
+			_blade_quad(ci, p, u, v, -0.22 * r, 0.66 * r, 0.018 * r, edge)
+		_blade_quad(ci, p, u, v, -0.33 * r - o, -0.25 * r + o, 0.25 * r + o, pick.call(gold))
+		_blade_quad(ci, p, u, v, -0.6 * r, -0.33 * r, 0.05 * r + o, pick.call(grip))
+		Shapes.circle(ci, p - u * 0.65 * r, 0.085 * r + o, pick.call(gold))
+		_blade_quad(ci, p, w, x, -0.74 * r - o, 0.52 * r, 0.065 * r + o, pick.call(wood))
+		_blade_quad(ci, p, w, x, -0.46 * r - o, -0.39 * r + o, 0.08 * r + o, pick.call(gold))
+		var points := PackedVector2Array()
+		for i in 8:
+			points.append(star + Vector2.from_angle(-PI / 2 + i * PI / 4) * ((0.27 * r if i % 2 == 0 else 0.075 * r) + o * 1.4))
+		ci.draw_colored_polygon(points, pick.call(glow))
+	draw_tools.call(0.045 * r, Color(0.08, 0.04, 0.03, 0.8 if not dim else 0.4))
+	draw_tools.call(0.0)
+	Shapes.circle(ci, star, 0.07 * r, MAGIC.lightened(0.6) if not dim else glow)
+
+
+## Rectangle from a0 to a1 along unit axis u, half-width hw across it (along v).
+static func _blade_quad(ci: CanvasItem, p: Vector2, u: Vector2, v: Vector2, a0: float, a1: float, hw: float, col: Color) -> void:
+	ci.draw_colored_polygon(PackedVector2Array([p + u * a0 + v * hw, p + u * a1 + v * hw,
+		p + u * a1 - v * hw, p + u * a0 - v * hw]), col)
+
+
 static func wand(ci: CanvasItem, p: Vector2, r: float) -> void:
 	Shapes.line(ci, p + Vector2(-r * 0.7, r * 0.7), p + Vector2(r * 0.4, -r * 0.4), Color(0.55, 0.35, 0.2), r * 0.18, true)
 	star(ci, p + Vector2(r * 0.5, -r * 0.5), r * 0.42, MAGIC.lightened(0.3))

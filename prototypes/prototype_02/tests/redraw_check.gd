@@ -44,7 +44,7 @@ static func run(game: Node) -> Dictionary:
 	for y in range(0, before.get_height(), 2):
 		for x in range(0, before.get_width(), 2):
 			var p := Vector2(x, y) * to_screen
-			# The spinner round the fight button turns with the clock.
+			# The spinner and the glint on the fight button move with the clock.
 			if p.distance_to(fight_center) < Rules.FIGHT_RADIUS + 14.0:
 				continue
 			var ca := before.get_pixel(x, y)
