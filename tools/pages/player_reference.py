@@ -30,7 +30,7 @@ def render_reference():
         "crossbowman": "Ranged: armour-piercing bolts; chains to more targets with stars.",
         "pyromancer": "Ranged: splash shots and burns; channels a heavy fireball.",
         "frost_mage": "Ranged: chills targets; channels a 3 × 3-cell blizzard.",
-        "cleric": "Healing: restores 22 health to the most wounded nearby ally every 3 seconds.",
+        "cleric": "Healing: restores 22 health to the most wounded nearby ally every 3.5 seconds.",
         "bard": "Support: beats grant all allies +35% attack speed for 3 seconds.",
         "turtle": "Defence: +50 armour for 2 seconds; stops moving and attacking during shell.",
         "rhino": "Front line: charges for double basic damage and knocks its target back.",
