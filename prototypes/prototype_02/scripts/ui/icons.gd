@@ -484,6 +484,8 @@ static func heart(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
 
 
 static func heart_half(ci: CanvasItem, p: Vector2, r: float, side: int, col: Color) -> void:
+	if r < 0.5:
+		return # a vanishing shard: too small to triangulate, invisible anyway
 	var points := PackedVector2Array()
 	for i in 16:
 		var angle := lerpf(-0.45, -3.55, i / 15.0)

@@ -638,6 +638,27 @@ and runs only on explicit request.
 `res://tests/capture.tscn` (not headless) plays a scripted sequence of the real game
 and saves screenshots to `user://captures/`.
 
+`res://tests/perf_benchmark.tscn` (not headless, about five minutes) plays the real
+game by itself: menus, an automated duel of six rounds where both wizards shop and
+cast, then a 6-versus-6 fight of three-star casters. It records every frame and
+prints, per scenario, the average, median, 95th/99th percentile and worst frame
+times, the frames over 16.7 ms and 33 ms, the slowest frames with the events around
+them (casts, deaths, sprite loads, purchases), and node, object and memory counts at
+each phase change. It writes the report and the per-frame data to `user://perf/`
+(or `--out=<file.json>`). Vsync is off by default, which measures the true cost of
+a frame; `--vsync` measures dropped frames at the display refresh instead. Other
+options: `--rounds=<n>`, `--vector-art`, `--no-sound`.
+
+```bash
+godot --path prototypes/prototype_02 res://tests/perf_benchmark.tscn -- --no-sound
+```
+
+Latest results (20 November 2026, Windows, i7-14650HX, RTX 5070 Laptop, pixel art):
+no frame over 16.7 ms in about 62,000 uncapped frames. Combat frames take 5.7 ms
+on average (7.5 ms at the 99th percentile, 9.6 ms at worst); menus and preparation
+take about 3.6 ms. With vsync at 144 Hz, 11 of 27,452 frames missed a refresh, the
+worst lasting 23 ms. Node and object counts and memory stay flat across rounds.
+
 Latest simulation (20 AI-vs-AI duels per mode, after the combat/AI rebalance):
 combats average about 25 s with casting and 19 s without; duels average 11.7 and
 9.2 rounds respectively. The half-heart rule gives purchases, merges and the
