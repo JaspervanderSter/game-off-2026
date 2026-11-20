@@ -17,3 +17,6 @@ prototypes/prototype_02/balance/results/
 
 # Python generator caches
 __pycache__/
+
+# Local sketches, image concepts, and disposable experiments (never committed)
+/brainstorm/
