@@ -641,6 +641,13 @@ func _owned_at(pos: Vector2) -> OwnedCreature:
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
+	# Ctrl+Shift+R belongs to the browser; Alt+Shift+R also works on the Web.
+	# Handle this before focused menu/map buttons consume keyboard input.
+	if event.keycode == KEY_R and event.shift_pressed and (event.ctrl_pressed or event.alt_pressed) \
+			and (menu_screen.visible or map_screen.visible or phase == Phase.DIFFICULTY):
+		_reset_difficulty_progress()
+		get_viewport().set_input_as_handled()
+		return
 	if event.keycode == KEY_F8 and event.shift_pressed:
 		fps_counter.visible = not fps_counter.visible
 		get_viewport().set_input_as_handled()
@@ -702,8 +709,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				map_screen.title.finish() # any key finishes the title's animation
 			elif on_title and event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
 				show_map()
-			elif event.keycode == KEY_R and event.ctrl_pressed and event.shift_pressed:
-				_reset_difficulty_progress()
 		get_viewport().set_input_as_handled()
 		return
 	if abandon_asked:
@@ -738,10 +743,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 			_right_press(pos)
 	elif event is InputEventKey and event.pressed and not event.echo:
-		if phase == Phase.DIFFICULTY and event.keycode == KEY_R and event.ctrl_pressed and event.shift_pressed:
-			_reset_difficulty_progress()
-			get_viewport().set_input_as_handled()
-		elif event.keycode == KEY_SPACE and phase == Phase.PREP:
+		if event.keycode == KEY_SPACE and phase == Phase.PREP:
 			start_combat()
 		elif phase == Phase.DIFFICULTY and event.keycode >= KEY_1 and event.keycode < KEY_1 + Difficulty.COUNT:
 			choose_difficulty(event.keycode - KEY_1)

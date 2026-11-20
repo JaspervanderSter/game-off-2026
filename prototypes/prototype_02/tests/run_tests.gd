@@ -13,11 +13,12 @@ func _ready() -> void:
 	# Nor do they read or change the player's art style.
 	ArtStyle.save_path = "user://art_style_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
 	ArtStyle.reload()
-	_test_art_style()
 	# Nor the player's sound set.
 	SoundSet.save_path = "user://sound_set_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
 	SoundSet.reload()
 	SoundSet.apply()
+	# Art-style checks instantiate the game, which also loads the sound set.
+	_test_art_style()
 	_test_sound_set()
 	_test_shape_atlas()
 	_test_terrain()
@@ -61,6 +62,7 @@ func _ready() -> void:
 	_test_day_night_cycle()
 	_test_journey_health()
 	_test_journey_discovery()
+	await _test_progress_reset_shortcuts()
 	await _test_journey_navigation()
 	_simulate_duels()
 	DirAccess.remove_absolute(PackDeck.save_path)
@@ -2408,6 +2410,49 @@ func _test_journey_navigation() -> void:
 	check(game.phase == game.Phase.PACK, "portrait map opponents can be selected by touch")
 	game.free()
 	get_window().size = previous_size
+
+
+func _test_progress_reset_shortcuts() -> void:
+	var path := "user://reset_shortcuts_%d.cfg" % OS.get_process_id()
+	var game = load("res://main.tscn").instantiate()
+	game.difficulty_progress_path = path
+	add_child(game)
+	game.set_physics_process(false)
+	for use_alt in [false, true]:
+		for on_map in [false, true]:
+			game.journey.completed.assign(range(5))
+			game.journey.introduced.assign([Ruleset.FRENZY])
+			game.journey.lessons_done.assign([Ruleset.FRENZY])
+			game._save_difficulty_progress(Difficulty.ADEPT)
+			if on_map:
+				game.show_map()
+			else:
+				game.show_menu()
+			await get_tree().process_frame
+			var key := InputEventKey.new()
+			key.keycode = KEY_R
+			key.shift_pressed = true
+			key.alt_pressed = use_alt
+			key.ctrl_pressed = not use_alt
+			key.pressed = true
+			Input.parse_input_event(key)
+			await get_tree().process_frame
+			check(game.journey.completed.is_empty() and game.journey.introduced.is_empty()
+				and game.journey.lessons_done.is_empty(), "reset shortcut clears progress with focused menu/map controls")
+			var saved := ConfigFile.new()
+			saved.load(path)
+			check(saved.get_value("journey", "opponents", [0]).is_empty(), "reset shortcut persists the empty journey")
+	game.choose_stage(0)
+	game.journey.completed.assign([0])
+	var key := InputEventKey.new()
+	key.keycode = KEY_R
+	key.shift_pressed = true
+	key.alt_pressed = true
+	key.pressed = true
+	game._input(key)
+	check(game.journey.completed == [0], "reset shortcut does not erase progress during a duel")
+	game.free()
+	DirAccess.remove_absolute(path)
 
 
 func _check_whole_map_visible(map: Node2D, orientation: String) -> void:

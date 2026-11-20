@@ -847,7 +847,9 @@ ringed in red, and a refused drop makes them blink.
 Progress is saved locally in `difficulty_progress.cfg`, under `journey.opponents`.
 The previous seven-stage `journey.completed` saves retain proportional advancement
 inside each zone, including access to the school. Older difficulty-only saves
-retain their unlocked zones. Ctrl+Shift+R on the menu or map resets progression.
+retain their unlocked zones. **Alt+Shift+R** on the menu or map resets progression;
+click the game first in a browser. **Ctrl+Shift+R** remains available on desktop,
+but browsers reserve it for reloading the page without clearing saved progress.
 
 - **Archmage** plays its own tuned strategy (`EnemyAI.ARCHMAGE_PROFILE`), with
   the same rules, gold and information as the player: it draws its opening from
