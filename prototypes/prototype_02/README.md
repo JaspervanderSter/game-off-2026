@@ -21,7 +21,7 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 | Pick a starting composition | Left-click one of the three cards |
 | Buy a creature | Click and release a shop card for the bench, or drag it directly to a board cell / reserve slot |
 | Reroll shop | Click the circular-arrow button below the offers, inside the stall (1 gold) |
-| Buy a wand upgrade | Click a row of the purple scroll below the stall; its coins show the next level's price, a green check marks a maxed upgrade |
+| Buy a wand upgrade | Click a row of the purple scroll below the stall; its coins show the next level's price, a green check marks a maxed upgrade. Hover a row for an animated before / after card |
 | Lock / unlock an offer | Right-click its shop card; a gold padlock marks a lock |
 | Place / move / swap | Drag between your half of the board (bottom) and the reserve slots |
 | Combine / merge | Drag onto an identical creature of the same star rank; gold highlights show compatible targets |
@@ -171,10 +171,19 @@ All confirmed rules and delegated defaults of the design note, notably:
 
   | Upgrade | Icon | Effect | Cost |
   | --- | --- | --- | ---: |
-  | Fast recharge | Wand + circular arrow | Recharge 3 s → 2.4 s | 4 |
-  | Starting charges | Orb + gold plus, three charge pips | Combat starts with 2, then 3 charges | 3, then 5 |
-  | Healing shift | Green cross | Allied casts heal 25% of new max HP instead of 10% | 4 |
-  | Long hex | Hourglass | Enemy casts stun for 4.5 s instead of 3 s | 4 |
+  | Fast recharge | Recharging orb with speed lines | Recharge 3 s → 2.4 s | 4 |
+  | Starting charges | Three orbs: current starting charges filled, the next one gold-ringed under a gold plus | Combat starts with 2, then 3 charges | 3, then 5 |
+  | Healing shift | Wand + green cross | Allied casts heal 25% of new max HP instead of 10% | 4 |
+  | Long hex | Wand + stun spiral | Enemy casts stun for 4.5 s instead of 3 s | 4 |
+
+  Hovering a row of the unrolled scroll opens a card to its left with no text
+  and no price: the same looping scene plays side by side at the current level
+  (dim frame) and the next level (gold frame), restarting with each new hover.
+  A maxed upgrade compares its last two levels. Recharge: an empty orb fills in
+  3 s, then 2.4 s. Charges: the starting orbs pop in at combat start. Heal: the
+  wand's star flashes on an ally, a green cross appears and its health bar gains
+  10%, then 25%. Hex: the star flashes on an enemy, which spins under a stun
+  spiral while a ring drains over 3 s, then 4.5 s.
 
 - Shapeshift casts give a 3 s target
   immunity for both wizards; invalid casts consume nothing. Result drawn from the

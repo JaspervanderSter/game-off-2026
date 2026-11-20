@@ -93,19 +93,19 @@ func buy_upgrade(id: String) -> bool:
 
 
 func shift_recharge_time() -> float:
-	return Rules.UPGRADED_RECHARGE_TIME if shift_recharge_upgraded else Rules.RECHARGE_TIME
+	return Rules.wand_value("recharge", upgrade_level("recharge"))
 
 
 func start_charges() -> int:
-	return mini(Rules.START_CHARGES + upgrade_level("charges"), Rules.MAX_CHARGES)
+	return int(Rules.wand_value("charges", upgrade_level("charges")))
 
 
 func shift_heal() -> float:
-	return Rules.UPGRADED_SHIFT_HEAL if upgrade_level("heal") > 0 else Rules.SHIFT_HEAL
+	return Rules.wand_value("heal", upgrade_level("heal"))
 
 
 func hex_stun() -> float:
-	return Rules.UPGRADED_ENEMY_SHIFT_STUN if upgrade_level("hex") > 0 else Rules.ENEMY_SHIFT_STUN
+	return Rules.wand_value("hex", upgrade_level("hex"))
 
 
 func fielded() -> Array[OwnedCreature]:

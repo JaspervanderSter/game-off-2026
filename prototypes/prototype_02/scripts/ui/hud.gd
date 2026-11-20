@@ -39,6 +39,9 @@ const UPGRADE_STEP := 44.0
 const FIGHT_GLINT_PERIOD := 4.0
 const FIGHT_GLINT_SWEEP := 0.72
 const FIGHT_HOVER_SCALE := 1.07
+# Wand upgrade tooltip: two scene panels, current level then next level.
+const TOOLTIP_SIZE := Vector2(300, 132)
+const TOOLTIP_PANEL := Vector2(120, 112)
 const PACK_TOP := 222.0
 const PACK_CARD_SIZE := Vector2i(176, 168)
 const DIFFICULTY_CARD_SIZE := Vector2i(168, 260)
@@ -78,6 +81,8 @@ var choice_hover := PackedFloat32Array()
 var choice_phase := -1
 var frieze_round := 0
 var frieze_time := FRIEZE_SLIDE
+var _tooltip_row := -1 # wand upgrade row whose tooltip is showing
+var _tooltip_start := 0.0 # when that hover began, in seconds
 ## Canvas item the drawing functions draw on: one of the layers below.
 var _ci: CanvasItem = self
 ## Child canvas items in drawing order, each {"node", "key"}. Every redraw
@@ -438,6 +443,7 @@ func _draw_layer(layer_name: String, layer: CanvasItem) -> void:
 		"overlay":
 			if not game.hover_info.is_empty() and game.drag == null and game.phase != game.Phase.RESOLVE:
 				_draw_hover_card(game.hover_info)
+			_draw_upgrade_tooltip()
 			_draw_loss_rewards()
 			_draw_harvest()
 			_draw_enemy_preparation()
@@ -839,8 +845,107 @@ func _draw_scroll_rod(y: float) -> void:
 		Shapes.circle(_ci, Vector2(x, y), 6, Icons.GOLD)
 
 
-## One wand upgrade: its icon, its starting-charge pips for the charges
-## upgrade, then the next level's price in coins or a check once maxed.
+## Wand upgrade row under the mouse, or -1. Only on the settled, unrolled scroll.
+func hovered_upgrade() -> int:
+	if game.phase != game.Phase.PREP or game.drag != null or game.shop_out > 0.0 or game.scroll_open < 1.0:
+		return -1
+	var mouse := get_global_mouse_position()
+	for i in Rules.WAND_UPGRADES.size():
+		if upgrade_rect(i).has_point(mouse):
+			return i
+	return -1
+
+
+## Card left of the hovered wand upgrade row: the same short scene played side by
+## side at the current level (dim frame) and at the next level (gold frame),
+## restarting when the hovered row changes. A maxed upgrade compares its last
+## two levels. No price: the row already shows it.
+func _draw_upgrade_tooltip() -> void:
+	var i := hovered_upgrade()
+	var now := Time.get_ticks_msec() / 1000.0
+	if i != _tooltip_row:
+		_tooltip_row = i
+		_tooltip_start = now
+	if i < 0:
+		return
+	var id := Rules.WAND_UPGRADES[i]
+	var row := upgrade_rect(i)
+	var card := Rect2(Vector2(SCROLL_X.x - 24 - TOOLTIP_SIZE.x, row.get_center().y - TOOLTIP_SIZE.y * 0.5), TOOLTIP_SIZE)
+	var tip := PackedVector2Array([Vector2(card.end.x - 1, row.get_center().y - 9), Vector2(row.position.x - 2, row.get_center().y),
+		Vector2(card.end.x - 1, row.get_center().y + 9)])
+	_ci.draw_colored_polygon(tip, Color(0.08, 0.06, 0.05, 0.96))
+	_ci.draw_rect(card, Color(0.08, 0.06, 0.05, 0.96))
+	_ci.draw_rect(card, Color(0.42, 0.29, 0.18), false, 2.0)
+	var level := mini(game.player.upgrade_level(id), Rules.WAND_UPGRADE_COSTS[id].size() - 1)
+	var t := now - _tooltip_start
+	var before := Rect2(card.position + Vector2(10, 10), TOOLTIP_PANEL)
+	var after := Rect2(Vector2(card.end.x - 10 - TOOLTIP_PANEL.x, card.position.y + 10), TOOLTIP_PANEL)
+	_ci.draw_rect(before, Color(0.12, 0.09, 0.07))
+	_ci.draw_rect(after, Color(0.15, 0.1, 0.2))
+	_draw_upgrade_scene(id, Rules.wand_value(id, level), before.get_center(), t)
+	_draw_upgrade_scene(id, Rules.wand_value(id, level + 1), after.get_center(), t)
+	_ci.draw_rect(before, Color(0, 0, 0, 0.3))
+	_ci.draw_rect(before, Color(0.35, 0.29, 0.23), false, 2.0)
+	_ci.draw_rect(after, Icons.GOLD, false, 2.5)
+	Icons.arrow_right(_ci, card.get_center(), 9, Icons.GOLD)
+
+
+## One looping tooltip scene for a wand upgrade value, centred on c, at t
+## seconds since the hover began.
+func _draw_upgrade_scene(id: String, value: float, c: Vector2, t: float) -> void:
+	match id:
+		"recharge":
+			# An empty orb recharges in `value` seconds, then shows full.
+			var progress := clampf(fmod(t, 3.6) / value, 0.0, 1.0)
+			Icons.charge_orb(_ci, c, 30, progress >= 1.0, progress)
+		"charges":
+			# Combat start: the starting orbs pop in one after another.
+			var phase := fmod(t, 2.6)
+			for k in Rules.MAX_CHARGES:
+				var p := c + Vector2((k - 1) * 36, 0)
+				var appear := clampf((phase - 0.3 - k * 0.3) / 0.2, 0.0, 1.0)
+				var shown := k < int(value) and appear > 0.0
+				Icons.charge_orb(_ci, p, 15 * (1.0 + 0.25 * sin(appear * PI)) if shown else 15.0, shown)
+		"heal":
+			# The wand blesses an ally: a green cross, then the health it gains.
+			var phase := fmod(t, 3.0)
+			var token := c + Vector2(0, -14)
+			Icons.token(_ci, "peasant", token, 24, 0)
+			_draw_wand_zap(token, phase)
+			var gain := smoothstep(0.35, 0.9, phase)
+			if phase > 0.35:
+				var s := 7.0 * minf(1.0, (phase - 0.35) / 0.15)
+				var cross := token + Vector2(28, -18)
+				Shapes.line(_ci, cross + Vector2(-s, 0), cross + Vector2(s, 0), Color(0.5, 1, 0.65), 4.0)
+				Shapes.line(_ci, cross + Vector2(0, -s), cross + Vector2(0, s), Color(0.5, 1, 0.65), 4.0)
+			var bar := Rect2(c + Vector2(-44, 26), Vector2(88, 10))
+			_ci.draw_rect(bar, Color(0.16, 0.1, 0.1))
+			_ci.draw_rect(Rect2(bar.position, Vector2(bar.size.x * 0.4, bar.size.y)), Color(0.29, 0.54, 0.23))
+			_ci.draw_rect(Rect2(bar.position + Vector2(bar.size.x * 0.4, 0), Vector2(bar.size.x * value * gain, bar.size.y)), Color(0.5, 1, 0.65))
+		"hex":
+			# The wand hexes an enemy: it spins dazed while the ring drains for
+			# `value` seconds.
+			var phase := fmod(t, 5.4)
+			var token := c + Vector2(0, 6)
+			Icons.token(_ci, "guardian", token, 24, 1)
+			_draw_wand_zap(token, phase)
+			var stunned := phase - 0.3
+			if stunned > 0.0 and stunned < value:
+				var left := 1.0 - stunned / value
+				Shapes.arc(_ci, token, 33, -PI / 2, -PI / 2 + TAU * left, 32, Icons.MAGIC.lightened(0.45), 3.0, true)
+				Icons.stun_spiral(_ci, token + Vector2(0, -36), 9, -t * 6.0)
+
+
+## Brief star flash on a creature as the wand's spell lands, at the start of a
+## scene loop.
+func _draw_wand_zap(p: Vector2, phase: float) -> void:
+	if phase < 0.35:
+		var k := phase / 0.35
+		Icons.star(_ci, p, 8.0 + 16.0 * k, Color(Icons.MAGIC.lightened(0.5), 1.0 - k))
+
+
+## One wand upgrade: its icon (the charges icon also shows the current starting
+## charges), then the next level's price in coins or a check once maxed.
 func _draw_upgrade_row(id: String, r: Rect2) -> void:
 	var player: WizardState = game.player
 	var maxed := player.upgrade_maxed(id)
@@ -852,10 +957,7 @@ func _draw_upgrade_row(id: String, r: Rect2) -> void:
 	_ci.draw_rect(r, fill)
 	_ci.draw_rect(r, Icons.GOLD if affordable else Color(0.48, 0.31, 0.66), false, 2.5 if affordable else 1.5)
 	var mid := r.position.y + r.size.y * 0.5
-	Icons.wand_upgrade(_ci, id, Vector2(r.position.x + 26, mid), 13)
-	if id == "charges":
-		for k in Rules.MAX_CHARGES:
-			Icons.charge_orb(_ci, Vector2(r.position.x + 60 + k * 20, mid), 7, k < player.start_charges())
+	Icons.wand_upgrade(_ci, id, Vector2(r.position.x + 10, mid), 13, player.start_charges())
 	if maxed:
 		var check := Vector2(r.end.x - 30, mid)
 		Shapes.line(_ci, check + Vector2(-10, 0), check + Vector2(-2, 8), Color(0.5, 1, 0.65), 3, true)

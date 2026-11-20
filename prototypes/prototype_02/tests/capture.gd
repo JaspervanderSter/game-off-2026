@@ -87,6 +87,11 @@ func _ready() -> void:
 	get_viewport().warp_mouse(Rules.FIGHT_CENTER)
 	await _frames(3)
 	await _shot("02e_fight_hover")
+	# Each wand upgrade tooltip, mid-scene.
+	for i in Rules.WAND_UPGRADES.size():
+		get_viewport().warp_mouse(Hud.upgrade_rect(i).get_center())
+		await _seconds(1.0)
+		await _shot("02f_upgrade_tooltip_%d" % i)
 	get_viewport().warp_mouse(Vector2(340, 650))
 	game.start_combat()
 	await _seconds(2.0)

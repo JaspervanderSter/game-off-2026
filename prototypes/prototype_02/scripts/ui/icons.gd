@@ -571,31 +571,48 @@ static func wand(ci: CanvasItem, p: Vector2, r: float) -> void:
 	star(ci, p + Vector2(r * 0.5, -r * 0.5), r * 0.42, MAGIC.lightened(0.3))
 
 
-## Icon of a wand upgrade (Rules.WAND_UPGRADES): wand and circular arrow for the
-## recharge, an orb with a plus for the starting charges, a green cross for the
-## allied heal and an hourglass for the enemy hex stun.
-static func wand_upgrade(ci: CanvasItem, id: String, p: Vector2, r: float) -> void:
+## Icon of a wand upgrade (Rules.WAND_UPGRADES), drawn rightward from its
+## left-middle point, r tall on each side:
+##   recharge  a recharging orb with speed lines
+##   charges   three orbs: the starting ones filled, then the one the next level
+##             adds, filled and ringed in gold under a gold plus (all filled once maxed)
+##   heal      the wand beside a green cross
+##   hex       the wand beside a stun spiral
+static func wand_upgrade(ci: CanvasItem, id: String, left: Vector2, r: float, charges := 1) -> void:
 	match id:
 		"recharge":
-			wand(ci, p + Vector2(-r * 0.45, r * 0.05), r * 0.95)
-			restart(ci, p + Vector2(r * 0.6, 0), r * 0.5, MAGIC.lightened(0.4))
+			for i in 3:
+				var y := (i - 1) * r * 0.45
+				Shapes.line(ci, left + Vector2(r * (0.0 if i == 1 else 0.3), y), left + Vector2(r * 0.95, y), Color(0.95, 0.92, 0.85), r * 0.15, true)
+			charge_orb(ci, left + Vector2(r * 2.1, 0), r * 0.92, false, 0.75)
 		"charges":
-			charge_orb(ci, p + Vector2(-r * 0.15, r * 0.15), r * 0.75, true)
-			var plus := p + Vector2(r * 0.72, -r * 0.62)
-			Shapes.line(ci, plus + Vector2(-r * 0.32, 0), plus + Vector2(r * 0.32, 0), GOLD, r * 0.2)
-			Shapes.line(ci, plus + Vector2(0, -r * 0.32), plus + Vector2(0, r * 0.32), GOLD, r * 0.2)
-		"heal", "hex":
-			Shapes.circle(ci, p, r, Color(0.1, 0.07, 0.15))
-			Shapes.arc(ci, p, r, 0, TAU, 20, MAGIC, 2.0, true)
-			if id == "heal":
-				var green := Color(0.5, 1, 0.65)
-				Shapes.line(ci, p + Vector2(-r * 0.55, 0), p + Vector2(r * 0.55, 0), green, r * 0.3)
-				Shapes.line(ci, p + Vector2(0, -r * 0.55), p + Vector2(0, r * 0.55), green, r * 0.3)
-			else:
-				var sand := MAGIC.lightened(0.45)
-				ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.45, -r * 0.55), p + Vector2(r * 0.45, -r * 0.55), p]), sand)
-				ci.draw_colored_polygon(PackedVector2Array([p, p + Vector2(r * 0.45, r * 0.55), p + Vector2(-r * 0.45, r * 0.55)]), sand)
-				star(ci, p + Vector2(r * 0.8, -r * 0.8), r * 0.35, GOLD)
+			for i in Rules.MAX_CHARGES:
+				var p := left + Vector2(r * 0.7 + i * r * 1.55, r * 0.12)
+				if i == charges:
+					Shapes.arc(ci, p, r * 0.8, 0, TAU, 20, GOLD, r * 0.12, true)
+					var plus := p + Vector2(r * 0.75, -r * 0.82)
+					Shapes.line(ci, plus + Vector2(-r * 0.3, 0), plus + Vector2(r * 0.3, 0), GOLD, r * 0.18)
+					Shapes.line(ci, plus + Vector2(0, -r * 0.3), plus + Vector2(0, r * 0.3), GOLD, r * 0.18)
+				charge_orb(ci, p, r * 0.62, i <= charges)
+		"heal":
+			wand(ci, left + Vector2(r * 0.95, 0), r * 1.2)
+			var c := left + Vector2(r * 2.55, 0)
+			var green := Color(0.5, 1, 0.65)
+			Shapes.line(ci, c + Vector2(-r * 0.62, 0), c + Vector2(r * 0.62, 0), green, r * 0.38)
+			Shapes.line(ci, c + Vector2(0, -r * 0.62), c + Vector2(0, r * 0.62), green, r * 0.38)
+		"hex":
+			wand(ci, left + Vector2(r * 0.95, 0), r * 1.2)
+			stun_spiral(ci, left + Vector2(r * 2.6, 0), r * 0.78)
+
+
+## Stun spiral: a curl winding out from its centre over about 1.6 turns.
+static func stun_spiral(ci: CanvasItem, c: Vector2, r: float, rotation := 0.0, col := MAGIC.lightened(0.45)) -> void:
+	var points := PackedVector2Array()
+	var turns := 3.2 * PI
+	for i in 33:
+		var a := turns * i / 32.0
+		points.append(c + Vector2.from_angle(a + rotation) * r * (0.12 + 0.88 * a / turns))
+	Shapes.polyline(ci, points, col, r * 0.2, true)
 
 
 static func crown(ci: CanvasItem, p: Vector2, r: float) -> void:

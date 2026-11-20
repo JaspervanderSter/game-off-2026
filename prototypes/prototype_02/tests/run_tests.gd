@@ -1836,6 +1836,12 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 	var hud: Hud = game.hud
 	game.player.creatures.clear()
 	check(not hud._fight_ready(), "fight button is idle without a fielded creature")
+	check(Rules.wand_value("recharge", 0) == Rules.RECHARGE_TIME and Rules.wand_value("recharge", 1) == Rules.UPGRADED_RECHARGE_TIME
+		and Rules.wand_value("charges", 0) == 1 and Rules.wand_value("charges", 2) == 3
+		and Rules.wand_value("heal", 1) == Rules.UPGRADED_SHIFT_HEAL and Rules.wand_value("hex", 0) == Rules.ENEMY_SHIFT_STUN,
+		"tooltip scenes read each wand upgrade value per level")
+	game.scroll_open = 0.0
+	check(hud.hovered_upgrade() == -1, "no wand upgrade tooltip while the scroll is rolled up")
 	game.new_duel()
 	check(not game.player.shift_recharge_upgraded and game.player.upgrades.is_empty(),
 		"new duel resets permanent duel upgrades")

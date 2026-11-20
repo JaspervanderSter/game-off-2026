@@ -63,6 +63,21 @@ const FIGHT_CENTER := Vector2(1188, 652)
 const FIGHT_RADIUS := 46.0
 
 
+## Effect of a wand upgrade at a level (0 = not bought): recharge seconds,
+## starting charges, allied heal fraction or hex stun seconds.
+static func wand_value(id: String, level: int) -> float:
+	match id:
+		"recharge":
+			return UPGRADED_RECHARGE_TIME if level > 0 else RECHARGE_TIME
+		"charges":
+			return mini(START_CHARGES + level, MAX_CHARGES)
+		"heal":
+			return UPGRADED_SHIFT_HEAL if level > 0 else SHIFT_HEAL
+		"hex":
+			return UPGRADED_ENEMY_SHIFT_STUN if level > 0 else ENEMY_SHIFT_STUN
+	return 0.0
+
+
 static func income(round_num: int) -> int:
 	return FIRST_INCOME + round_num - 1
 
