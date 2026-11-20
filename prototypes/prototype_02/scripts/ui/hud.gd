@@ -460,19 +460,14 @@ func _draw_layer(layer_name: String, layer: CanvasItem) -> void:
 
 ## Invite an allied cast, then an enemy cast, without blocking the duel.
 func _draw_learning_cast_hint() -> void:
-	if not game.player.learning_duel or game.phase != game.Phase.COMBAT:
+	var unit: Unit = game.learning_cast_target()
+	if unit == null:
 		return
-	var battle: Battle = game.battle
-	if not game.player.can_cast() or not battle.spells[0].can_cast() or game.learning_cast_tried:
-		return
-	var target_team := 0 if not game.ruleset.has(Ruleset.HEX) else 1
-	for unit in battle.living(target_team):
-		if unit.immune_t > 0.0:
-			continue
-		var p: Vector2 = Rules.BOARD_POS + unit.position
-		Icons.shift_reticle(_ci, p, 22, battle.time, target_team == 0, true)
-		Icons.wand(_ci, p + Vector2(36, -40 + sin(battle.time * 3.0) * 6), 18)
-		return
+	# Real time: the duel may be stopped while the cast waits.
+	var t := Time.get_ticks_msec() / 1000.0
+	var p: Vector2 = Rules.BOARD_POS + unit.position
+	Icons.shift_reticle(_ci, p, 22, t, unit.team == 0, true)
+	Icons.wand(_ci, p + Vector2(36, -40 + sin(t * 3.0) * 6), 18)
 
 
 func _panel(r: Rect2, col := Color(0.12, 0.09, 0.08, 0.85)) -> void:

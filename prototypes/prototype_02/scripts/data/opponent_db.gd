@@ -10,9 +10,11 @@ const ZONE_SIZE := 5
 const ZONE_LEVELS := [Difficulty.APPRENTICE, Difficulty.ADEPT, Difficulty.ARCHMAGE]
 ## id: drawing in Icons.opponent; magic: casts the shapeshift once the wand is
 ## introduced; rule: the Ruleset rule it introduces ("" for none); pack: the
-## CreatureDB.PACKS name of its opening ("" = forest army or archmage deck).
+## CreatureDB.PACKS name of its opening ("" = forest army or archmage deck);
+## hearts: the opponent's own starting hearts when they differ from its zone's
+## (the hunter falls after one won round, so the first duel stays short).
 const OPPONENTS := [
-	{"id": "hunter", "name": "Hunter", "magic": false, "rule": "", "pack": ""},
+	{"id": "hunter", "name": "Hunter", "magic": false, "rule": "", "pack": "", "hearts": 1},
 	{"id": "druid", "name": "Druid", "magic": true, "rule": Ruleset.WAND, "pack": ""},
 	{"id": "lumberjack", "name": "Lumberjack", "magic": false, "rule": Ruleset.SHOP, "pack": ""},
 	{"id": "swamp_witch", "name": "Swamp witch", "magic": true, "rule": Ruleset.HEX, "pack": ""},

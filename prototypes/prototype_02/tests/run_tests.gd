@@ -53,6 +53,7 @@ func _ready() -> void:
 	_test_journey_rules()
 	_test_forest_lessons()
 	_test_rule_spotlight()
+	_test_learning_pause()
 	_test_day_night_cycle()
 	_test_journey_health()
 	_test_journey_discovery()
@@ -2323,9 +2324,10 @@ func _test_journey_navigation() -> void:
 		var expected: String = ["forest", "town", "school"][OpponentDB.zone(index)]
 		check(game.board_view.environment == expected, "stage %d selects %s tiles" % [index, expected])
 		var hearts: int = [3, 6, 10][OpponentDB.zone(index)]
-		check(game.player.hp == hearts and game.enemy.hp == hearts
-			and game.player.max_hp == hearts and game.enemy.max_hp == hearts,
-			"stage %d gives both wizards %d full hearts" % [index, hearts])
+		var enemy_hearts: int = 1 if index == 0 else hearts # the hunter falls after one round
+		check(game.player.hp == hearts and game.enemy.hp == enemy_hearts
+			and game.player.max_hp == hearts and game.enemy.max_hp == enemy_hearts,
+			"stage %d gives the player %d and the opponent %d full hearts" % [index, hearts, enemy_hearts])
 		game.choose_pack(0)
 		check(game.board_view.environment == expected, "stage %d keeps its terrain during preparation" % index)
 		if index in [0, 5, 10]:
@@ -2404,9 +2406,11 @@ func _test_journey_health() -> void:
 		game.player.max_hp = hearts
 		game.battle = Battle.new()
 		game.add_child(game.battle)
+		var enemy_hearts: int = 1 if index == 0 else hearts
+		check(game.enemy.max_hp == enemy_hearts, "the hunter has a single heart; other opponents their zone's")
 		game._on_battle_ended({"winner": 0, "survivors": hearts * 2 + 2})
-		check(game.enemy.hp == 0 and game.last_damage == hearts,
-			"lethal damage is capped at %d remaining hearts" % hearts)
+		check(game.enemy.hp == 0 and game.last_damage == enemy_hearts,
+			"lethal damage is capped at %d remaining hearts" % enemy_hearts)
 		game._finish_round()
 		check(game.phase == game.Phase.OVER and index in game.journey.completed,
 			"a %d-heart duel ends and records the stage victory" % hearts)
@@ -2590,6 +2594,37 @@ func _test_journey_rules() -> void:
 	var hunter_player := WizardState.new(0)
 	hunter_player.rules = OpponentDB.ruleset(0)
 	check(not hunter_player.can_cast(), "the player has no wand before the druid")
+
+
+## The druid's and the witch's duels stop until the player tries their cast;
+## other forest duels keep running.
+func _test_learning_pause() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.set_physics_process(false)
+	game.difficulty_progress_path = "user://learning_pause_test_%d.cfg" % OS.get_process_id()
+	game.journey.completed.assign(range(Journey.stage_count()))
+	for index in [1, 2, 3]:
+		game.new_duel()
+		game.choose_stage(index)
+		game.choose_pack(0)
+		game._advance_enemy_preparation(1.0)
+		game.start_combat()
+		var stops: bool = index != 2
+		check(game.awaiting_learning_cast() == stops and game.learning_cast_target() != null,
+			"forest %d %s while its cast cue shows" % [index, "stops" if stops else "keeps running"])
+		var before: float = game.battle.time
+		game._physics_process(0.5)
+		check((game.battle.time == before) == stops, "forest %d combat time %s" % [index, "is frozen" if stops else "runs"])
+		if stops:
+			var target: Unit = game.learning_cast_target()
+			check(target.team == (0 if index == 1 else 1), "the cue aims at an ally, then at a foe")
+			game._cast_at(Rules.BOARD_POS + target.position)
+			check(game.learning_cast_tried and not game.awaiting_learning_cast(), "the cast releases the duel")
+			game._physics_process(0.5)
+			check(game.battle.time > before, "combat resumes after the lesson cast")
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://learning_pause_test_%d.cfg" % OS.get_process_id()))
 
 
 ## A journey duel spotlights its opponent's rule once, when it first shows up;

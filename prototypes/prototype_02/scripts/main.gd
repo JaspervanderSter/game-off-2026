@@ -192,10 +192,10 @@ func choose_difficulty(level: int) -> void:
 func _start_duel() -> void:
 	learning_cast_tried = false
 	spotlight.reset(journey.rule_to_introduce(opponent))
-	var hearts := Journey.hearts_for_stage(journey.selected)
+	player.max_hp = Journey.hearts_for_stage(journey.selected)
+	enemy.max_hp = Journey.enemy_hearts_for_stage(journey.selected)
 	for state in states:
-		state.max_hp = hearts
-		state.hp = float(hearts)
+		state.hp = float(state.max_hp)
 	board_view.set_environment(Journey.environment_for_stage(journey.selected))
 	music.transition_to("prep")
 	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
@@ -356,7 +356,8 @@ func _physics_process(dt: float) -> void:
 		Phase.PREP:
 			_advance_enemy_preparation(dt)
 		Phase.COMBAT:
-			battle.step(dt * spotlight.time_scale())
+			if not awaiting_learning_cast():
+				battle.step(dt * spotlight.time_scale())
 		Phase.RESOLVE:
 			_resolve_t -= dt
 			if _resolve_t <= 0.0:
@@ -839,6 +840,27 @@ func _process(dt: float) -> void:
 				for j in forms.size():
 					if Hud.pack_token_pos(i, j, forms.size()).distance_to(mouse) < Hud.pack_token_radius(forms.size()):
 						hover_info = {"form": forms[j], "team": 0, "pos": mouse}
+
+
+## Forest lesson cue: the creature the player is invited to shapeshift (an ally
+## before hexes, an enemy afterwards), or null once tried or when none is ready.
+func learning_cast_target() -> Unit:
+	if not player.learning_duel or phase != Phase.COMBAT or battle == null or learning_cast_tried:
+		return null
+	if not player.can_cast() or not battle.spells[0].can_cast():
+		return null
+	for u in battle.living(1 if ruleset.has(Ruleset.HEX) else 0):
+		if u.immune_t <= 0.0 and battle.can_target(0, u):
+			return u
+	return null
+
+
+## The druid's and the swamp witch's duels stop the fight while their cast
+## waits, so the lesson cannot be skipped by doing nothing.
+func awaiting_learning_cast() -> bool:
+	if opponent < 0 or OpponentDB.get_opponent(opponent).rule not in [Ruleset.WAND, Ruleset.HEX]:
+		return false
+	return learning_cast_target() != null
 
 
 ## Starts the spotlight on the rule waiting in this duel and remembers it.

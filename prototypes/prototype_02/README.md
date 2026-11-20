@@ -682,7 +682,11 @@ teams use these humans; enemies field fixed armies of one or two creatures and
 never shop. Magical enemies demonstrate one cast after six seconds per round.
 Damage cannot kill the player's last creature in forest; normal battles retain
 lethal damage. The empty bench and its drop targets stay hidden until shopping.
-An animated wand invites the first allied cast, then the first enemy cast.
+An animated wand invites the first allied cast, then the first enemy cast. In
+the druid's and the swamp witch's duels, combat stops while that cue waits and
+resumes once the player has tried the cast (`awaiting_learning_cast()` in
+`main.gd`). The hunter has a single heart (`"hearts"` in `OpponentDB`), so the
+first duel ends after one won round.
 
 `Ruleset.FOREST_OUTCOMES` is an explicit closed six-form practice graph, using the
 normal 55/30/15 priorities. Rolls, hover previews and AI evaluations use the duel's

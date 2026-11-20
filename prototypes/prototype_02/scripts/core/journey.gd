@@ -25,6 +25,12 @@ static func environment_for_stage(index: int) -> String:
 static func hearts_for_stage(index: int) -> int:
 	return HEARTS[OpponentDB.zone(index)] if index >= 0 and index < stage_count() else Rules.WIZARD_HP
 
+## The opponent's starting hearts: its zone's, unless it has its own.
+static func enemy_hearts_for_stage(index: int) -> int:
+	if index < 0 or index >= stage_count():
+		return hearts_for_stage(index)
+	return OpponentDB.get_opponent(index).get("hearts", hearts_for_stage(index))
+
 func available(index: int) -> bool:
 	return index >= 0 and index < stage_count() and (index == 0 or index in completed or index - 1 in completed)
 

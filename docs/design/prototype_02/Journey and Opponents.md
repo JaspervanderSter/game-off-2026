@@ -119,7 +119,15 @@ Current implementation defaults, available for playtest revision:
   Show it with shopping, or if reserves already exist.
 - An animated wand and target ring invite an allied cast from the druid, then an
   enemy cast from the witch. The cue stops after the corresponding player cast.
-  No lesson popup or mandatory cast blocks progress.
+  No lesson popup blocks progress.
+- **Confirmed after playtest (20 November 2026):** the hunter has a **single
+  heart**, so the first duel ends after one won round; the player keeps the
+  forest's three.
+- **Confirmed after playtest:** in the druid's duel, combat time **stops while
+  the cast cue waits** and resumes once the player has tried the allied cast, so
+  the lesson cannot be passed by doing nothing. The swamp witch's duel does the
+  same for its hex (implementation choice, same reasoning). Other forest duels
+  keep the non-blocking cue.
 
 ### Closed forest transformation graph
 
