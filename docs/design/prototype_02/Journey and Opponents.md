@@ -138,7 +138,7 @@ Current implementation defaults, available for playtest revision:
   same for its hex (implementation choice, same reasoning).
 - **Confirmed after playtest:** the invitation ring appears only in the duel
   that teaches its cast and only until the player has tried that cast once,
-  ever (saved as `journey.cast_lessons`). It no longer appears with the
+  ever (saved as `journey.lessons_done`). It no longer appears with the
   lumberjack or the archdruid, nor when replaying the druid or the witch.
 
 ### Closed forest transformation graph
@@ -305,7 +305,10 @@ thief's duel, a looping demonstration now shows the gesture itself until the
 player's first merge of the duel: a translucent copy of the creature rises from
 one copy (a benched one first, or an identical shop offer) along a dotted gold
 arc with an arrowhead, lands on the identical creature, which pulses in gold
-while its merge pips fill by one. No text; it never blocks.
+while its merge pips fill by one. No text; it never blocks. Confirmed after a
+later playtest: like the cast invitation, it plays only until the player's first
+merge against the thief, ever (saved in `journey.lessons_done`), and never again
+when the thief is replayed.
 
 The same playtest reported that a second identical creature could not be placed
 on an empty cell. The cause was the existing limit of **six creatures on the

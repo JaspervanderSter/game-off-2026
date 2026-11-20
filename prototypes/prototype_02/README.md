@@ -692,7 +692,7 @@ An animated wand invites the first allied cast, then the first enemy cast. In
 the druid's and the swamp witch's duels, combat stops while that cue waits and
 resumes once the player has tried the cast (`awaiting_learning_cast()` in
 `main.gd`). The cue appears only in those two duels, until that cast has been
-tried once (saved as `journey.cast_lessons`). The hunter has a single heart (`"hearts"` in `OpponentDB`), so the
+tried once (saved as `journey.lessons_done`). The hunter has a single heart (`"hearts"` in `OpponentDB`), so the
 first duel ends after one won round.
 
 `Ruleset.FOREST_OUTCOMES` is an explicit closed six-form practice graph, using the
@@ -721,7 +721,7 @@ Merge pips and harvest coins appear only in duels where their rule exists.
 
 In the thief's duel a looping demonstration (`main.merge_demo()`, drawn by the
 HUD) shows a translucent copy travelling along a dotted gold arc onto an
-identical creature, whose merge pips fill, until the player's first merge.
+identical creature, whose merge pips fill, until the player's first merge there, ever (saved in `journey.lessons_done`).
 The board holds at most six creatures (`Rules.FIELD_CAP`): when it is full,
 empty cells stay dark under a drag, the capacity pips under the board are
 ringed in red, and a refused drop makes them blink.

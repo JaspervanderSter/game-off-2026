@@ -2634,6 +2634,7 @@ func _test_merge_lesson_and_full_board() -> void:
 	game.set_physics_process(false)
 	game.difficulty_progress_path = "user://merge_lesson_test_%d.cfg" % OS.get_process_id()
 	game.journey.completed.assign(range(Journey.stage_count()))
+	game.journey.lessons_done.clear()
 	game.choose_stage(7)
 	game.choose_pack(0)
 	game.enemy_preparing = false
@@ -2662,6 +2663,20 @@ func _test_merge_lesson_and_full_board() -> void:
 	game._left_press(demo.from)
 	game._left_release(demo.to)
 	check(game.merge_lesson_done and game.merge_demo().is_empty(), "the first merge ends the demonstration")
+	check(Ruleset.MERGE in game.journey.lessons_done, "the merge lesson is remembered")
+	# Replaying the thief: an identical pair, but no demonstration any more.
+	game.new_duel()
+	game.choose_stage(7)
+	game.choose_pack(0)
+	game.enemy_preparing = false
+	game.shop_out = 0.0
+	game.player.offers[0] = game.player.creatures[0].form_id
+	check(game.merge_demo().is_empty(), "the merge demonstration never returns once done")
+	var legacy := ConfigFile.new()
+	legacy.set_value("journey", "cast_lessons", [Ruleset.WAND])
+	var restored := Journey.new()
+	restored.restore(legacy, Difficulty.APPRENTICE)
+	check(restored.lessons_done == [Ruleset.WAND], "lessons saved under the earlier key are kept")
 	# Full board: an empty cell refuses a new creature and the pips flash.
 	while game.player.field_count() < Rules.FIELD_CAP:
 		game.player.add_creature("guardian")
@@ -2688,7 +2703,7 @@ func _test_learning_pause() -> void:
 	game.set_physics_process(false)
 	game.difficulty_progress_path = "user://learning_pause_test_%d.cfg" % OS.get_process_id()
 	game.journey.completed.assign(range(Journey.stage_count()))
-	game.journey.cast_lessons.clear()
+	game.journey.lessons_done.clear()
 	for index in [1, 2, 3]:
 		game.new_duel()
 		game.choose_stage(index)
@@ -2708,7 +2723,7 @@ func _test_learning_pause() -> void:
 			check(game.learning_cast_tried and not game.awaiting_learning_cast(), "the cast releases the duel")
 			game._physics_process(0.5)
 			check(game.battle.time > before, "combat resumes after the lesson cast")
-	check(game.journey.cast_lessons == [Ruleset.WAND, Ruleset.HEX], "tried lesson casts are remembered")
+	check(game.journey.lessons_done == [Ruleset.WAND, Ruleset.HEX], "tried lesson casts are remembered")
 	for index in [1, 3]:
 		game.new_duel()
 		game.choose_stage(index)
@@ -2721,7 +2736,7 @@ func _test_learning_pause() -> void:
 	var config := ConfigFile.new()
 	game.journey.save(config)
 	restored.restore(config, Difficulty.APPRENTICE)
-	check(restored.cast_lessons == game.journey.cast_lessons, "tried lesson casts are saved")
+	check(restored.lessons_done == game.journey.lessons_done, "tried lesson casts are saved")
 	game.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://learning_pause_test_%d.cfg" % OS.get_process_id()))
 

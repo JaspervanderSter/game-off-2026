@@ -7,9 +7,9 @@ var completed: Array[int] = []
 var selected := -1
 ## Rules whose spotlight has already played (RuleSpotlight): once per rule.
 var introduced: Array[String] = []
-## Casts the player has tried in their lesson (Ruleset.WAND, Ruleset.HEX): the
-## invitation ring never shows again for them.
-var cast_lessons: Array[String] = []
+## Gestures the player has performed in their lesson (Ruleset.WAND and
+## Ruleset.HEX casts, a Ruleset.MERGE): their cue never shows again.
+var lessons_done: Array[String] = []
 
 ## The rule opponent `index` still has to introduce: "" once it was shown, once
 ## the opponent was beaten, or when it introduces none.
@@ -40,17 +40,18 @@ func available(index: int) -> bool:
 func restore(config: ConfigFile, legacy_difficulty: int) -> void:
 	completed.clear()
 	introduced.clear()
-	cast_lessons.clear()
+	lessons_done.clear()
 	var shown = config.get_value("journey", "introduced", [])
 	if shown is Array:
 		for rule in shown:
 			if rule is String and rule not in introduced:
 				introduced.append(rule)
-	var practised = config.get_value("journey", "cast_lessons", [])
+	# "cast_lessons" is this list's earlier name, from before the merge lesson.
+	var practised = config.get_value("journey", "lessons_done", config.get_value("journey", "cast_lessons", []))
 	if practised is Array:
 		for rule in practised:
-			if rule is String and rule not in cast_lessons:
-				cast_lessons.append(rule)
+			if rule is String and rule not in lessons_done:
+				lessons_done.append(rule)
 	if config.has_section_key("journey", "opponents"):
 		var saved = config.get_value("journey", "opponents", [])
 		if saved is Array:
@@ -88,7 +89,7 @@ func restore(config: ConfigFile, legacy_difficulty: int) -> void:
 func save(config: ConfigFile) -> void:
 	config.set_value("journey", "opponents", completed)
 	config.set_value("journey", "introduced", introduced)
-	config.set_value("journey", "cast_lessons", cast_lessons)
+	config.set_value("journey", "lessons_done", lessons_done)
 
 func record_win() -> void:
 	if available(selected) and selected not in completed:

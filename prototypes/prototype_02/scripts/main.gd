@@ -279,14 +279,14 @@ func _save_difficulty_progress(level: int) -> bool:
 func _reset_difficulty_progress() -> void:
 	var previous := journey.completed.duplicate()
 	var shown := journey.introduced.duplicate()
-	var practised := journey.cast_lessons.duplicate()
+	var practised := journey.lessons_done.duplicate()
 	journey.completed.clear()
 	journey.introduced.clear()
-	journey.cast_lessons.clear()
+	journey.lessons_done.clear()
 	if not _save_difficulty_progress(Difficulty.APPRENTICE):
 		journey.completed.assign(previous)
 		journey.introduced.assign(shown)
-		journey.cast_lessons.assign(practised)
+		journey.lessons_done.assign(practised)
 		Sfx.play("ui/fail")
 		return
 	difficulty = Difficulty.APPRENTICE
@@ -425,8 +425,8 @@ func _on_unit_transformed(u: Unit, caster: int, _from: String) -> void:
 	if caster == 0 and u.team == (1 if ruleset.has(Ruleset.HEX) else 0):
 		learning_cast_tried = true
 		var lesson := _cast_lesson()
-		if lesson != "" and lesson not in journey.cast_lessons:
-			journey.cast_lessons.append(lesson)
+		if lesson != "" and lesson not in journey.lessons_done:
+			journey.lessons_done.append(lesson)
 			_save_difficulty_progress(unlocked_difficulty)
 	# Animal bonus: the first creature its own wizard turns into a bonus form.
 	if spotlight.pending() and spotlight.rule == Ruleset.ANIMAL_BONUS and caster == u.team \
@@ -794,6 +794,10 @@ func _release_shop_offer(pos: Vector2) -> void:
 
 func _merge_feedback(recipient: OwnedCreature, previous_stars: int) -> void:
 	merge_lesson_done = true
+	if opponent >= 0 and OpponentDB.get_opponent(opponent).rule == Ruleset.MERGE \
+			and Ruleset.MERGE not in journey.lessons_done:
+		journey.lessons_done.append(Ruleset.MERGE)
+		_save_difficulty_progress(unlocked_difficulty)
 	var ranked_up := recipient.stars > previous_stars
 	var centre := Rules.BOARD_POS + Rules.cell_center(recipient.cell) if recipient.is_fielded() else bench_slot_rect(recipient.slot).get_center()
 	fx.add("merge" if ranked_up else "combine", centre - Rules.BOARD_POS)
@@ -874,7 +878,7 @@ func learning_cast_target() -> Unit:
 	if not player.learning_duel or phase != Phase.COMBAT or battle == null or learning_cast_tried:
 		return null
 	var lesson := _cast_lesson()
-	if lesson == "" or lesson in journey.cast_lessons:
+	if lesson == "" or lesson in journey.lessons_done:
 		return null
 	if not player.can_cast() or not battle.spells[0].can_cast():
 		return null
@@ -962,11 +966,14 @@ func _owned_screen_position(c: OwnedCreature) -> Vector2:
 
 
 ## The thief's merge lesson: which drag to demonstrate, until the player's first
-## merge of the duel. {"from", "to" (screen positions), "target": OwnedCreature},
-## from a pair the player owns, else from an affordable identical offer; {} when
-## there is nothing to show.
+## merge in that duel, ever (saved in journey.lessons_done).
+## {"from", "to" (screen positions), "target": OwnedCreature}, from a pair the
+## player owns, else from an affordable identical offer; {} when there is
+## nothing to show.
 func merge_demo() -> Dictionary:
 	if merge_lesson_done or phase != Phase.PREP or opponent < 0 or drag != null or shop_out > 0.0:
+		return {}
+	if Ruleset.MERGE in journey.lessons_done:
 		return {}
 	if OpponentDB.get_opponent(opponent).rule != Ruleset.MERGE or not ruleset.has(Ruleset.MERGE):
 		return {}
