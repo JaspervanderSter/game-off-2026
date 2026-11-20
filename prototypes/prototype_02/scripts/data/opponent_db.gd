@@ -59,6 +59,36 @@ static func learning_packs() -> Array[int]:
 	return [0, 1, 2]
 
 
+## Town compositions: only creatures of the town roster (Ruleset.TOWN_HUMANS).
+## Familiar names keep their emblem; a form outside the town is replaced by a
+## town human, and bonus gold covers the price difference (implementation default).
+const TOWN_PACKS := [
+	{"name": "Troupe", "emblem": "song", "forms": ["guardian", "archer", "bard"], "bonus_gold": 3},
+	{"name": "Tavern", "emblem": "mug", "forms": ["bard", "peasant", "spearman"], "bonus_gold": 0},
+	{"name": "Shadows", "emblem": "moon_dagger", "forms": ["assassin", "assassin", "archer"], "bonus_gold": 2},
+	{"name": "Arcane", "emblem": "fire_ice", "forms": ["pyromancer", "frost_mage"], "bonus_gold": 3},
+	{"name": "Crusade", "emblem": "banner", "forms": ["cleric", "guardian", "spearman"], "bonus_gold": 3},
+	{"name": "Temple", "emblem": "halo", "forms": ["cleric", "cleric", "guardian"], "bonus_gold": 3},
+	{"name": "Phalanx", "emblem": "spear_wall", "forms": ["spearman", "spearman", "guardian"], "bonus_gold": 1},
+	{"name": "Village", "emblem": "pitchfork", "forms": ["peasant", "peasant"], "bonus_gold": 0},
+	{"name": "Fortress", "emblem": "frost_shield", "forms": ["guardian", "frost_mage"], "bonus_gold": 3},
+	{"name": "Hunt", "emblem": "bow", "forms": ["archer", "archer", "spearman"], "bonus_gold": 2},
+]
+
+
+## Compositions dealt against opponent `index`: the forest's learning teams, the
+## town's compositions, or the complete CreatureDB.PACKS (school, outside the journey).
+static func packs_for(index: int) -> Array:
+	if index < 0:
+		return CreatureDB.PACKS
+	match zone(index):
+		0:
+			return LEARNING_PACKS
+		1:
+			return TOWN_PACKS
+	return CreatureDB.PACKS
+
+
 static func count() -> int:
 	return OPPONENTS.size()
 
@@ -88,14 +118,16 @@ static func ruleset(index: int) -> Ruleset:
 		if rule != "":
 			rules.append(rule)
 	var result := Ruleset.new(rules)
-	result.forest_roster = is_learning_encounter(index)
+	# Forest and town keep their own rosters; the school opens all creatures.
+	result.roster = zone(index) if zone(index) <= Ruleset.TOWN else Ruleset.COMPLETE_ROSTER
 	return result
 
 
-## CreatureDB.PACKS index of the opponent's opening, or -1 to deal from its deck.
+## Index in packs_for(index) of the opponent's opening, or -1 to deal from its deck.
 static func pack_index(index: int) -> int:
 	var name: String = OPPONENTS[index].pack
-	for i in CreatureDB.PACKS.size():
-		if CreatureDB.PACKS[i].name == name:
+	var packs := packs_for(index)
+	for i in packs.size():
+		if name != "" and packs[i].name == name:
 			return i
 	return -1

@@ -645,7 +645,7 @@ func _draw() -> void:
 			var orbit := Vector2(cos(angle) * image_r, sin(angle) * 4.0)
 			Icons.star(self, p + Vector2(0, -image_r * 0.8) + orbit, 4.0)
 	Icons.merge_stars(self, Vector2(0, -image_r - 10.0), stars)
-	if hovered:
+	if hovered and battle.ruleset.has(Ruleset.MERGE):
 		Icons.merge_progress(self, Vector2(0, -image_r - 22.0), merge_copies, stars)
 	var i := 0
 	for key in statuses.keys():

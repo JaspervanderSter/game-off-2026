@@ -454,6 +454,7 @@ func _draw_layer(layer_name: String, layer: CanvasItem) -> void:
 				var p: Vector2 = game.shop_drag_position
 				Shapes.circle(_ci, p + Vector2(4, 10), 22, Color(0, 0, 0, 0.3))
 				Icons.token(_ci, game.drag.form_id, p, Rules.BODY_RADIUS * Rules.CELL * 1.1, 0, true)
+			game.spotlight.draw(_ci)
 	_ci = self
 
 
@@ -1204,8 +1205,10 @@ func _draw_hover_card(info: Dictionary) -> void:
 	var main := pos + Vector2(36, 40)
 	Icons.token(_ci, form, main, 26, team)
 	Icons.merge_stars(_ci, main + Vector2(0, 34), stars)
-	var copies: int = u.merge_copies if u != null else owned.merge_copies if owned != null else 1
-	Icons.merge_progress(_ci, main + Vector2(0, 46), copies, stars)
+	# Merge pips and harvest coins only once their rule exists in this duel.
+	if game.ruleset.has(Ruleset.MERGE):
+		var copies: int = u.merge_copies if u != null else owned.merge_copies if owned != null else 1
+		Icons.merge_progress(_ci, main + Vector2(0, 46), copies, stars)
 	if u != null:
 		if u.immune_t > 0.0:
 			Icons.immunity_ring(_ci, main, 31, u.immune_t / Rules.TARGET_IMMUNITY, u.anim_t)
@@ -1218,7 +1221,7 @@ func _draw_hover_card(info: Dictionary) -> void:
 		Icons.token(_ci, outs[i].id, op, 18, team)
 		Icons.chance_pie(_ci, op + Vector2(0, 29), 7, outs[i].chance)
 	# Harvesters: one coin per gold they bring at the start of each round.
-	var harvest := Rules.harvest_gold(form, stars)
+	var harvest := Rules.harvest_gold(form, stars) if game.ruleset.has(Ruleset.HARVEST) else 0
 	for i in harvest:
 		Icons.coin(_ci, pos + Vector2(100 + i * 15, 84), 6)
 	# Stat bars (normalised against the roster's high values).

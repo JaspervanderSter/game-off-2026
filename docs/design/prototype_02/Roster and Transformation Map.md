@@ -7,8 +7,11 @@ remain proposals for review.
 **Forest exception, 20 November 2026:** the first island now contains only Archer,
 Shield Guardian, Spearman, Rabbit, Wolf and Deer. It uses a closed practice graph
 for both wizards, including hover previews. See [[Journey and Opponents#Closed forest transformation graph]].
-The complete graph and maps below resume outside forest; they do not describe
-forest transformation routes.
+**Town exception, 20 November 2026:** the second island adds Cleric, Assassin,
+Bard, Turtle, Hedgehog and Peacock (with peasants and the two casters behind
+their rules) and uses its own closed graph. See [[Journey and Opponents#Town roster — confirmed 20 November 2026]].
+The complete graph and maps below apply only at the school and outside the
+journey; they do not describe forest or town transformation routes.
 
 ## Open the maps in Obsidian
 

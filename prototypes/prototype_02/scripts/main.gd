@@ -33,6 +33,8 @@ var opponent := -1
 ## Rules of the current duel: those its journey opponent has introduced so far.
 var ruleset := Ruleset.new()
 var learning_cast_tried := false
+## Spotlight on the rule this duel's opponent introduces, the first time it shows.
+var spotlight := RuleSpotlight.new()
 var menu_screen: Node2D
 var map_screen: Node2D
 const PACK_CHOICES := 3
@@ -40,7 +42,7 @@ const PACK_CHOICES := 3
 # duel, one for the opponent from its own deck.
 var player_deck := PackDeck.new("player")
 var enemy_deck := PackDeck.new("enemy")
-var offered_packs: Array[int] = [] # CreatureDB.PACKS indices on the three cards
+var offered_packs: Array[int] = [] # OpponentDB.packs_for(opponent) indices on the three cards
 var battle: Battle = null
 var rng := RandomNumberGenerator.new()
 var drag: OwnedCreature = null
@@ -189,6 +191,7 @@ func choose_difficulty(level: int) -> void:
 
 func _start_duel() -> void:
 	learning_cast_tried = false
+	spotlight.reset(journey.rule_to_introduce(opponent))
 	var hearts := Journey.hearts_for_stage(journey.selected)
 	for state in states:
 		state.max_hp = hearts
@@ -220,8 +223,9 @@ func _start_duel() -> void:
 ## creatures already introduced, without touching the player's deck.
 func _allowed_packs(count: int) -> Array[int]:
 	var allowed: Array[int] = []
-	for i in CreatureDB.PACKS.size():
-		if ruleset.allows_pack(CreatureDB.PACKS[i]):
+	var packs := OpponentDB.packs_for(opponent)
+	for i in packs.size():
+		if ruleset.allows_pack(packs[i]):
 			allowed.append(i)
 	var cards: Array[int] = []
 	while cards.size() < count and not allowed.is_empty():
@@ -265,9 +269,12 @@ func _save_difficulty_progress(level: int) -> bool:
 
 func _reset_difficulty_progress() -> void:
 	var previous := journey.completed.duplicate()
+	var shown := journey.introduced.duplicate()
 	journey.completed.clear()
+	journey.introduced.clear()
 	if not _save_difficulty_progress(Difficulty.APPRENTICE):
 		journey.completed.assign(previous)
+		journey.introduced.assign(shown)
 		Sfx.play("ui/fail")
 		return
 	difficulty = Difficulty.APPRENTICE
@@ -278,9 +285,7 @@ func _reset_difficulty_progress() -> void:
 
 ## `slot` is the card position (0 to 2) among the offered compositions.
 func pack_at(slot: int) -> Dictionary:
-	if OpponentDB.is_learning_encounter(opponent):
-		return OpponentDB.LEARNING_PACKS[offered_packs[slot]]
-	return CreatureDB.PACKS[offered_packs[slot]]
+	return OpponentDB.packs_for(opponent)[offered_packs[slot]]
 
 
 func choose_pack(slot: int) -> void:
@@ -297,7 +302,7 @@ func choose_pack(slot: int) -> void:
 		enemy_pack = enemy_deck.deal(1, rng)[0]
 		enemy_deck.save_state()
 	if not OpponentDB.is_learning_encounter(opponent):
-		enemy.take_starting_pack(CreatureDB.PACKS[enemy_pack])
+		enemy.take_starting_pack(OpponentDB.packs_for(opponent)[enemy_pack])
 	Sfx.play("ui/buy")
 	start_round()
 
@@ -337,6 +342,8 @@ func start_combat() -> void:
 		for y in s.harvest():
 			sources.append({"uid": y.creature.uid, "pos": Rules.BOARD_POS + Rules.cell_center(y.creature.cell), "gold": y.gold})
 		hud.begin_harvest(s.team, sources)
+		if spotlight.pending() and spotlight.rule == Ruleset.HARVEST and not sources.is_empty():
+			_spotlight(sources[0].pos, Vector2(48, 48))
 	drag = null
 	phase = Phase.COMBAT
 	music.set_frenzy_level(0)
@@ -349,7 +356,7 @@ func _physics_process(dt: float) -> void:
 		Phase.PREP:
 			_advance_enemy_preparation(dt)
 		Phase.COMBAT:
-			battle.step(dt)
+			battle.step(dt * spotlight.time_scale())
 		Phase.RESOLVE:
 			_resolve_t -= dt
 			if _resolve_t <= 0.0:
@@ -404,6 +411,10 @@ func _on_unit_died(u: Unit) -> void:
 func _on_unit_transformed(u: Unit, caster: int, _from: String) -> void:
 	if caster == 0 and u.team == (1 if ruleset.has(Ruleset.HEX) else 0):
 		learning_cast_tried = true
+	# Animal bonus: the first creature its own wizard turns into a bonus form.
+	if spotlight.pending() and spotlight.rule == Ruleset.ANIMAL_BONUS and caster == u.team \
+			and u.data.has("ally_shift"):
+		_spotlight(Rules.BOARD_POS + u.position, Vector2(52, 52), u)
 	var blessing := u.team == caster
 	fx.add("shift_bless" if blessing else "shift_hex", u.position)
 	Sfx.play("shapeshift/bless" if blessing else "shapeshift/hex")
@@ -495,8 +506,9 @@ func can_drop_merge(c: OwnedCreature) -> bool:
 	return player.can_merge_offer(shop_drag_index, c) if shop_drag_index >= 0 else player.can_merge(drag, c)
 
 
+## Merge pips appear only once merging is introduced (Ruleset.MERGE).
 func show_merge_progress(c: OwnedCreature) -> bool:
-	return hover_info.get("owned") == c or can_drop_merge(c)
+	return ruleset.has(Ruleset.MERGE) and (hover_info.get("owned") == c or can_drop_merge(c))
 
 func board_cell(screen_pos: Vector2) -> Vector2i:
 	var local := (screen_pos - Rules.BOARD_POS) / Rules.CELL
@@ -788,6 +800,8 @@ func _cast_at(pos: Vector2) -> void:
 func _process(dt: float) -> void:
 	_apply_shake(dt)
 	_advance_ui(dt)
+	_watch_rule_spotlight()
+	spotlight.advance(dt)
 	var mouse := get_global_mouse_position()
 	hover_info = {}
 	match phase:
@@ -825,6 +839,68 @@ func _process(dt: float) -> void:
 				for j in forms.size():
 					if Hud.pack_token_pos(i, j, forms.size()).distance_to(mouse) < Hud.pack_token_radius(forms.size()):
 						hover_info = {"form": forms[j], "team": 0, "pos": mouse}
+
+
+## Starts the spotlight on the rule waiting in this duel and remembers it.
+func _spotlight(at: Vector2, radii: Vector2, follow: Unit = null) -> void:
+	spotlight.begin(at, radii, follow)
+	if spotlight.rule not in journey.introduced:
+		journey.introduced.append(spotlight.rule)
+		_save_difficulty_progress(unlocked_difficulty)
+
+
+## Starts the spotlight when its rule first shows up: interface elements as
+## soon as they are on screen, the others when they happen. The harvest and
+## the animal bonus start theirs from start_combat and _on_unit_transformed.
+func _watch_rule_spotlight() -> void:
+	if not spotlight.pending():
+		return
+	var rule := spotlight.rule
+	var shop_shown := phase == Phase.PREP and shop_out <= 0.0 and not enemy_preparing
+	if rule == Ruleset.SHOP and shop_shown:
+		_spotlight(Hud.STALL_RECT.get_center(), Hud.STALL_RECT.size * 0.54)
+	elif rule == Ruleset.TRADE and shop_shown:
+		_spotlight(Hud.REROLL_RECT.get_center(), Vector2(Hud.REROLL_RECT.size.x * 0.56, 34))
+	elif rule.begins_with("upgrade_") and shop_shown and scroll_open >= 1.0:
+		var row := Rules.WAND_UPGRADES.find(rule.trim_prefix("upgrade_"))
+		_spotlight(Hud.upgrade_rect(row).get_center(), Vector2(Hud.UPGRADE_SIZE.x * 0.58, 32))
+	elif rule == Ruleset.MERGE and shop_shown:
+		var pair := _first_pair()
+		if not pair.is_empty():
+			var a := _owned_screen_position(pair[0])
+			var b := _owned_screen_position(pair[1])
+			_spotlight((a + b) * 0.5, Vector2(absf(a.x - b.x) * 0.5 + 50, absf(a.y - b.y) * 0.5 + 50))
+	elif phase != Phase.COMBAT or battle == null:
+		return
+	elif rule == Ruleset.WAND and player.can_cast():
+		_spotlight(Hud.charge_pos(1), Vector2(120, 46))
+	elif rule == Ruleset.HEX:
+		var foes := battle.living(1)
+		if not foes.is_empty():
+			_spotlight(Rules.BOARD_POS + foes[0].position, Vector2(48, 48), foes[0])
+	elif rule == Ruleset.CASTERS:
+		for u in battle.units:
+			if u.alive and u.channel_t > 0.0:
+				_spotlight(Rules.BOARD_POS + u.position, Vector2(56, 56), u)
+				break
+	elif rule == Ruleset.FRENZY and battle.frenzy_level > 0:
+		_spotlight(Rules.BOARD_POS + Vector2(Rules.BOARD_SIZE.x * 0.5, -40),
+			Vector2(Rules.BOARD_SIZE.x * 0.5 + 24, 34))
+
+
+## Two of the player's creatures that could merge (same form and stars), or [].
+func _first_pair() -> Array:
+	for a: OwnedCreature in player.creatures:
+		for b: OwnedCreature in player.creatures:
+			if a != b and player.can_merge(a, b):
+				return [a, b]
+	return []
+
+
+func _owned_screen_position(c: OwnedCreature) -> Vector2:
+	if c.slot >= 0:
+		return Rules.reserve_slot_rect(c.slot).get_center()
+	return Rules.BOARD_POS + Rules.cell_center(c.cell)
 
 
 ## The table background never changes: drawn once (and again only when

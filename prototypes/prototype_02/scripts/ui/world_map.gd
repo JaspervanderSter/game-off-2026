@@ -13,7 +13,19 @@ const LANDSCAPE_ORIGINS := [Vector2(280, 425), Vector2(1000, 425), Vector2(640, 
 const PORTRAIT_ORIGINS := [Vector2(165, 860), Vector2(515, 860), Vector2(340, 240)]
 const LANDSCAPE_SCALES := [0.72, 0.72, 0.62]
 const PORTRAIT_SCALES := [0.55, 0.55, 0.72]
-const ZONE_SPOTS := [Vector2(-182, 42), Vector2(-94, 66), Vector2(-4, 54), Vector2(86, 70), Vector2(176, 42)]
+## Where each opponent stands on its island, in island coordinates and play
+## order: forest clearings between the groves, the town's streets up to the
+## keep, and the school courtyard up to the tower door.
+const ZONE_SPOTS := [
+	[Vector2(-200, 34), Vector2(-62, -50), Vector2(-48, 46), Vector2(52, -14), Vector2(92, -62)],
+	[Vector2(-150, 30), Vector2(-66, 4), Vector2(58, 40), Vector2(108, -8), Vector2(-14, -30)],
+	[Vector2(-88, 52), Vector2(-170, 6), Vector2(-100, -56), Vector2(130, -44), Vector2(46, 10)],
+]
+## Extra waypoints (island coordinates) for a road that must go around a
+## landmark: the school road passes in front of the tower, never behind it.
+const ROAD_VIAS := {13: [Vector2(-40, 26), Vector2(70, 22)]}
+## Opponents further back on an island are drawn slightly smaller.
+const DEPTH_SCALE := Vector2(0.86, 1.0)
 const OPPONENT_SIZE := 27.0
 var game
 var sky: Node2D
@@ -174,7 +186,11 @@ static func stage_island(index: int) -> int:
 	return OpponentDB.zone(index)
 
 static func stage_offset(index: int) -> Vector2:
-	return ZONE_SPOTS[index % OpponentDB.ZONE_SIZE]
+	return ZONE_SPOTS[stage_island(index)][index % OpponentDB.ZONE_SIZE]
+
+## Size factor of an opponent from its depth on the island: 1 at the front.
+static func depth_scale(index: int) -> float:
+	return lerpf(DEPTH_SCALE.x, DEPTH_SCALE.y, inverse_lerp(-62.0, 52.0, clampf(stage_offset(index).y, -62.0, 52.0)))
 
 func stage_position(index: int) -> Vector2:
 	return islands[stage_island(index)].position + stage_offset(index) * islands[stage_island(index)].scale
@@ -302,21 +318,34 @@ func _draw_stage(index: int, button: Button) -> void:
 	var open: bool = game.journey.available(index)
 	var won: bool = index in game.journey.completed
 	var hot := open and (button.is_hovered() or button.has_focus())
-	Shapes.ellipse(button, p, 32, 10, Color(0.12, 0.08, 0.06, 0.2))
+	var k := depth_scale(index)
+	Shapes.ellipse(button, p, 32 * k, 10 * k, Color(0.12, 0.08, 0.06, 0.2))
 	if hot or won:
-		Shapes.ellipse(button, p, 33 + sin(age * 2) * 2, 12, Color(GOLD, 0.45))
+		Shapes.ellipse(button, p, (33 + sin(age * 2) * 2) * k, 12 * k, Color(GOLD, 0.45))
 	# Full-length opponents stand on the path spot; creatures remain on the board.
+	var size := OPPONENT_SIZE * k
 	Icons.opponent(button, OpponentDB.get_opponent(index).id,
-		p + Vector2(0, -OPPONENT_SIZE * 0.94 + sin(age * 1.8 + index) * 1.2), OPPONENT_SIZE, age)
+		p + Vector2(0, -size * 0.94 + sin(age * 1.8 + index) * 1.2), size, age)
 	if won:
-		Icons.star(button, p + Vector2(0, 15), 9, GOLD)
+		Icons.star(button, p + Vector2(0, 15 * k), 9 * k, GOLD)
 	if hot:
-		var q := p + Vector2(0, -63 + sin(age * 3) * 3)
+		var q := p + Vector2(0, -63 * k + sin(age * 3) * 3)
 		button.draw_colored_polygon(PackedVector2Array([q + Vector2(-7, -7), q + Vector2(7, -7), q]), GOLD)
 
 func _append_curve(points: PackedVector2Array, a: Vector2, b: Vector2, c: Vector2, d: Vector2) -> PackedVector2Array:
 	for index in 33:
 		points.append(a.bezier_interpolate(b, c, d, index / 32.0))
+	return points
+
+## A gently winding footpath through `stops`: each leg leaves and arrives
+## level, so a change of depth reads as a bend rather than a straight cut.
+func _winding(stops: Array[Vector2]) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for index in range(1, stops.size()):
+		var a := stops[index - 1]
+		var b := stops[index]
+		var reach := Vector2((b.x - a.x) * 0.45, 0)
+		points = _append_curve(points, a, a + reach, b - reach, b)
 	return points
 
 func _length(points: PackedVector2Array) -> float:
@@ -352,12 +381,14 @@ func _rebuild_paths() -> void:
 			var sag := minf(27, start.distance_to(finish) * 0.10)
 			for index in 65:
 				points.append(start.lerp(finish, index / 64.0) + Vector2(0, sin(index / 64.0 * PI) * sag))
-			var target_scale: float = islands[stage_island(stage)].scale.x
-			points = _append_curve(points, finish, finish + Vector2(55, 28) * target_scale, b + Vector2(-35, 35) * target_scale, b)
+			points.append_array(_winding([finish, b]))
 		else:
-			var scale_factor: float = islands[stage_island(stage)].scale.x
-			var lower := maxf(a.y, b.y) + 24 * scale_factor
-			points = _append_curve(points, a, Vector2(lerpf(a.x, b.x, 0.35), lower), Vector2(lerpf(a.x, b.x, 0.75), lower), b)
+			var island: Node2D = islands[stage_island(stage)]
+			var stops: Array[Vector2] = [a]
+			for via in ROAD_VIAS.get(stage, []):
+				stops.append(island.position + via * island.scale)
+			stops.append(b)
+			points = _winding(stops)
 		var trim_start: float = 26 * islands[stage_island(stage - 1)].scale.x
 		var trim_end: float = 30 * islands[stage_island(stage)].scale.x
 		var length := maxf(1.0, _length(points) - trim_start - trim_end)

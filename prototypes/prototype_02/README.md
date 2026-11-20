@@ -686,8 +686,27 @@ An animated wand invites the first allied cast, then the first enemy cast.
 
 `Ruleset.FOREST_OUTCOMES` is an explicit closed six-form practice graph, using the
 normal 55/30/15 priorities. Rolls, hover previews and AI evaluations use the duel's
-graph. The full eight-stage graph returns in town; forest routes are deliberately
-different and can return to a form in two casts. This transition needs playtesting.
+graph (`Ruleset.roster`). The town adds the cleric, assassin and bard, plus the
+turtle, hedgehog and peacock, to the forest's six forms; peasants and the two
+casters also belong to it, behind their own rules. `Ruleset.TOWN_OUTCOMES` is the
+town's closed fifteen-form graph, in which forest forms keep their most likely
+forest outcome. Town openings and player cards come from `OpponentDB.TOWN_PACKS`.
+Only the school opens every creature and the complete eight-stage graph.
+
+Opponents stand at natural spots on their island (`ZONE_SPOTS` in `world_map.gd`):
+forest clearings, town streets up to the keep, the school courtyard up to the tower
+door. Those further back are drawn slightly smaller, and the road winds between them.
+
+The first time a rule shows up in a journey duel, `RuleSpotlight` dims the screen
+around the new element, rings it in gold with orbiting sparkles, and lifts the
+dimming after about 2.7 seconds, without text or blocking input. Interface rules
+are shown as soon as their element is on screen (stall, reroll, upgrade row);
+the others when they happen: charge crystals at the druid's first fight, the first
+enemy creature for hexes, the first allied bonus shapeshift, the first harvester,
+the first mergeable pair, the first caster channelling, and the timer bar when
+frenzy starts. Combat slows to a quarter speed while the dimming is full. Shown
+rules are saved under `journey.introduced`; beaten opponents never replay theirs.
+Merge pips and harvest coins appear only in duels where their rule exists.
 
 Progress is saved locally in `difficulty_progress.cfg`, under `journey.opponents`.
 The previous seven-stage `journey.completed` saves retain proportional advancement

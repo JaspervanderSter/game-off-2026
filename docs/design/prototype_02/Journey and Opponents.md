@@ -101,7 +101,8 @@ The forest roster is thematic, not a general tier system:
 - Humans: **Archer, Shield Guardian, Spearman**.
 - Animals: **Rabbit, Wolf, Deer**.
 - No other creature may appear in either opening, either shop or a transformation
-  by either wizard. Town and school retain their existing roster rules.
+  by either wizard. The town widens this roster (below); only the school opens
+  every creature.
 
 Current implementation defaults, available for playtest revision:
 
@@ -136,10 +137,53 @@ in **55 / 30 / 15 percent** order; previews and rolls use the same graph.
 | Deer | Shield Guardian | Archer | Spearman |
 
 This is an intentional island-specific departure from the complete eight-stage
-graph: forms can return after two casts. The full graph resumes in town, so
-learned forest routes do not all transfer there. How to present that transition
-still needs playtest feedback. The roster restriction is confirmed; these
-particular routes and probabilities are implementation choices.
+graph: forms can return after two casts. The roster restriction is confirmed;
+these particular routes and probabilities are implementation choices.
+
+## Town roster — confirmed 20 November 2026
+
+After a playtest the user found every creature available in town. Each island
+now unlocks three more humans and three more animals; only the last island
+(school) gives access to every creature and the complete eight-stage graph.
+
+- **Humans (confirmed):** the forest three plus **Cleric, Assassin and Bard**.
+  Peasants (innkeeper) and the pyromancer and frost mage (court mage) also belong
+  to the town, behind their own rules, in addition to these three.
+- **Animals:** the forest three plus **Turtle, Hedgehog and Peacock** (animals of
+  the moat, hedges and royal gardens). The user left the choice open except that
+  the skunk must not be among them; this selection is an implementation choice.
+- **Transformations (confirmed):** a shapeshift only produces forms of the island
+  roster. The town uses its own closed graph below; forest forms keep their most
+  likely forest outcome so the first routes learned still work.
+
+| Form | 55% | 30% | 15% |
+| --- | --- | --- | --- |
+| Archer | Rabbit | Wolf | Peacock |
+| Shield Guardian | Deer | Turtle | Wolf |
+| Spearman | Wolf | Hedgehog | Rabbit |
+| Peasant | Rabbit | Turtle | Deer |
+| Cleric | Deer | Peacock | Turtle |
+| Assassin | Wolf | Rabbit | Hedgehog |
+| Bard | Peacock | Deer | Hedgehog |
+| Pyromancer | Hedgehog | Peacock | Wolf |
+| Frost mage | Turtle | Hedgehog | Peacock |
+| Rabbit | Archer | Assassin | Peasant |
+| Wolf | Spearman | Assassin | Shield Guardian |
+| Deer | Shield Guardian | Cleric | Bard |
+| Turtle | Peasant | Spearman | Cleric |
+| Hedgehog | Bard | Frost mage | Pyromancer |
+| Peacock | Pyromancer | Archer | Frost mage |
+
+Every town human is reached from two animals and every animal from four or five
+humans. The routes are implementation choices.
+
+Town openings use town compositions with familiar names (implementation
+defaults): Troupe (guardian, archer, bard), Tavern (bard, peasant, spearman),
+Shadows (two assassins, archer), Arcane (pyromancer, frost mage), Crusade (cleric,
+guardian, spearman), plus Temple, Phalanx, Village, Fortress and Hunt (two
+archers, spearman) for the player's cards. A form outside the town was replaced
+by a town human and bonus gold adjusted for the price difference; these have not
+been balanced.
 
 ## How a rule is withheld — implementation defaults
 
@@ -158,7 +202,10 @@ defaults and can be revised.
   an allied shapeshift have no special effect.
 - **Before peasants (opponents 1–6):** the peasant is never offered and no
   opening containing one is dealt; harvest is off.
-- **Before merging (opponents 1–7):** identical creatures do not combine.
+- **Before merging (opponents 1–7):** identical creatures do not combine, and
+  the merge-progress pips never appear (confirmed after playtest: an element of
+  a mechanic that does not exist yet is not shown). Harvest coins on the hover
+  card likewise appear only once harvest exists.
 - **Before casters (opponents 1–8):** the pyromancer and frost mage are never
   offered and no opening containing one is dealt. They can still appear through a
   shapeshift, with their normal behaviour.
@@ -177,7 +224,13 @@ defaults and can be revised.
 
 The journey map keeps the existing triangle of forest, town and school islands,
 with five full-length opponents placed on each island without changing its shape
-or buildings. It fits the whole screen with no scroll or header. Both bridges
+or buildings. After a playtest found them lined up along the island edge, they
+stand at natural spots spread over each island's surface (confirmed request;
+spots are implementation choices): forest clearings between the groves, town
+streets ending with the king before the keep, and the school courtyard ending
+with the archmage at the tower door. The road winds between them and passes in
+front of the tower, never behind it. Opponents further back are drawn slightly
+smaller. It fits the whole screen with no scroll or header. Both bridges
 are complete and visible from the start. Only the first opponent is visible on a
 new journey. Winning discovers the immediate successor: only the route dots
 animate over about four seconds, with muffled taps, before its opponent appears.
@@ -190,7 +243,35 @@ and 3 hearts, town paving and 6 hearts, school gold-inlaid slabs and 10 hearts.
 Old seven-stage saves preserve proportional advancement through each zone; the
 new fifteen-opponent saves use their own `journey.opponents` key.
 
+## Introducing a rule — first pass, 20 November 2026
+
+Every new mechanic gets a short sequence that draws the player's attention to
+it. Confirmed by the user: as simple as possible, **no text**, played **only at
+the first encounter** with the rule, and for rules without a control **at the
+moment the rule first happens**. A second pass will follow if this is not clear
+enough.
+
+First pass (implementation choices): the screen dims around an elliptical
+opening on the new element, a gold ring pulses there with orbiting sparkles and
+the unlock chime plays; after about 2.7 seconds the dimming lifts. Input is never
+blocked, and combat slows to a quarter speed while the dimming is full.
+
+| Rule | Spotlit element | When |
+| --- | --- | --- |
+| Wand (druid) | Charge crystals | First fight |
+| Shop (lumberjack) | Creature stall | Shop in place |
+| Hex (swamp witch) | First enemy creature, followed | First fight |
+| Animal bonus (archdruid) | The creature, followed | First allied shapeshift into a bonus form |
+| Trading (merchant) | Reroll button | Shop in place |
+| Harvest (innkeeper) | First harvester | First fight with a harvester |
+| Merging (thief) | The player's first identical pair | Shop in place with a pair |
+| Casters (court mage) | The caster, followed | First spell channel |
+| Frenzy (king) | Timer bar | Frenzy starts |
+| Wand upgrades (school) | The new scroll row | Scroll unrolled |
+
+A rule is remembered once shown (`journey.introduced` in the save), and a beaten
+opponent never replays it. The hunter and the archmage introduce nothing.
+
 ## Open questions
 
-- Should the player be told which rule a duel introduces (an icon on the stage,
-  or an animation at the start of the duel)? Not decided yet.
+- Is the first-pass spotlight clear enough without text? To check in playtest.

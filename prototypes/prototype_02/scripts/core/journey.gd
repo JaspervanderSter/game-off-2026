@@ -5,6 +5,16 @@ const ENVIRONMENTS := ["forest", "town", "school"]
 const HEARTS := [3, 6, 10]
 var completed: Array[int] = []
 var selected := -1
+## Rules whose spotlight has already played (RuleSpotlight): once per rule.
+var introduced: Array[String] = []
+
+## The rule opponent `index` still has to introduce: "" once it was shown, once
+## the opponent was beaten, or when it introduces none.
+func rule_to_introduce(index: int) -> String:
+	if index < 0 or index >= stage_count() or index in completed:
+		return ""
+	var rule: String = OpponentDB.get_opponent(index).rule
+	return "" if rule in introduced else rule
 
 static func stage_count() -> int:
 	return OpponentDB.count()
@@ -20,6 +30,12 @@ func available(index: int) -> bool:
 
 func restore(config: ConfigFile, legacy_difficulty: int) -> void:
 	completed.clear()
+	introduced.clear()
+	var shown = config.get_value("journey", "introduced", [])
+	if shown is Array:
+		for rule in shown:
+			if rule is String and rule not in introduced:
+				introduced.append(rule)
 	if config.has_section_key("journey", "opponents"):
 		var saved = config.get_value("journey", "opponents", [])
 		if saved is Array:
@@ -56,6 +72,7 @@ func restore(config: ConfigFile, legacy_difficulty: int) -> void:
 
 func save(config: ConfigFile) -> void:
 	config.set_value("journey", "opponents", completed)
+	config.set_value("journey", "introduced", introduced)
 
 func record_win() -> void:
 	if available(selected) and selected not in completed:

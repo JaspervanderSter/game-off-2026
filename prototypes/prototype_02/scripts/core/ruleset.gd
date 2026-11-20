@@ -21,7 +21,13 @@ const ALL: Array[String] = [SHOP, WAND, HEX, ANIMAL_BONUS, TRADE, HARVEST, MERGE
 const FORM_RULES := {"peasant": HARVEST, "pyromancer": CASTERS, "frost_mage": CASTERS}
 
 var enabled := {}
-var forest_roster := false
+## Island roster: FOREST or TOWN restricts every creature (shop, openings and
+## transformations) to that island's forms and closed graph; COMPLETE_ROSTER
+## keeps all 24 forms and the eight-stage graph (school, duels outside the journey).
+var roster := COMPLETE_ROSTER
+const COMPLETE_ROSTER := -1
+const FOREST := 0
+const TOWN := 1
 const FOREST_HUMANS := ["archer", "guardian", "spearman"]
 const FOREST_ANIMALS := ["rabbit", "wolf", "deer"]
 ## A closed forest practice graph: three cross-family outcomes per form.
@@ -34,6 +40,33 @@ const FOREST_OUTCOMES := {
 	"wolf": ["spearman", "guardian", "archer"],
 	"deer": ["guardian", "archer", "spearman"],
 }
+## The town adds three humans (cleric, assassin, bard) and three animals of the
+## moat and gardens (turtle, hedgehog, peacock) to the forest roster. Peasants and
+## the two casters belong to it too, behind their own rules (FORM_RULES).
+const TOWN_HUMANS := ["archer", "guardian", "spearman", "cleric", "assassin", "bard",
+	"peasant", "pyromancer", "frost_mage"]
+const TOWN_ANIMALS := ["rabbit", "wolf", "deer", "turtle", "hedgehog", "peacock"]
+## Closed town graph. Forest forms keep their most likely forest outcome; every
+## town human is reached from two animals, every animal from four or five humans.
+const TOWN_OUTCOMES := {
+	"archer": ["rabbit", "wolf", "peacock"],
+	"guardian": ["deer", "turtle", "wolf"],
+	"spearman": ["wolf", "hedgehog", "rabbit"],
+	"peasant": ["rabbit", "turtle", "deer"],
+	"cleric": ["deer", "peacock", "turtle"],
+	"assassin": ["wolf", "rabbit", "hedgehog"],
+	"bard": ["peacock", "deer", "hedgehog"],
+	"pyromancer": ["hedgehog", "peacock", "wolf"],
+	"frost_mage": ["turtle", "hedgehog", "peacock"],
+	"rabbit": ["archer", "assassin", "peasant"],
+	"wolf": ["spearman", "assassin", "guardian"],
+	"deer": ["guardian", "cleric", "bard"],
+	"turtle": ["peasant", "spearman", "cleric"],
+	"hedgehog": ["bard", "frost_mage", "pyromancer"],
+	"peacock": ["pyromancer", "archer", "frost_mage"],
+}
+const ROSTER_FORMS := [FOREST_HUMANS + FOREST_ANIMALS, TOWN_HUMANS + TOWN_ANIMALS]
+const ROSTER_OUTCOMES := [FOREST_OUTCOMES, TOWN_OUTCOMES]
 
 
 func _init(rules: Array = ALL) -> void:
@@ -68,10 +101,18 @@ func any_upgrade() -> bool:
 	return false
 
 
+## True when `id` may be offered or dealt: inside the island roster, and its
+## own rule (FORM_RULES) already introduced.
 func allows_form(id: String) -> bool:
-	if forest_roster:
-		return id in FOREST_HUMANS or id in FOREST_ANIMALS
+	if not in_roster(id):
+		return false
 	return not FORM_RULES.has(id) or has(FORM_RULES[id])
+
+
+## True when `id` exists on this island at all, even before its own rule: a
+## transformation may still produce it.
+func in_roster(id: String) -> bool:
+	return roster == COMPLETE_ROSTER or id in ROSTER_FORMS[roster]
 
 
 func allows_pack(pack: Dictionary) -> bool:
@@ -91,10 +132,10 @@ func shop_ids() -> Array[String]:
 
 
 func outcomes(id: String) -> Array:
-	if not forest_roster:
+	if roster == COMPLETE_ROSTER:
 		return CreatureDB.outcomes(id)
 	var result := []
-	var next: Array = FOREST_OUTCOMES.get(id, [])
+	var next: Array = ROSTER_OUTCOMES[roster].get(id, [])
 	for i in next.size():
 		result.append({"id": next[i], "chance": CreatureDB.OUTCOME_CHANCES[i]})
 	return result

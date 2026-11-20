@@ -52,6 +52,7 @@ func _ready() -> void:
 	_test_difficulty()
 	_test_journey_rules()
 	_test_forest_lessons()
+	_test_rule_spotlight()
 	_test_day_night_cycle()
 	_test_journey_health()
 	_test_journey_discovery()
@@ -2521,7 +2522,7 @@ func _test_journey_rules() -> void:
 		var pack := OpponentDB.pack_index(index)
 		check((pack >= 0) == (o.pack != ""), "opponent %d names an existing composition" % index)
 		if pack >= 0:
-			check(rules.allows_pack(CreatureDB.PACKS[pack]), "opponent %d opens with creatures already introduced" % index)
+			check(rules.allows_pack(OpponentDB.packs_for(index)[pack]), "opponent %d opens with creatures already introduced" % index)
 		for id in rules.shop_ids():
 			check(rules.allows_form(id), "stage %d offers only introduced creatures" % index)
 	check(introduced.size() == Ruleset.ALL.size(), "the journey introduces every rule")
@@ -2591,6 +2592,107 @@ func _test_journey_rules() -> void:
 	check(not hunter_player.can_cast(), "the player has no wand before the druid")
 
 
+## A journey duel spotlights its opponent's rule once, when it first shows up;
+## merge pips stay hidden until merging exists.
+func _test_rule_spotlight() -> void:
+	var journey := Journey.new()
+	check(journey.rule_to_introduce(5) == Ruleset.TRADE and journey.rule_to_introduce(0) == ""
+		and journey.rule_to_introduce(-1) == "", "the merchant introduces trading; the hunter and test duels nothing")
+	journey.completed.append(5)
+	check(journey.rule_to_introduce(5) == "", "a beaten opponent's rule needs no spotlight")
+	var spot := RuleSpotlight.new()
+	spot.reset(Ruleset.FRENZY)
+	check(spot.pending() and not spot.active() and spot.time_scale() == 1.0, "the spotlight waits for its rule")
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.difficulty_progress_path = "user://rule_spotlight_test_%d.cfg" % OS.get_process_id()
+	game.journey.completed.assign(range(5))
+	game.journey.introduced.clear()
+	game.choose_stage(5)
+	game.choose_pack(0)
+	check(game.spotlight.rule == Ruleset.TRADE and game.spotlight.pending(), "the merchant's duel waits to show trading")
+	game.shop_out = 0.0
+	game.enemy_preparing = false
+	game._watch_rule_spotlight()
+	check(game.spotlight.active() and Ruleset.TRADE in game.journey.introduced,
+		"the reroll button is spotlit as soon as the shop is in place, and remembered")
+	check(game.spotlight.center == Hud.REROLL_RECT.get_center(), "the spotlight opens on the reroll button")
+	game.spotlight.advance(RuleSpotlight.FADE_IN)
+	check(game.spotlight.time_scale() < 0.5, "the duel slows while the spotlight is on")
+	game.spotlight.advance(RuleSpotlight.DURATION)
+	check(not game.spotlight.active() and not game.spotlight.pending(), "the spotlight plays once per duel")
+	game.new_duel()
+	game.choose_stage(5)
+	check(not game.spotlight.pending(), "a rule already introduced is not spotlit again")
+	game.choose_pack(0)
+	var hovered: OwnedCreature = game.player.creatures[0]
+	game.hover_info = {"owned": hovered}
+	check(not game.show_merge_progress(hovered), "merge pips stay hidden before merging is introduced")
+	game.ruleset = OpponentDB.ruleset(7)
+	check(game.show_merge_progress(hovered), "merge pips appear once the thief introduces merging")
+	var restored := Journey.new()
+	var config := ConfigFile.new()
+	game.journey.save(config)
+	restored.restore(config, Difficulty.APPRENTICE)
+	check(Ruleset.TRADE in restored.introduced, "introduced rules are saved")
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://rule_spotlight_test_%d.cfg" % OS.get_process_id()))
+
+
+## The town adds three humans and three animals to the forest's six forms;
+## its transformations stay inside the town roster.
+func _test_town_roster() -> void:
+	for form in Ruleset.FOREST_HUMANS:
+		check(form in Ruleset.TOWN_HUMANS, "the town keeps the forest humans")
+	for form in Ruleset.FOREST_ANIMALS:
+		check(form in Ruleset.TOWN_ANIMALS, "the town keeps the forest animals")
+	for form in ["cleric", "assassin", "bard"]:
+		check(form in Ruleset.TOWN_HUMANS and form not in Ruleset.FOREST_HUMANS, "the town introduces the %s" % form)
+	check(Ruleset.TOWN_ANIMALS.size() == 6 and "skunk" not in Ruleset.TOWN_ANIMALS, "the town adds three animals, not the skunk")
+	var incoming := {}
+	for index in range(OpponentDB.ZONE_SIZE, OpponentDB.ZONE_SIZE * 2):
+		var rules := OpponentDB.ruleset(index)
+		check(rules.roster == Ruleset.TOWN, "town opponent %d uses the town roster" % index)
+		for form in CreatureDB.all_ids():
+			check(rules.in_roster(form) == (form in Ruleset.TOWN_HUMANS or form in Ruleset.TOWN_ANIMALS),
+				"town %d roster contains exactly its fifteen forms" % index)
+		for id in rules.shop_ids():
+			check(id in Ruleset.TOWN_HUMANS, "town %d offers only town humans" % index)
+		for pack: Dictionary in OpponentDB.TOWN_PACKS:
+			for form in pack.forms:
+				check(form in Ruleset.TOWN_HUMANS, "town composition %s uses town humans" % pack.name)
+		for card in _town_offered_cards(index):
+			check(rules.allows_pack(OpponentDB.TOWN_PACKS[card]), "town %d deals allowed compositions" % index)
+	var town := OpponentDB.ruleset(5)
+	for form: String in Ruleset.TOWN_OUTCOMES:
+		var options := town.outcomes(form)
+		check(options.size() == 3, "every town form has three outcomes")
+		for option: Dictionary in options:
+			incoming[option.id] = incoming.get(option.id, 0) + 1
+			check(town.in_roster(option.id), "town transformations stay in the town roster")
+			check((form in Ruleset.TOWN_HUMANS) != (option.id in Ruleset.TOWN_HUMANS),
+				"town transformations cross between humans and animals")
+	check(Ruleset.TOWN_OUTCOMES.size() == 15 and incoming.size() == 15, "every town form can be reached")
+	for form in Ruleset.FOREST_OUTCOMES:
+		check(Ruleset.TOWN_OUTCOMES[form][0] == Ruleset.FOREST_OUTCOMES[form][0],
+			"%s keeps its most likely forest outcome in town" % form)
+
+
+func _town_offered_cards(index: int) -> Array[int]:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.difficulty_progress_path = "user://town_roster_test_%d.cfg" % OS.get_process_id()
+	game.journey.completed.assign(range(Journey.stage_count()))
+	game.choose_stage(index)
+	var cards: Array[int] = game.offered_packs.duplicate()
+	check(cards.size() == 3, "town %d offers three compositions" % index)
+	game.choose_pack(0)
+	for c: OwnedCreature in game.enemy.creatures:
+		check(c.form_id in Ruleset.TOWN_HUMANS, "town %d opponent opens with town humans" % index)
+	game.free()
+	return cards
+
+
 func _test_forest_lessons() -> void:
 	check(OpponentDB.get_opponent(1).id == "druid" and OpponentDB.get_opponent(2).id == "lumberjack",
 		"the wand is introduced before the shop")
@@ -2638,8 +2740,10 @@ func _test_forest_lessons() -> void:
 				"forest transformations cross between humans and animals")
 	check(not forest.allows_form("turtle") and not forest.allows_form("crossbowman"),
 		"forest excludes other animals and humans")
-	check(OpponentDB.ruleset(5).outcomes("archer") == CreatureDB.outcomes("archer"),
-		"the town restores the full transformation graph")
+	_test_town_roster()
+	check(OpponentDB.ruleset(10).outcomes("archer") == CreatureDB.outcomes("archer")
+		and OpponentDB.ruleset(10).allows_form("crossbowman") and OpponentDB.ruleset(10).allows_form("skunk"),
+		"the school restores every creature and the full transformation graph")
 	var battle := Battle.new()
 	add_child(battle)
 	battle.learning_duel = true
