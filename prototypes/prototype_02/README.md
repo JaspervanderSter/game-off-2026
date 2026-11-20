@@ -636,28 +636,81 @@ rankings) lives in [`balance/`](balance/README.md). It is not part of these test
 and runs only on explicit request.
 
 `res://tests/capture.tscn` (not headless) plays a scripted sequence of the real game
-and saves screenshots to `user://captures/`.
+and saves screenshots to `user://captures/`. With `-- --check-redraw` it also checks
+after each screenshot that no cached layer is out of date (see below).
+
+### Performance
 
 `res://tests/perf_benchmark.tscn` (not headless, about five minutes) plays the real
 game by itself: menus, an automated duel of six rounds where both wizards shop and
 cast, then a 6-versus-6 fight of three-star casters. It records every frame and
 prints, per scenario, the average, median, 95th/99th percentile and worst frame
 times, the frames over 16.7 ms and 33 ms, the slowest frames with the events around
-them (casts, deaths, sprite loads, purchases), and node, object and memory counts at
-each phase change. It writes the report and the per-frame data to `user://perf/`
-(or `--out=<file.json>`). Vsync is off by default, which measures the true cost of
-a frame; `--vsync` measures dropped frames at the display refresh instead. Other
-options: `--rounds=<n>`, `--vector-art`, `--no-sound`.
+them (casts, deaths, sprite loads, purchases, audio gaps), and node, object and
+memory counts at each phase change. It writes the report and the per-frame data to
+`user://perf/` (or `--out=<file.json>`). Vsync is off by default, which measures the
+true cost of a frame; `--vsync` measures dropped frames at the display refresh
+instead. Other options: `--rounds=<n>`, `--vector-art`, `--no-sound`, and
+`--check-redraw` (below).
 
 ```bash
 godot --path prototypes/prototype_02 res://tests/perf_benchmark.tscn -- --no-sound
 ```
 
-Latest results (20 November 2026, Windows, i7-14650HX, RTX 5070 Laptop, pixel art):
-no frame over 16.7 ms in about 62,000 uncapped frames. Combat frames take 5.7 ms
-on average (7.5 ms at the 99th percentile, 9.6 ms at worst); menus and preparation
-take about 3.6 ms. With vsync at 144 Hz, 11 of 27,452 frames missed a refresh, the
-worst lasting 23 ms. Node and object counts and memory stay flat across rounds.
+`tools/web_benchmark.mjs` runs the same benchmark in a browser, where performance
+differs most: it exports the **Web Benchmark** preset (the Web preset with the tests
+and `tests/perf_benchmark.tscn` as main scene, through the `web_benchmark` feature),
+serves it locally, plays it in a fresh Edge or Chrome window with the sound on and
+prints the report, plus the WebGL buffers and vertex arrays created per frame and the
+audio gaps (128-sample blocks the browser played as silence because the main thread
+had not mixed them in time: the crackling heard when frames are slow). Laptops
+usually give browsers their integrated GPU, which the script keeps by default;
+`--gpu=high` asks for the high-performance GPU. Needs Node 22 or later; the report
+goes to the system temporary folder.
+
+```bash
+node prototypes/prototype_02/tools/web_benchmark.mjs --rounds=3
+```
+
+How the game keeps frames cheap:
+
+- **No polygons rebuilt every frame.** Godot builds a GPU vertex buffer and vertex
+  array for every `draw_circle`, `draw_arc`, `draw_polyline`, antialiased
+  `draw_line` and polygon each time a canvas item redraws. Natively that is cheap;
+  in a browser each call crosses the WebGL layer, and the Web build ran at 19 fps
+  in combat on an integrated GPU with constant audio crackling. `Shapes`
+  (`scripts/ui/shapes.gd`) replaces those calls with rectangles cut from one atlas
+  (antialiased disc, rings of 16 thicknesses, a line band, a star and hearts), which
+  Godot batches without per-frame buffers. Draw through `Shapes.circle`, `arc`,
+  `line`, `polyline` and `set_transform` rather than the `CanvasItem` methods.
+  The atlas is `ui/shapes_atlas.png` (imported with mipmaps), drawn by
+  `Shapes.build_image()`; after changing a shape, run
+  `godot --headless --path . --script res://tools/make_shapes_atlas.gd`. The tests
+  fail while the file and the code differ.
+- **Static and slow-changing layers redraw only on change.** The table background
+  is drawn once; the board squares sit in a child layer drawn once; the tokens and
+  bench (`BoardView`), the side panels and the shop column (`Hud` layers) redraw
+  only when the values they show change (their `_redraw_key`, `_layer_key`). The
+  round frieze, phase screens, hover card, rewards, combat units and effects still
+  redraw every frame. When adding something to a cached layer, add what it depends
+  on to that layer's key. `--check-redraw` (benchmark and capture) catches a
+  forgotten dependency: it freezes time, hides the layers that redraw every frame,
+  forces every canvas item to redraw and reports any pixel that changed
+  (`tests/redraw_check.gd`).
+
+Latest results (20 November 2026, Windows, i7-14650HX, pixel art):
+
+| Build | Menus | Preparation | Combat (avg / 99th pct / worst) | Audio gaps |
+|---|---|---|---|---|
+| Windows, RTX 5070 Laptop, before | 3.5 ms | 3.6 ms | 5.7 / 7.5 / 9.6 ms | – |
+| Windows, after | 1.0 ms | 1.2 ms | 1.75 / 2.3 / 6.5 ms | – |
+| Web (Edge), Intel UHD, before | 32 ms | 32 ms | 52 / 66 / 74 ms | 32,698 |
+| Web (Edge), Intel UHD, after | 6.9 ms | 6.9 ms | 6.9 / 7.9 / 10.8 ms | 0 |
+
+Web frames are capped at the 144 Hz display refresh (6.9 ms). WebGL vertex arrays
+created per frame fell from 480 to 18. No frame over 16.7 ms outside start-up, node
+and object counts stay flat across rounds, and the cached layer check found no stale
+layer in 126 benchmark checks and every capture screenshot.
 
 Latest simulation (20 AI-vs-AI duels per mode, after the combat/AI rebalance):
 combats average about 25 s with casting and 19 s without; duels average 11.7 and

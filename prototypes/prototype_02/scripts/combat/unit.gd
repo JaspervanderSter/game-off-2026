@@ -594,7 +594,7 @@ func _draw() -> void:
 
 	# Ground shadow and team base (painted into pixel art sprites).
 	var sprite := ArtStyle.creature_texture(form_id, team)
-	draw_circle(Vector2(0, r * 0.75), r * 0.95, Color(0, 0, 0, 0.25))
+	Shapes.circle(self, Vector2(0, r * 0.75), r * 0.95, Color(0, 0, 0, 0.25))
 	if sprite == null:
 		Icons.team_base(self, p, r * scale_k, team, hovered)
 	if inspired:
@@ -602,7 +602,7 @@ func _draw() -> void:
 		# during the last second of inspiration.
 		var glow := Icons.GOLD
 		glow.a = (0.55 + 0.45 * beat_k) * clampf(statuses.inspired.t, 0.25, 1.0)
-		draw_arc(p, r * scale_k * (1.12 + 0.12 * beat_k), 0, TAU, 32, glow, 2.5 + 2.5 * beat_k, true)
+		Shapes.arc(self, p, r * scale_k * (1.12 + 0.12 * beat_k), 0, TAU, 32, glow, 2.5 + 2.5 * beat_k, true)
 	if hovered and battle != null and battle.casting_enabled and not battle.finished:
 		# The local player is team 0: hovering previews its shapeshift on this unit.
 		var ready := battle.spells[0].can_cast() and immune_t <= 0.0
@@ -617,13 +617,13 @@ func _draw() -> void:
 	else:
 		Icons.creature(self, form_id, p, image_r * 0.92 * scale_k)
 	if shell_t > 0.0:
-		draw_arc(p, image_r * 1.15, 0, TAU, 32, Color(0.5, 1.0, 0.6, 0.9), 4.0, true)
+		Shapes.arc(self, p, image_r * 1.15, 0, TAU, 32, Color(0.5, 1.0, 0.6, 0.9), 4.0, true)
 	if parry_ready:
 		Icons.parry_mark(self, p + Vector2(image_r * 0.95, -image_r * 0.6), 7.0)
 	if statuses.has("feared"):
 		Icons.fear_mark(self, p + Vector2(0, -image_r - 14.0), 8.0, anim_t)
 	if flash_t > 0.0:
-		draw_circle(p, image_r * 1.05, Color(1, 1, 1, flash_t / 0.12 * 0.6))
+		Shapes.circle(self, p, image_r * 1.05, Color(1, 1, 1, flash_t / 0.12 * 0.6))
 	if immune_t > 0.0:
 		Icons.immunity_ring(self, p, image_r * 1.3, immune_t / Rules.TARGET_IMMUNITY, anim_t)
 
@@ -634,8 +634,8 @@ func _draw() -> void:
 	if channel_t > 0.0:
 		var color := Color(0.55, 0.9, 1.0) if data.ability == "blizzard" else Color(1.0, 0.58, 0.18)
 		var progress := 1.0 - channel_t / float(data.channel_duration)
-		draw_arc(p, image_r * 1.15, 0.0, TAU, 32, color.darkened(0.65), 4.0, true)
-		draw_arc(p, image_r * 1.15, -PI * 0.5, TAU * progress - PI * 0.5, 32, color, 4.0, true)
+		Shapes.arc(self, p, image_r * 1.15, 0.0, TAU, 32, color.darkened(0.65), 4.0, true)
+		Shapes.arc(self, p, image_r * 1.15, -PI * 0.5, TAU * progress - PI * 0.5, 32, color, 4.0, true)
 	elif stun_t > 0.0:
 		for star in 3:
 			var angle := anim_t * 6.0 + star * TAU / 3.0

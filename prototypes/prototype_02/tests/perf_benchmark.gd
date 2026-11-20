@@ -11,6 +11,9 @@ extends Node
 ##                      rate uncapped, which measures the true cost of a frame
 ##   --rounds=<n>       duel rounds to play (default 6)
 ##   --vector-art       vector art instead of pixel art
+##   --check-redraw     every 1.5 s, freeze time, force every cached layer to
+##                      redraw and check the screen did not change (a cached
+##                      layer that missed a change shows up as a difference)
 ##   --no-sound         no sound (the game's own option)
 
 const SPIKE_MS := 1000.0 / 60.0 # a frame missing the 60 Hz deadline
@@ -24,7 +27,11 @@ var scenario := "boot"
 ## Per-frame columns in packed arrays: recording costs about a hundred bytes per
 ## frame, so it barely distorts the memory figures it reports.
 const COLUMNS := ["t", "frame_ms", "process_ms", "physics_ms", "render_cpu_ms", "render_gpu_ms",
-	"draw_calls", "primitives", "nodes", "objects", "orphans", "memory_mb", "units", "fx"]
+	"draw_calls", "primitives", "nodes", "objects", "orphans", "memory_mb", "units", "fx", "audio_gaps"]
+## Web only: audio quanta (128 samples) the browser played as silence because the
+## main thread had not mixed them in time, counted by an instrumented audio
+## worklet in window.__audioUnderruns (see README, "Tests"). Zero elsewhere.
+var _audio_gaps_seen := 0
 var columns := {}
 var scenario_of := PackedInt32Array()
 var scenario_names: Array[String] = []
@@ -36,6 +43,11 @@ var _vp_rid: RID
 var _hover_unit: Variant = null
 var _hover_until := 0.0
 var _rng := RandomNumberGenerator.new()
+var check_redraw := false
+var redraw_checks := 0
+var redraw_failures: Array[String] = []
+var _running := true
+var _checking := false
 
 
 func _ready() -> void:
@@ -47,6 +59,8 @@ func _ready() -> void:
 			out_path = arg.trim_prefix("--out=")
 		elif arg == "--vsync":
 			vsync = true
+		elif arg == "--check-redraw":
+			check_redraw = true
 		elif arg.begins_with("--rounds="):
 			rounds = int(arg.trim_prefix("--rounds="))
 	if out_path == "":
@@ -66,7 +80,10 @@ func _ready() -> void:
 	game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = scratch.path_join("difficulty_progress.cfg")
 	add_child(game)
+	if check_redraw:
+		_redraw_checker()
 	await _run()
+	_running = false
 	_report()
 	get_tree().quit()
 
@@ -98,7 +115,10 @@ func _process(_dt: float) -> void:
 		"memory_mb": Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
 		"units": game.battle.units.size() if game.battle != null else 0,
 		"fx": game.fx.items.size(),
+		"audio_gaps": _audio_gaps(),
 	}
+	if record.audio_gaps > 0:
+		marks.append("audio_gap+%d" % record.audio_gaps)
 	if columns.is_empty():
 		for key in COLUMNS:
 			columns[key] = PackedFloat64Array()
@@ -114,6 +134,16 @@ func _process(_dt: float) -> void:
 	scenario_of.append(s)
 
 
+## Audio gaps since the previous frame (Web with the instrumented worklet only).
+func _audio_gaps() -> int:
+	if not OS.has_feature("web"):
+		return 0
+	var total := int(JavaScriptBridge.eval("window.__audioUnderruns || 0", true))
+	var delta := total - _audio_gaps_seen
+	_audio_gaps_seen = total
+	return delta
+
+
 ## Hovers a creature now and then during combat, as a player would; the game
 ## clears hover every frame, so this runs after it.
 func _drive_hover() -> void:
@@ -121,7 +151,7 @@ func _drive_hover() -> void:
 		_hover_unit = null
 		return
 	var now := Time.get_ticks_msec() / 1000.0
-	if now > _hover_until:
+	if now > _hover_until and not _checking:
 		var living: Array = game.battle.units.filter(func(u: Unit) -> bool: return u.alive)
 		_hover_unit = living[_rng.randi() % living.size()] if not living.is_empty() else null
 		_hover_until = now + 1.5
@@ -278,15 +308,15 @@ func _report() -> void:
 		"vsync on" if vsync else "vsync off, uncapped",
 		"vector" if ArtStyle.current() == ArtStyle.Style.VECTOR else "pixel",
 		Engine.get_version_info().string, RenderingServer.get_video_adapter_name()])
-	lines.append("%-16s %6s %7s %7s %7s %7s %7s %5s %5s %6s %6s" % ["scenario", "frames", "avg_ms", "p50", "p95", "p99", "max", ">16.7", ">33", "fps", "calls"])
+	lines.append("%-16s %6s %7s %7s %7s %7s %7s %5s %5s %6s %6s %6s" % ["scenario", "frames", "avg_ms", "p50", "p95", "p99", "max", ">16.7", ">33", "fps", "calls", "gaps"])
 	for name in by_scenario:
 		var list: Array = by_scenario[name]
 		var s := _stats(list)
 		summary[name] = s
-		lines.append("%-16s %6d %7.2f %7.2f %7.2f %7.2f %7.2f %5d %5d %6.0f %6.0f" % [name, s.frames, s.avg_ms, s.p50_ms, s.p95_ms, s.p99_ms, s.max_ms, s.over_16, s.over_33, s.avg_fps, s.max_draw_calls])
+		lines.append("%-16s %6d %7.2f %7.2f %7.2f %7.2f %7.2f %5d %5d %6.0f %6.0f %6d" % [name, s.frames, s.avg_ms, s.p50_ms, s.p95_ms, s.p99_ms, s.max_ms, s.over_16, s.over_33, s.avg_fps, s.max_draw_calls, s.audio_gaps])
 	var all := _stats(frames)
 	summary["all"] = all
-	lines.append("%-16s %6d %7.2f %7.2f %7.2f %7.2f %7.2f %5d %5d %6.0f %6.0f" % ["ALL", all.frames, all.avg_ms, all.p50_ms, all.p95_ms, all.p99_ms, all.max_ms, all.over_16, all.over_33, all.avg_fps, all.max_draw_calls])
+	lines.append("%-16s %6d %7.2f %7.2f %7.2f %7.2f %7.2f %5d %5d %6.0f %6.0f %6d" % ["ALL", all.frames, all.avg_ms, all.p50_ms, all.p95_ms, all.p99_ms, all.max_ms, all.over_16, all.over_33, all.avg_fps, all.max_draw_calls, all.audio_gaps])
 	# Spikes: the slowest frames with what happened around them.
 	var order := range(frames.size())
 	order.sort_custom(func(a: int, b: int) -> bool: return frames[a].frame_ms > frames[b].frame_ms)
@@ -309,6 +339,10 @@ func _report() -> void:
 			previous = f.scenario
 			growth.append({"scenario": f.scenario, "nodes": f.nodes, "objects": f.objects, "orphans": f.orphans, "memory_mb": f.memory_mb})
 			lines.append("  %-16s %6d %7d %4d %7.1f" % [f.scenario, f.nodes, f.objects, f.orphans, f.memory_mb])
+	if check_redraw:
+		lines.append("\nCached layer check: %d checks, %d stale" % [redraw_checks, redraw_failures.size()])
+		for failure in redraw_failures:
+			lines.append("  STALE " + failure)
 	var text := "\n".join(lines)
 	print(text)
 	var file := FileAccess.open(out_path, FileAccess.WRITE)
@@ -329,12 +363,14 @@ func _stats(list: Array) -> Dictionary:
 	var render := 0.0
 	var process := 0.0
 	var physics := 0.0
+	var gaps := 0
 	for f in list:
 		times.append(f.frame_ms)
 		calls = maxf(calls, f.draw_calls)
 		render += f.render_cpu_ms
 		process += f.process_ms
 		physics += f.physics_ms
+		gaps += int(f.audio_gaps)
 	times.sort()
 	var n := times.size()
 	var total := 0.0
@@ -358,7 +394,33 @@ func _stats(list: Array) -> Dictionary:
 		"over_16": over_16,
 		"over_33": over_33,
 		"max_draw_calls": calls,
+		"audio_gaps": gaps,
 		"avg_process_ms": process / maxi(n, 1),
 		"avg_physics_ms": physics / maxi(n, 1),
 		"avg_render_cpu_ms": render / maxi(n, 1),
 	}
+
+
+# --- Cached layer check ----------------------------------------------------------
+# --- Cached layer check ----------------------------------------------------------
+
+func _redraw_checker() -> void:
+	while _running:
+		await get_tree().create_timer(1.5, true, false, true).timeout
+		if not _running:
+			return
+		await _check_cached_layers()
+
+
+## See RedrawCheck.
+func _check_cached_layers() -> void:
+	_checking = true
+	var result := await RedrawCheck.run(game)
+	_checking = false
+	redraw_checks += 1
+	if RedrawCheck.is_stale(result):
+		var label := "%s at %.1f s, near %s (difference %.2f)" % [scenario, Time.get_ticks_msec() / 1000.0, result.where, result.difference]
+		redraw_failures.append(label)
+		var dir := out_path.get_base_dir()
+		result.before.save_png(dir.path_join("stale_%d_cached.png" % redraw_failures.size()))
+		result.after.save_png(dir.path_join("stale_%d_redrawn.png" % redraw_failures.size()))

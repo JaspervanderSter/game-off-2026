@@ -2,6 +2,8 @@ extends Node
 ## Visual smoke test: plays a few scripted steps of the real game and saves
 ## screenshots to user://captures. Needs a rendering window (not --headless).
 ##   godot --path . res://tests/capture.tscn
+## With -- --check-redraw, also checks after each screenshot that the layers
+## which redraw only on change are up to date (see RedrawCheck).
 
 var game: Node
 var capture_dir := "user://captures"
@@ -226,3 +228,11 @@ func _shot(name: String) -> void:
 	var path := capture_dir.path_join(name + ".png")
 	img.save_png(path)
 	print("saved ", ProjectSettings.globalize_path(path))
+	if "--check-redraw" in OS.get_cmdline_user_args():
+		var result := await RedrawCheck.run(game)
+		if RedrawCheck.is_stale(result):
+			print("STALE cached layer at %s near %s (difference %.2f)" % [name, result.where, result.difference])
+			result.before.save_png(capture_dir.path_join(name + "_stale_cached.png"))
+			result.after.save_png(capture_dir.path_join(name + "_stale_redrawn.png"))
+		else:
+			print("cached layers up to date at ", name)

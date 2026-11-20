@@ -109,7 +109,7 @@ func _draw() -> void:
 		var p: Vector2 = item.pos
 		match item.kind:
 			"merge", "combine":
-				draw_arc(p, 15 + 38 * k, 0, TAU, 32, Color(1, 0.85, 0.25, 1.0 - k), 4 * (1.0 - k) + 1, true)
+				Shapes.arc(self, p, 15 + 38 * k, 0, TAU, 32, Color(1, 0.85, 0.25, 1.0 - k), 4 * (1.0 - k) + 1, true)
 				if item.kind == "merge":
 					Icons.star(self, p + Vector2(0, -35 - 25 * k), 18 * sin(PI * k), Color(1, 0.9, 0.3, 1.0 - k))
 					for j in 8:
@@ -117,7 +117,7 @@ func _draw() -> void:
 			"shift_bless":
 				# White flash, then a narrowing pillar of golden light.
 				if k < 0.18:
-					draw_circle(p, 34.0 + 30.0 * k, Color(1, 1, 0.9, 0.85 * (1.0 - k / 0.18)))
+					Shapes.circle(self, p, 34.0 + 30.0 * k, Color(1, 1, 0.9, 0.85 * (1.0 - k / 0.18)))
 				var w := 34.0 * (1.0 - k)
 				var top := maxf(p.y - 150.0, -12.0) # stay on the board, off the HUD
 				for i in 4:
@@ -126,75 +126,75 @@ func _draw() -> void:
 				for i in 2:
 					var ring := clampf(k * 1.5 - i * 0.25, 0.0, 1.0)
 					if ring > 0.0 and ring < 1.0:
-						draw_arc(p, 16.0 + 48.0 * ring, 0, TAU, 40, Color(1.0, 0.85, 0.3, 1.0 - ring), 5.0 * (1.0 - ring) + 1.0, true)
+						Shapes.arc(self, p, 16.0 + 48.0 * ring, 0, TAU, 40, Color(1.0, 0.85, 0.3, 1.0 - ring), 5.0 * (1.0 - ring) + 1.0, true)
 				# Level-up chevrons rising above the creature.
 				for i in 2:
 					var c := Color(1.0, 0.95, 0.6, 1.0 - k)
 					var q := p + Vector2(0, -34.0 - 40.0 * k - i * 9.0)
-					draw_polyline(PackedVector2Array([q + Vector2(-9, 6), q, q + Vector2(9, 6)]), c, 4.0, true)
+					Shapes.polyline(self, PackedVector2Array([q + Vector2(-9, 6), q, q + Vector2(9, 6)]), c, 4.0, true)
 			"shift_hex":
 				var col := Color(0.62, 0.2, 0.9)
 				if k < 0.45:
 					# Implosion: a dark disc and particles spiralling into the target.
 					var e := k / 0.45
-					draw_circle(p, 26.0 * (1.0 - e) + 8.0, Color(0.18, 0.02, 0.25, 0.55))
+					Shapes.circle(self, p, 26.0 * (1.0 - e) + 8.0, Color(0.18, 0.02, 0.25, 0.55))
 					for i in 12:
 						var a := TAU * i / 12.0 + e * 5.0
 						var q := p + Vector2.from_angle(a) * 70.0 * (1.0 - e * e)
-						draw_circle(q, 4.0 + 2.0 * e, Color(col.r, col.g, col.b, 0.4 + 0.6 * e))
-					draw_arc(p, 70.0 * (1.0 - e * e), 0, TAU, 40, Color(col.r, col.g, col.b, 0.35 + 0.5 * e), 3.0, true)
+						Shapes.circle(self, q, 4.0 + 2.0 * e, Color(col.r, col.g, col.b, 0.4 + 0.6 * e))
+					Shapes.arc(self, p, 70.0 * (1.0 - e * e), 0, TAU, 40, Color(col.r, col.g, col.b, 0.35 + 0.5 * e), 3.0, true)
 				else:
 					# Burst: a dark flash, a fast violet shock ring and crackles.
 					var e := (k - 0.45) / 0.55
 					if e < 0.2:
-						draw_circle(p, 30.0, Color(0.1, 0.0, 0.15, 0.7 * (1.0 - e / 0.2)))
-					draw_arc(p, 12.0 + 62.0 * e, 0, TAU, 40, Color(0.85, 0.5, 1.0, 1.0 - e), 6.0 * (1.0 - e) + 1.0, true)
+						Shapes.circle(self, p, 30.0, Color(0.1, 0.0, 0.15, 0.7 * (1.0 - e / 0.2)))
+					Shapes.arc(self, p, 12.0 + 62.0 * e, 0, TAU, 40, Color(0.85, 0.5, 1.0, 1.0 - e), 6.0 * (1.0 - e) + 1.0, true)
 					for crack in item.cracks:
 						var pts := PackedVector2Array()
 						for v in crack:
 							pts.append(p + v * (0.6 + 0.6 * e))
-						draw_polyline(pts, Color(0.9, 0.7, 1.0, 1.0 - e), 2.5, true)
+						Shapes.polyline(self, pts, Color(0.9, 0.7, 1.0, 1.0 - e), 2.5, true)
 			"spark":
 				var c: Color = item.col
 				c.a *= 1.0 - k
 				Icons.star(self, p, item.size * (1.0 - 0.5 * k), c)
 			"rocket":
-				draw_set_transform(p, item.t * item.spin, Vector2.ONE)
+				Shapes.set_transform(self, p, item.t * item.spin, Vector2.ONE)
 				Icons.token(self, item.form, Vector2.ZERO, Rules.BODY_RADIUS * Rules.CELL, item.team)
-				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				Shapes.set_transform(self, Vector2.ZERO, 0.0, Vector2.ONE)
 			"puff":
 				var col: Color = item.get("col", Color(0.8, 0.8, 0.8, 0.7))
 				col.a *= 1.0 - k
-				draw_circle(p, item.get("size", 8.0) * (1.0 + k * 1.5), col)
+				Shapes.circle(self, p, item.get("size", 8.0) * (1.0 + k * 1.5), col)
 			"blast":
-				draw_circle(p, item.get("radius", 40.0) * (0.4 + 0.6 * k), Color(1.0, 0.5, 0.1, 0.5 * (1.0 - k)))
-				draw_arc(p, item.get("radius", 40.0) * (0.4 + 0.6 * k), 0, TAU, 24, Color(1.0, 0.85, 0.3, 1.0 - k), 3.0, true)
+				Shapes.circle(self, p, item.get("radius", 40.0) * (0.4 + 0.6 * k), Color(1.0, 0.5, 0.1, 0.5 * (1.0 - k)))
+				Shapes.arc(self, p, item.get("radius", 40.0) * (0.4 + 0.6 * k), 0, TAU, 24, Color(1.0, 0.85, 0.3, 1.0 - k), 3.0, true)
 			"spray":
-				draw_circle(p, item.radius * (0.5 + 0.5 * k), Color(0.55, 0.8, 0.2, 0.35 * (1.0 - k)))
+				Shapes.circle(self, p, item.radius * (0.5 + 0.5 * k), Color(0.55, 0.8, 0.2, 0.35 * (1.0 - k)))
 			"fear":
 				var e := 1.0 - (1.0 - k) * (1.0 - k)
-				draw_circle(p, item.radius * e, Color(0.5, 0.7, 0.15, 0.3 * (1.0 - k)))
-				draw_arc(p, item.radius * e, 0, TAU, 40, Color(0.75, 0.45, 0.95, 1.0 - k), 5.0 * (1.0 - k) + 1.0, true)
+				Shapes.circle(self, p, item.radius * e, Color(0.5, 0.7, 0.15, 0.3 * (1.0 - k)))
+				Shapes.arc(self, p, item.radius * e, 0, TAU, 40, Color(0.75, 0.45, 0.95, 1.0 - k), 5.0 * (1.0 - k) + 1.0, true)
 			"display":
 				for i in 3:
-					draw_arc(p, item.radius * (0.3 + 0.7 * k) - i * 6.0, 0, TAU, 32, Color(0.3, 0.6, 1.0, 0.8 * (1.0 - k)), 3.0, true)
+					Shapes.arc(self, p, item.radius * (0.3 + 0.7 * k) - i * 6.0, 0, TAU, 32, Color(0.3, 0.6, 1.0, 0.8 * (1.0 - k)), 3.0, true)
 			"heal":
 				if item.has("from"):
-					draw_line(item.from, p, Color(1.0, 0.95, 0.6, 0.7 * (1.0 - k)), 3.0, true)
+					Shapes.line(self, item.from, p, Color(1.0, 0.95, 0.6, 0.7 * (1.0 - k)), 3.0, true)
 				var q := p + Vector2(0, -20.0 * k)
 				var c := Color(0.5, 1.0, 0.5, 1.0 - k)
-				draw_line(q + Vector2(-8, 0), q + Vector2(8, 0), c, 4.0)
-				draw_line(q + Vector2(0, -8), q + Vector2(0, 8), c, 4.0)
+				Shapes.line(self, q + Vector2(-8, 0), q + Vector2(8, 0), c, 4.0)
+				Shapes.line(self, q + Vector2(0, -8), q + Vector2(0, 8), c, 4.0)
 			"parry":
 				Icons.parry_mark(self, p + Vector2(0, -10), 10.0 + 6.0 * k)
 			"impact", "charge", "dive", "hop", "shell":
-				draw_arc(p, 12.0 + 30.0 * k, 0, TAU, 24, Color(1, 1, 1, 1.0 - k), 3.0, true)
+				Shapes.arc(self, p, 12.0 + 30.0 * k, 0, TAU, 24, Color(1, 1, 1, 1.0 - k), 3.0, true)
 			"song":
 				# Two golden sound waves and a small fan of notes above the bard.
 				for i in 2:
 					var wave := clampf(k * 1.4 - i * 0.3, 0.0, 1.0)
 					if wave > 0.0 and wave < 1.0:
-						draw_arc(p, 14.0 + 52.0 * wave, 0, TAU, 32, Color(1.0, 0.85, 0.3, 0.8 * (1.0 - wave)), 3.0 * (1.0 - wave) + 1.0, true)
+						Shapes.arc(self, p, 14.0 + 52.0 * wave, 0, TAU, 32, Color(1.0, 0.85, 0.3, 0.8 * (1.0 - wave)), 3.0 * (1.0 - wave) + 1.0, true)
 				for i in 3:
 					var drift := Vector2((i - 1) * 16.0 * k, -26.0 - 26.0 * k)
 					var c := Icons.GOLD
@@ -211,11 +211,11 @@ func _draw() -> void:
 				else:
 					# Arrival: a golden ring burst and a note popping above the ally.
 					var e := (k - 0.6) / 0.4
-					draw_arc(to, 14.0 + 26.0 * e, 0, TAU, 24, Color(1.0, 0.85, 0.3, 1.0 - e), 4.0 * (1.0 - e) + 1.0, true)
+					Shapes.arc(self, to, 14.0 + 26.0 * e, 0, TAU, 24, Color(1.0, 0.85, 0.3, 1.0 - e), 4.0 * (1.0 - e) + 1.0, true)
 					var c := Icons.GOLD
 					c.a = 1.0 - e
 					Icons.note_shadowed(self, to + Vector2(0, -18.0 - 14.0 * e), 10.0 + 5.0 * sin(e * PI), c)
 			"fizzle":
 				var c := Color(0.7, 0.7, 0.75, 1.0 - k)
-				draw_line(p + Vector2(-8, -8), p + Vector2(8, 8), c, 3.0)
-				draw_line(p + Vector2(-8, 8), p + Vector2(8, -8), c, 3.0)
+				Shapes.line(self, p + Vector2(-8, -8), p + Vector2(8, 8), c, 3.0)
+				Shapes.line(self, p + Vector2(-8, 8), p + Vector2(8, -8), c, 3.0)

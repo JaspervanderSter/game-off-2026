@@ -402,11 +402,11 @@ func draw_blizzard(rect: Rect2, elapsed: float) -> void:
 	ci.draw_rect(rect, Color(0.45, 0.78, 1.0, 0.20))
 	ci.draw_rect(rect, Color(0.6, 0.9, 1.0, 0.8), false, 2.0)
 	for i in range(1, 3):
-		ci.draw_line(rect.position + Vector2(i * CELL, 0), rect.position + Vector2(i * CELL, rect.size.y), Color(0.7, 0.9, 1.0, 0.12), 1.0)
-		ci.draw_line(rect.position + Vector2(0, i * CELL), rect.position + Vector2(rect.size.x, i * CELL), Color(0.7, 0.9, 1.0, 0.12), 1.0)
+		Shapes.line(ci, rect.position + Vector2(i * CELL, 0), rect.position + Vector2(i * CELL, rect.size.y), Color(0.7, 0.9, 1.0, 0.12), 1.0)
+		Shapes.line(ci, rect.position + Vector2(0, i * CELL), rect.position + Vector2(rect.size.x, i * CELL), Color(0.7, 0.9, 1.0, 0.12), 1.0)
 	for i in 28:
 		var p := rect.position + Vector2(fposmod(i * 43.0 + elapsed * 60.0, rect.size.x), fposmod(i * 71.0 + elapsed * 85.0, rect.size.y))
-		ci.draw_line(p + Vector2(-3, -4), p + Vector2(3, 4), Color(0.9, 0.97, 1.0, 0.85), 2.0, true)
+		Shapes.line(ci, p + Vector2(-3, -4), p + Vector2(3, 4), Color(0.9, 0.97, 1.0, 0.85), 2.0, true)
 
 
 # --- Spatial helpers -------------------------------------------------------------

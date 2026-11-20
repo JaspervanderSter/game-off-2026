@@ -14,6 +14,7 @@ config/name="Shapeshifters Duel"
 config/description="Prototype 02: auto-battler duel loop with single-target shapeshifting."
 config/version="0.2.0"
 run/main_scene="res://main.tscn"
+run/main_scene.web_benchmark="res://tests/perf_benchmark.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 config/windows_native_icon="res://icon.ico"

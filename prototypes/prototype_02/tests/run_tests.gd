@@ -19,6 +19,7 @@ func _ready() -> void:
 	SoundSet.reload()
 	SoundSet.apply()
 	_test_sound_set()
+	_test_shape_atlas()
 	_test_network()
 	_test_charges()
 	_test_transformation_rules()
@@ -59,6 +60,29 @@ func check(cond: bool, label: String) -> void:
 	if not cond:
 		_failures += 1
 		printerr("FAIL: " + label)
+
+
+## The atlas file the game loads matches the shapes drawn by Shapes.build_image
+## (run tools/make_shapes_atlas.gd after changing them).
+func _test_shape_atlas() -> void:
+	var drawn := Shapes.build_image()
+	var texture: Texture2D = load(Shapes.ATLAS_FILE)
+	check(texture != null, "shape atlas file loads")
+	if texture == null:
+		return
+	check(texture.get_image().has_mipmaps(), "shape atlas is imported with mipmaps")
+	var saved: Image = texture.get_image().duplicate()
+	saved.clear_mipmaps()
+	saved.convert(Image.FORMAT_RGBA8)
+	check(saved.get_size() == drawn.get_size(), "shape atlas file has the drawn size")
+	if saved.get_size() != drawn.get_size():
+		return
+	var a := saved.get_data()
+	var b := drawn.get_data()
+	var worst := 0
+	for i in range(3, a.size(), 4):
+		worst = maxi(worst, absi(a[i] - b[i]))
+	check(worst <= 1, "shape atlas file matches Shapes.build_image (max alpha difference %d)" % worst)
 
 
 func _test_art_style() -> void:

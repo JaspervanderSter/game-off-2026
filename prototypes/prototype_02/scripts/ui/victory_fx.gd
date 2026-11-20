@@ -89,20 +89,20 @@ func draw(canvas: CanvasItem) -> void:
 				var flutter := sin(t * 5.0 + particle.spin)
 				pos += Vector2(flutter * 18.0, 135.0 * t * t)
 				var width := size * (0.22 + 0.78 * absf(flutter))
-				canvas.draw_set_transform(pos, particle.spin * t)
+				Shapes.set_transform(canvas, pos, particle.spin * t)
 				canvas.draw_rect(Rect2(-width, -size * 0.5, width * 2.0, size), color)
-				canvas.draw_set_transform(Vector2.ZERO)
+				Shapes.set_transform(canvas, Vector2.ZERO)
 			Kind.STREAMER:
 				pos.y += 126.0 * t * t
 				var points := PackedVector2Array()
 				for i in 13:
 					var wave := Vector2(sin(i * 0.8 + t * 7.0) * size * 0.42, i * size * 0.2)
 					points.append(pos + wave.rotated(sin(particle.spin + t * 2.5)))
-				canvas.draw_polyline(points, Color(color, fade * 0.85), 3.0, true)
+				Shapes.polyline(canvas, points, Color(color, fade * 0.85), 3.0, true)
 			Kind.STAR:
 				var twinkle := sin(PI * t / particle.lifetime)
 				Icons.star(canvas, pos, size * twinkle, Color(color.lightened(0.4), fade * twinkle))
 			Kind.SPARK:
 				var tail := particle.velocity.normalized() * size * fade
-				canvas.draw_line(pos - tail, pos, Color(Icons.GOLD, fade * 0.8), 2.4, true)
-				canvas.draw_circle(pos, 2.0 * fade, Color(1.0, 0.97, 0.8, fade), true)
+				Shapes.line(canvas, pos - tail, pos, Color(Icons.GOLD, fade * 0.8), 2.4, true)
+				Shapes.circle(canvas, pos, 2.0 * fade, Color(1.0, 0.97, 0.8, fade), true)

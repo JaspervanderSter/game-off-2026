@@ -64,6 +64,7 @@ var switch_flash: SwitchFlash
 func _ready() -> void:
 	rng.randomize()
 	SoundSet.apply()
+	Shapes.warm_up() # builds the shape atlas now rather than on the first frame
 	music = PhaseMusic.new()
 	add_child(music)
 	board_view = BoardView.new()
@@ -668,11 +669,11 @@ func _process(dt: float) -> void:
 				for j in forms.size():
 					if Hud.pack_token_pos(i, j, forms.size()).distance_to(mouse) < Hud.pack_token_radius(forms.size()):
 						hover_info = {"form": forms[j], "team": 0, "pos": mouse}
-	queue_redraw()
 
 
+## The table background never changes: drawn once (and again only when
+## something calls queue_redraw, such as the art style switch).
 func _draw() -> void:
-	# Table background.
 	draw_rect(Rect2(0, 0, 1280, 720), Color(0.16, 0.12, 0.1))
 	for i in 12:
-		draw_line(Vector2(0, i * 64 + 20), Vector2(1280, i * 64 + 4), Color(0.19, 0.14, 0.11), 18.0)
+		Shapes.line(self, Vector2(0, i * 64 + 20), Vector2(1280, i * 64 + 4), Color(0.19, 0.14, 0.11), 18.0)

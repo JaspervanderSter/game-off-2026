@@ -28,19 +28,15 @@ static func _poly(ci: CanvasItem, p: Vector2, s: float, arr: Array, col: Color) 
 
 
 static func _line(ci: CanvasItem, p: Vector2, s: float, a: Vector2, b: Vector2, col: Color, w: float) -> void:
-	ci.draw_line(p + a * s, p + b * s, col, maxf(1.0, w * s), true)
+	Shapes.line(ci, p + a * s, p + b * s, col, maxf(1.0, w * s), true)
 
 
 static func _circ(ci: CanvasItem, p: Vector2, s: float, c: Vector2, r: float, col: Color) -> void:
-	ci.draw_circle(p + c * s, r * s, col)
+	Shapes.circle(ci, p + c * s, r * s, col)
 
 
 static func _ellipse(ci: CanvasItem, p: Vector2, s: float, c: Vector2, rx: float, ry: float, col: Color, rot := 0.0) -> void:
-	var pts := []
-	for i in 20:
-		var a := TAU * i / 20.0
-		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry).rotated(rot))
-	_poly(ci, p, s, pts, col)
+	Shapes.ellipse(ci, p + c * s, rx * s, ry * s, col, rot)
 
 
 static func _eyes(ci: CanvasItem, p: Vector2, s: float, c: Vector2, gap: float, col := DARK) -> void:
@@ -60,7 +56,7 @@ static func _pointed_hat(ci: CanvasItem, p: Vector2, s: float, col: Color) -> vo
 
 
 static func _helmet(ci: CanvasItem, p: Vector2, s: float, col: Color) -> void:
-	ci.draw_arc(p + Vector2(0, -0.38) * s, 0.31 * s, PI, TAU, 12, col, 0.16 * s, true)
+	Shapes.arc(ci, p + Vector2(0, -0.38) * s, 0.31 * s, PI, TAU, 12, col, 0.16 * s, true)
 
 
 # --- Creatures --------------------------------------------------------------------
@@ -81,7 +77,7 @@ static func creature(ci: CanvasItem, id: String, p: Vector2, s: float) -> void:
 			_helmet(ci, p, s, Color(0.7, 0.72, 0.78))
 			var shield := [Vector2(-0.8, -0.15), Vector2(0.1, -0.15), Vector2(0.1, 0.35), Vector2(-0.35, 0.9), Vector2(-0.8, 0.35)]
 			_poly(ci, p, s, shield, Color(0.25, 0.4, 0.75))
-			ci.draw_polyline(_pts(p, s, shield + [shield[0]]), GOLD, maxf(1.0, 0.07 * s), true)
+			Shapes.polyline(ci, _pts(p, s, shield + [shield[0]]), GOLD, maxf(1.0, 0.07 * s), true)
 			_line(ci, p, s, Vector2(-0.35, -0.05), Vector2(-0.35, 0.7), GOLD, 0.07)
 		"berserker":
 			var steel := Color(0.8, 0.82, 0.86)
@@ -113,13 +109,13 @@ static func creature(ci: CanvasItem, id: String, p: Vector2, s: float) -> void:
 		"archer":
 			_humanoid(ci, p, s, Color(0.2, 0.55, 0.25))
 			_poly(ci, p, s, [Vector2(-0.38, -0.3), Vector2(0.38, -0.3), Vector2(0.2, -0.62), Vector2(0.0, -0.95), Vector2(-0.2, -0.62)], Color(0.15, 0.45, 0.2))
-			ci.draw_arc(p + Vector2(0.3, 0.1) * s, 0.65 * s, -1.2, 1.2, 14, Color(0.6, 0.38, 0.18), maxf(1.0, 0.08 * s), true)
+			Shapes.arc(ci, p + Vector2(0.3, 0.1) * s, 0.65 * s, -1.2, 1.2, 14, Color(0.6, 0.38, 0.18), maxf(1.0, 0.08 * s), true)
 			_line(ci, p, s, Vector2(0.3, 0.1) + Vector2.from_angle(-1.2) * 0.65, Vector2(0.3, 0.1) + Vector2.from_angle(1.2) * 0.65, Color(0.95, 0.95, 0.9), 0.03)
 		"crossbowman":
 			_humanoid(ci, p, s, Color(0.55, 0.25, 0.2))
 			_helmet(ci, p, s, Color(0.6, 0.62, 0.66))
 			_line(ci, p, s, Vector2(-0.2, 0.3), Vector2(0.95, 0.3), Color(0.45, 0.28, 0.12), 0.12)
-			ci.draw_arc(p + Vector2(0.6, 0.55) * s, 0.42 * s, -PI * 0.85, -PI * 0.15, 12, Color(0.35, 0.35, 0.4), maxf(1.0, 0.08 * s), true)
+			Shapes.arc(ci, p + Vector2(0.6, 0.55) * s, 0.42 * s, -PI * 0.85, -PI * 0.15, 12, Color(0.35, 0.35, 0.4), maxf(1.0, 0.08 * s), true)
 		"pyromancer":
 			_humanoid(ci, p, s, Color(0.85, 0.3, 0.1))
 			_pointed_hat(ci, p, s, Color(0.7, 0.12, 0.08))
@@ -131,7 +127,7 @@ static func creature(ci: CanvasItem, id: String, p: Vector2, s: float) -> void:
 		"cleric":
 			_humanoid(ci, p, s, Color(0.95, 0.95, 0.92))
 			heart(ci, p + Vector2(0, 0.4) * s, 0.26 * s, GOLD)
-			ci.draw_arc(p + Vector2(0, -0.75) * s, 0.25 * s, 0, TAU, 16, GOLD, maxf(1.0, 0.07 * s), true)
+			Shapes.arc(ci, p + Vector2(0, -0.75) * s, 0.25 * s, 0, TAU, 16, GOLD, maxf(1.0, 0.07 * s), true)
 		"bard":
 			_humanoid(ci, p, s, Color(0.75, 0.25, 0.6))
 			_poly(ci, p, s, [Vector2(-0.4, -0.52), Vector2(0.4, -0.52), Vector2(0.1, -0.78)], Color(0.2, 0.6, 0.55))
@@ -193,7 +189,7 @@ static func creature(ci: CanvasItem, id: String, p: Vector2, s: float) -> void:
 			for i in 16:
 				var t := i / 15.0
 				body.append(p + Vector2(sin(t * TAU * 1.1) * 0.5, 0.85 - t * 1.5) * s)
-			ci.draw_polyline(body, Color(0.3, 0.7, 0.25), maxf(2.0, 0.28 * s), true)
+			Shapes.polyline(ci, body, Color(0.3, 0.7, 0.25), maxf(2.0, 0.28 * s), true)
 			_circ(ci, p, s, Vector2(sin(TAU * 1.1) * 0.5, -0.7), 0.25, Color(0.35, 0.78, 0.3))
 			_line(ci, p, s, Vector2(sin(TAU * 1.1) * 0.5, -0.9), Vector2(sin(TAU * 1.1) * 0.5, -1.15), Color(0.9, 0.15, 0.2), 0.05)
 			_eyes(ci, p, s, Vector2(sin(TAU * 1.1) * 0.5, -0.75), 0.1, Color(1.0, 0.9, 0.2))
@@ -256,16 +252,16 @@ static func _flame(ci: CanvasItem, p: Vector2, s: float) -> void:
 static func _snowflake(ci: CanvasItem, p: Vector2, s: float, col: Color) -> void:
 	for i in 3:
 		var d := Vector2.from_angle(PI * i / 3.0) * s
-		ci.draw_line(p - d, p + d, col, maxf(1.0, s * 0.22), true)
+		Shapes.line(ci, p - d, p + d, col, maxf(1.0, s * 0.22), true)
 
 
 ## Team base under a creature: coloured disc with a strong ring.
 static func team_base(ci: CanvasItem, p: Vector2, r: float, team: int, highlight := false) -> void:
 	var col := team_color(team)
-	ci.draw_circle(p, r, col.darkened(0.65))
-	ci.draw_arc(p, r, 0, TAU, 32, col, 4.0 if not highlight else 6.0, true)
+	Shapes.circle(ci, p, r, col.darkened(0.65))
+	Shapes.arc(ci, p, r, 0, TAU, 32, col, 4.0 if not highlight else 6.0, true)
 	if highlight:
-		ci.draw_arc(p, r + 5.0, 0, TAU, 32, Color(1, 1, 1, 0.8), 2.0, true)
+		Shapes.arc(ci, p, r + 5.0, 0, TAU, 32, Color(1, 1, 1, 0.8), 2.0, true)
 
 
 ## Full token used outside combat (prep board, reserve, shop, tooltip).
@@ -284,7 +280,7 @@ static func token(ci: CanvasItem, id: String, p: Vector2, r: float, team: int, h
 static func sprite_token(ci: CanvasItem, sprite: Texture2D, p: Vector2, r: float, highlight := false) -> void:
 	ArtStyle.draw_token(ci, sprite, p, r)
 	if highlight:
-		ci.draw_arc(p, r + 5.0, 0, TAU, 32, Color(1, 1, 1, 0.8), 2.0, true)
+		Shapes.arc(ci, p, r + 5.0, 0, TAU, 32, Color(1, 1, 1, 0.8), 2.0, true)
 
 
 # --- Combat overlays ----------------------------------------------------------
@@ -295,13 +291,7 @@ static func health_bar(ci: CanvasItem, pos: Vector2, w: float, ratio: float, tea
 
 
 static func star(ci: CanvasItem, p: Vector2, r: float, col := GOLD) -> void:
-	if r < 0.5:
-		return # fading effects shrink stars to nothing; degenerate polygons fail to triangulate
-	var pts := PackedVector2Array()
-	for i in 10:
-		var a := -PI / 2 + TAU * i / 10.0
-		pts.append(p + Vector2.from_angle(a) * (r if i % 2 == 0 else r * 0.45))
-	ci.draw_colored_polygon(pts, col)
+	Shapes.star(ci, p, r, col)
 
 
 static func merge_stars(ci: CanvasItem, center: Vector2, count: int) -> void:
@@ -315,10 +305,10 @@ static func merge_progress(ci: CanvasItem, center: Vector2, copies: int, stars: 
 		return
 	for i in 3:
 		var p := center + Vector2((i - 1) * 10, 0)
-		ci.draw_circle(p, 4, Color(0.08, 0.06, 0.04, 0.95))
-		ci.draw_arc(p, 3.4, 0, TAU, 16, GOLD, 1.1, true)
+		Shapes.circle(ci, p, 4, Color(0.08, 0.06, 0.04, 0.95))
+		Shapes.arc(ci, p, 3.4, 0, TAU, 16, GOLD, 1.1, true)
 		if i < copies:
-			ci.draw_circle(p, 2.3, GOLD)
+			Shapes.circle(ci, p, 2.3, GOLD)
 
 
 static func padlock(ci: CanvasItem, p: Vector2, opening := 0.0, scale_factor := 1.0, opacity := 1.0) -> void:
@@ -329,9 +319,9 @@ static func padlock(ci: CanvasItem, p: Vector2, opening := 0.0, scale_factor := 
 		var point := Vector2.from_angle(PI + PI * i / 16.0) * 6.0 + Vector2(0, -4)
 		point = hinge + (point - hinge).rotated(-0.85 * opening) + Vector2(0, -2.0 * opening)
 		shackle.append(p + point * scale_factor)
-	ci.draw_polyline(shackle, gold, 3.0 * scale_factor, true)
+	Shapes.polyline(ci, shackle, gold, 3.0 * scale_factor, true)
 	ci.draw_rect(Rect2(p + Vector2(-8, -4) * scale_factor, Vector2(16, 13) * scale_factor), gold)
-	ci.draw_circle(p + Vector2(0, 1) * scale_factor, 2.0 * scale_factor, Color(DARK, opacity))
+	Shapes.circle(ci, p + Vector2(0, 1) * scale_factor, 2.0 * scale_factor, Color(DARK, opacity))
 
 
 ## Hover reticle for the shapeshift spell. Ally: a cyan blessing circle with
@@ -348,12 +338,12 @@ static func shift_reticle(ci: CanvasItem, p: Vector2, r: float, t: float, ally: 
 	var ring_r := r * (1.55 + 0.05 * pulse) # outside the bard's inspiration ring
 	var fill := glow_col
 	fill.a = 0.16 + 0.1 * pulse if ready else 0.0
-	ci.draw_circle(p, ring_r, fill)
+	Shapes.circle(ci, p, ring_r, fill)
 	# Dashed rotating ring: blessings turn clockwise, hexes anticlockwise.
 	var spin := t * (1.6 if ally else -2.2)
 	for i in 8:
 		var a := spin + TAU * i / 8.0
-		ci.draw_arc(p, ring_r, a, a + TAU / 8.0 * 0.62, 6, main_col, 4.0, true)
+		Shapes.arc(ci, p, ring_r, a, a + TAU / 8.0 * 0.62, 6, main_col, 4.0, true)
 	if ally:
 		for i in 4:
 			var a := -spin * 0.7 + TAU * i / 4.0
@@ -381,13 +371,13 @@ static func immunity_ring(ci: CanvasItem, p: Vector2, r: float, ratio: float, t:
 	var segs := 10
 	for i in segs:
 		var a := t * 2.0 + TAU * i / segs
-		ci.draw_arc(p, r, a, a + TAU / segs * 0.5, 4, Color(1, 1, 1, 0.75), 2.5, true)
-	ci.draw_arc(p, r + 4.0, -PI / 2, -PI / 2 + TAU * ratio, 24, MAGIC, 3.0, true)
+		Shapes.arc(ci, p, r, a, a + TAU / segs * 0.5, 4, Color(1, 1, 1, 0.75), 2.5, true)
+	Shapes.arc(ci, p, r + 4.0, -PI / 2, -PI / 2 + TAU * ratio, 24, MAGIC, 3.0, true)
 
 
 static func parry_mark(ci: CanvasItem, p: Vector2, r: float) -> void:
-	ci.draw_line(p + Vector2(-r, r), p + Vector2(r, -r), Color(0.9, 0.95, 1.0), 2.5, true)
-	ci.draw_line(p + Vector2(-r, -r), p + Vector2(r, r), Color(0.9, 0.95, 1.0), 2.5, true)
+	Shapes.line(ci, p + Vector2(-r, r), p + Vector2(r, -r), Color(0.9, 0.95, 1.0), 2.5, true)
+	Shapes.line(ci, p + Vector2(-r, -r), p + Vector2(r, r), Color(0.9, 0.95, 1.0), 2.5, true)
 
 
 ## Fear above a fleeing creature: a wobbling purple exclamation mark with a
@@ -397,47 +387,47 @@ static func fear_mark(ci: CanvasItem, p: Vector2, r: float, t: float) -> void:
 	for pass_i in 2:
 		var col := Color(0.12, 0.05, 0.15) if pass_i == 0 else Color(0.85, 0.55, 1.0)
 		var w := 6.0 if pass_i == 0 else 3.5
-		ci.draw_line(q + Vector2(0, -r), q + Vector2(0, r * 0.35), col, w, true)
-		ci.draw_circle(q + Vector2(0, r * 0.9), w * 0.5, col)
+		Shapes.line(ci, q + Vector2(0, -r), q + Vector2(0, r * 0.35), col, w, true)
+		Shapes.circle(ci, q + Vector2(0, r * 0.9), w * 0.5, col)
 
 
 ## Small status pip: negative effects use a dark red rim, positive a green rim.
 static func status(ci: CanvasItem, key: String, p: Vector2, r: float) -> void:
 	var good := key in ["inspired", "regen", "pack"]
-	ci.draw_circle(p, r + 1.5, Color(0.1, 0.5, 0.15) if good else Color(0.55, 0.05, 0.05))
-	ci.draw_circle(p, r, Color(0.08, 0.08, 0.1))
+	Shapes.circle(ci, p, r + 1.5, Color(0.1, 0.5, 0.15) if good else Color(0.55, 0.05, 0.05))
+	Shapes.circle(ci, p, r, Color(0.08, 0.08, 0.1))
 	match key:
 		"poisoned":
-			ci.draw_circle(p + Vector2(0, 1.5), r * 0.55, Color(0.5, 1.0, 0.3))
+			Shapes.circle(ci, p + Vector2(0, 1.5), r * 0.55, Color(0.5, 1.0, 0.3))
 			ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.5, 1.0), p + Vector2(r * 0.5, 1.0), p + Vector2(0, -r * 0.8)]), Color(0.5, 1.0, 0.3))
 		"chilled":
 			_snowflake(ci, p, r * 0.8, Color(0.7, 0.9, 1.0))
 		"burning":
 			ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.65, r * 0.25), p + Vector2(r * 0.15, -r * 0.9), p + Vector2(r * 0.65, r * 0.25)]), Color(1.0, 0.45, 0.1))
-			ci.draw_circle(p + Vector2(0, r * 0.25), r * 0.5, Color(1.0, 0.7, 0.2))
+			Shapes.circle(ci, p + Vector2(0, r * 0.25), r * 0.5, Color(1.0, 0.7, 0.2))
 		"exposed":
 			ci.draw_rect(Rect2(p - Vector2(r * 0.5, r * 0.6), Vector2(r, r * 1.2)), Color(0.75, 0.75, 0.8))
-			ci.draw_line(p + Vector2(-r * 0.6, -r * 0.6), p + Vector2(r * 0.6, r * 0.6), Color(1, 0.3, 0.3), 2.0)
+			Shapes.line(ci, p + Vector2(-r * 0.6, -r * 0.6), p + Vector2(r * 0.6, r * 0.6), Color(1, 0.3, 0.3), 2.0)
 		"dazzled":
-			ci.draw_arc(p, r * 0.6, 0, TAU, 10, Color(0.4, 0.6, 1.0), 2.0)
-			ci.draw_circle(p, r * 0.25, GOLD)
+			Shapes.arc(ci, p, r * 0.6, 0, TAU, 10, Color(0.4, 0.6, 1.0), 2.0)
+			Shapes.circle(ci, p, r * 0.25, GOLD)
 		"feared":
-			ci.draw_line(p + Vector2(0, -r * 0.7), p + Vector2(0, r * 0.2), Color(0.85, 0.55, 1.0), 2.5)
-			ci.draw_circle(p + Vector2(0, r * 0.6), 1.4, Color(0.85, 0.55, 1.0))
+			Shapes.line(ci, p + Vector2(0, -r * 0.7), p + Vector2(0, r * 0.2), Color(0.85, 0.55, 1.0), 2.5)
+			Shapes.circle(ci, p + Vector2(0, r * 0.6), 1.4, Color(0.85, 0.55, 1.0))
 		"inspired":
 			note(ci, p, r * 0.9, GOLD)
 		"regen":
-			ci.draw_line(p + Vector2(-r * 0.6, 0), p + Vector2(r * 0.6, 0), Color(0.5, 1.0, 0.5), 2.5)
-			ci.draw_line(p + Vector2(0, -r * 0.6), p + Vector2(0, r * 0.6), Color(0.5, 1.0, 0.5), 2.5)
+			Shapes.line(ci, p + Vector2(-r * 0.6, 0), p + Vector2(r * 0.6, 0), Color(0.5, 1.0, 0.5), 2.5)
+			Shapes.line(ci, p + Vector2(0, -r * 0.6), p + Vector2(0, r * 0.6), Color(0.5, 1.0, 0.5), 2.5)
 		"pack":
-			ci.draw_circle(p + Vector2(-r * 0.3, 0), r * 0.35, Color(0.8, 0.8, 0.85))
-			ci.draw_circle(p + Vector2(r * 0.3, 0), r * 0.35, Color(0.8, 0.8, 0.85))
+			Shapes.circle(ci, p + Vector2(-r * 0.3, 0), r * 0.35, Color(0.8, 0.8, 0.85))
+			Shapes.circle(ci, p + Vector2(r * 0.3, 0), r * 0.35, Color(0.8, 0.8, 0.85))
 
 
 static func note(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
-	ci.draw_circle(p + Vector2(-r * 0.3, r * 0.45), r * 0.35, col)
-	ci.draw_line(p + Vector2(r * 0.02, r * 0.45), p + Vector2(r * 0.02, -r * 0.7), col, 2.0)
-	ci.draw_line(p + Vector2(r * 0.02, -r * 0.7), p + Vector2(r * 0.6, -r * 0.4), col, 2.0)
+	Shapes.circle(ci, p + Vector2(-r * 0.3, r * 0.45), r * 0.35, col)
+	Shapes.line(ci, p + Vector2(r * 0.02, r * 0.45), p + Vector2(r * 0.02, -r * 0.7), col, 2.0)
+	Shapes.line(ci, p + Vector2(r * 0.02, -r * 0.7), p + Vector2(r * 0.6, -r * 0.4), col, 2.0)
 
 
 ## Note with a dark drop shadow so it stays readable on the light board.
@@ -449,50 +439,41 @@ static func note_shadowed(ci: CanvasItem, p: Vector2, r: float, col: Color) -> v
 static func projectile(ci: CanvasItem, kind: String, p: Vector2, dir: Vector2) -> void:
 	match kind:
 		"arrow":
-			ci.draw_line(p - dir * 12.0, p, Color(0.85, 0.7, 0.45), 2.5, true)
-			ci.draw_circle(p, 2.5, Color(0.9, 0.9, 0.95))
+			Shapes.line(ci, p - dir * 12.0, p, Color(0.85, 0.7, 0.45), 2.5, true)
+			Shapes.circle(ci, p, 2.5, Color(0.9, 0.9, 0.95))
 		"bolt":
-			ci.draw_line(p - dir * 10.0, p, Color(0.35, 0.3, 0.3), 4.5, true)
-			ci.draw_circle(p, 3.5, Color(0.9, 0.9, 0.95))
+			Shapes.line(ci, p - dir * 10.0, p, Color(0.35, 0.3, 0.3), 4.5, true)
+			Shapes.circle(ci, p, 3.5, Color(0.9, 0.9, 0.95))
 		"seeker_bolt":
 			# Homing bolt: same shaft with a glowing cyan trail and tip.
-			ci.draw_line(p - dir * 22.0, p - dir * 8.0, Color(0.4, 0.95, 1.0, 0.35), 6.0, true)
-			ci.draw_line(p - dir * 10.0, p, Color(0.35, 0.3, 0.3), 4.5, true)
-			ci.draw_circle(p, 5.5, Color(0.4, 0.95, 1.0, 0.45))
-			ci.draw_circle(p, 3.5, Color(0.85, 1.0, 1.0))
+			Shapes.line(ci, p - dir * 22.0, p - dir * 8.0, Color(0.4, 0.95, 1.0, 0.35), 6.0, true)
+			Shapes.line(ci, p - dir * 10.0, p, Color(0.35, 0.3, 0.3), 4.5, true)
+			Shapes.circle(ci, p, 5.5, Color(0.4, 0.95, 1.0, 0.45))
+			Shapes.circle(ci, p, 3.5, Color(0.85, 1.0, 1.0))
 		"fire", "fireball":
 			var size := 2.2 if kind == "fireball" else 1.0
-			ci.draw_circle(p - dir * 6.0 * size, 5.0 * size, Color(1.0, 0.4, 0.1, 0.5))
-			ci.draw_circle(p, 6.5 * size, Color(1.0, 0.5, 0.1))
-			ci.draw_circle(p, 3.5 * size, Color(1.0, 0.95, 0.4))
+			Shapes.circle(ci, p - dir * 6.0 * size, 5.0 * size, Color(1.0, 0.4, 0.1, 0.5))
+			Shapes.circle(ci, p, 6.5 * size, Color(1.0, 0.5, 0.1))
+			Shapes.circle(ci, p, 3.5 * size, Color(1.0, 0.95, 0.4))
 		"frost":
 			_snowflake(ci, p, 6.0, Color(0.75, 0.95, 1.0))
 		"holy":
-			ci.draw_circle(p, 5.0, Color(1.0, 0.95, 0.6))
+			Shapes.circle(ci, p, 5.0, Color(1.0, 0.95, 0.6))
 		"note":
 			note(ci, p, 7.0, Color(1.0, 0.6, 0.9))
 		_:
-			ci.draw_circle(p, 4.0, Color.WHITE)
+			Shapes.circle(ci, p, 4.0, Color.WHITE)
 
 
 # --- Interface icons -------------------------------------------------------------
 
 static func heart(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
-	ci.draw_circle(p + Vector2(-r * 0.45, -r * 0.2), r * 0.5, col)
-	ci.draw_circle(p + Vector2(r * 0.45, -r * 0.2), r * 0.5, col)
-	ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.93, 0.0), p + Vector2(r * 0.93, 0.0), p + Vector2(0, r * 0.95)]), col)
+	Shapes.heart(ci, p, r, col)
 
 
+## Left (side 0) or right (side 1) half of a heart.
 static func heart_half(ci: CanvasItem, p: Vector2, r: float, side: int, col: Color) -> void:
-	if r < 0.5:
-		return # a vanishing shard: too small to triangulate, invisible anyway
-	var points := PackedVector2Array()
-	for i in 16:
-		var angle := lerpf(-0.45, -3.55, i / 15.0)
-		var x := (-0.45 + cos(angle) * 0.5) * r
-		points.append(p + Vector2(x if side == 0 else -x, (-0.2 + sin(angle) * 0.5) * r))
-	points.append(p + Vector2(0, r * 0.95))
-	ci.draw_colored_polygon(points, col)
+	Shapes.heart(ci, p, r, col, side)
 
 
 static func wizard_heart(ci: CanvasItem, p: Vector2, r: float, amount: float) -> void:
@@ -504,9 +485,9 @@ static func wizard_heart(ci: CanvasItem, p: Vector2, r: float, amount: float) ->
 
 
 static func coin(ci: CanvasItem, p: Vector2, r: float) -> void:
-	ci.draw_circle(p, r, Color(0.75, 0.55, 0.1))
-	ci.draw_circle(p, r * 0.8, GOLD)
-	ci.draw_arc(p, r * 0.5, 0, TAU, 12, Color(0.85, 0.6, 0.1), maxf(1.0, r * 0.15), true)
+	Shapes.circle(ci, p, r, Color(0.75, 0.55, 0.1))
+	Shapes.circle(ci, p, r * 0.8, GOLD)
+	Shapes.arc(ci, p, r * 0.5, 0, TAU, 12, Color(0.85, 0.6, 0.1), maxf(1.0, r * 0.15), true)
 
 
 static func wizard_hat(ci: CanvasItem, p: Vector2, r: float, team: int) -> void:
@@ -518,69 +499,69 @@ static func wizard_hat(ci: CanvasItem, p: Vector2, r: float, team: int) -> void:
 
 ## Charge orb with recharge progress arc.
 static func charge_orb(ci: CanvasItem, p: Vector2, r: float, filled: bool, progress := 0.0) -> void:
-	ci.draw_circle(p, r, Color(0.1, 0.07, 0.15))
+	Shapes.circle(ci, p, r, Color(0.1, 0.07, 0.15))
 	if filled:
-		ci.draw_circle(p, r * 0.8, MAGIC)
-		ci.draw_circle(p + Vector2(-r * 0.25, -r * 0.25), r * 0.25, Color(1, 1, 1, 0.6))
+		Shapes.circle(ci, p, r * 0.8, MAGIC)
+		Shapes.circle(ci, p + Vector2(-r * 0.25, -r * 0.25), r * 0.25, Color(1, 1, 1, 0.6))
 	elif progress > 0.0:
-		ci.draw_arc(p, r * 0.7, -PI / 2, -PI / 2 + TAU * progress, 20, MAGIC, r * 0.3, true)
-	ci.draw_arc(p, r, 0, TAU, 20, MAGIC.darkened(0.3), 2.0, true)
+		Shapes.arc(ci, p, r * 0.7, -PI / 2, -PI / 2 + TAU * progress, 20, MAGIC, r * 0.3, true)
+	Shapes.arc(ci, p, r, 0, TAU, 20, MAGIC.darkened(0.3), 2.0, true)
 
 
 static func swords(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
-	ci.draw_line(p + Vector2(-r, r), p + Vector2(r * 0.8, -r * 0.8), col, r * 0.18, true)
-	ci.draw_line(p + Vector2(r, r), p + Vector2(-r * 0.8, -r * 0.8), col, r * 0.18, true)
-	ci.draw_line(p + Vector2(-r * 0.75, r * 0.35), p + Vector2(-r * 0.35, r * 0.75), col, r * 0.2, true)
-	ci.draw_line(p + Vector2(r * 0.75, r * 0.35), p + Vector2(r * 0.35, r * 0.75), col, r * 0.2, true)
+	Shapes.line(ci, p + Vector2(-r, r), p + Vector2(r * 0.8, -r * 0.8), col, r * 0.18, true)
+	Shapes.line(ci, p + Vector2(r, r), p + Vector2(-r * 0.8, -r * 0.8), col, r * 0.18, true)
+	Shapes.line(ci, p + Vector2(-r * 0.75, r * 0.35), p + Vector2(-r * 0.35, r * 0.75), col, r * 0.2, true)
+	Shapes.line(ci, p + Vector2(r * 0.75, r * 0.35), p + Vector2(r * 0.35, r * 0.75), col, r * 0.2, true)
 
 
 static func wand(ci: CanvasItem, p: Vector2, r: float) -> void:
-	ci.draw_line(p + Vector2(-r * 0.7, r * 0.7), p + Vector2(r * 0.4, -r * 0.4), Color(0.55, 0.35, 0.2), r * 0.18, true)
+	Shapes.line(ci, p + Vector2(-r * 0.7, r * 0.7), p + Vector2(r * 0.4, -r * 0.4), Color(0.55, 0.35, 0.2), r * 0.18, true)
 	star(ci, p + Vector2(r * 0.5, -r * 0.5), r * 0.42, MAGIC.lightened(0.3))
 
 
 static func crown(ci: CanvasItem, p: Vector2, r: float) -> void:
 	ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r, r * 0.5), p + Vector2(-r, -r * 0.5), p + Vector2(-r * 0.5, 0), p + Vector2(0, -r * 0.8), p + Vector2(r * 0.5, 0), p + Vector2(r, -r * 0.5), p + Vector2(r, r * 0.5)]), GOLD)
 	for x in [-r, 0.0, r]:
-		ci.draw_circle(p + Vector2(x, -r * (0.8 if x == 0.0 else 0.5)), r * 0.13, Color(1.0, 0.4, 0.4))
+		Shapes.circle(ci, p + Vector2(x, -r * (0.8 if x == 0.0 else 0.5)), r * 0.13, Color(1.0, 0.4, 0.4))
 
 
 static func skull(ci: CanvasItem, p: Vector2, r: float) -> void:
-	ci.draw_circle(p + Vector2(0, -r * 0.15), r * 0.75, Color(0.92, 0.9, 0.85))
+	Shapes.circle(ci, p + Vector2(0, -r * 0.15), r * 0.75, Color(0.92, 0.9, 0.85))
 	ci.draw_rect(Rect2(p + Vector2(-r * 0.4, r * 0.3), Vector2(r * 0.8, r * 0.45)), Color(0.92, 0.9, 0.85))
-	ci.draw_circle(p + Vector2(-r * 0.3, -r * 0.15), r * 0.2, DARK)
-	ci.draw_circle(p + Vector2(r * 0.3, -r * 0.15), r * 0.2, DARK)
+	Shapes.circle(ci, p + Vector2(-r * 0.3, -r * 0.15), r * 0.2, DARK)
+	Shapes.circle(ci, p + Vector2(r * 0.3, -r * 0.15), r * 0.2, DARK)
 	for x in [-0.2, 0.0, 0.2]:
-		ci.draw_line(p + Vector2(x * r, r * 0.4), p + Vector2(x * r, r * 0.75), DARK, 2.0)
+		Shapes.line(ci, p + Vector2(x * r, r * 0.4), p + Vector2(x * r, r * 0.75), DARK, 2.0)
 
 
 static func draw_mark(ci: CanvasItem, p: Vector2, r: float) -> void:
-	ci.draw_line(p + Vector2(-r, -r * 0.3), p + Vector2(r, -r * 0.3), Color(0.85, 0.85, 0.9), r * 0.25)
-	ci.draw_line(p + Vector2(-r, r * 0.3), p + Vector2(r, r * 0.3), Color(0.85, 0.85, 0.9), r * 0.25)
+	Shapes.line(ci, p + Vector2(-r, -r * 0.3), p + Vector2(r, -r * 0.3), Color(0.85, 0.85, 0.9), r * 0.25)
+	Shapes.line(ci, p + Vector2(-r, r * 0.3), p + Vector2(r, r * 0.3), Color(0.85, 0.85, 0.9), r * 0.25)
 
 
 static func restart(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
-	ci.draw_arc(p, r, -PI * 0.3, PI * 1.4, 28, col, r * 0.22, true)
+	Shapes.arc(ci, p, r, -PI * 0.3, PI * 1.4, 28, col, r * 0.22, true)
 	var tip := p + Vector2.from_angle(-PI * 0.3) * r
 	ci.draw_colored_polygon(PackedVector2Array([tip + Vector2(-r * 0.4, -r * 0.1), tip + Vector2(r * 0.25, -r * 0.45), tip + Vector2(r * 0.2, r * 0.35)]), col)
 
 
 ## Small pie showing a probability.
 static func chance_pie(ci: CanvasItem, p: Vector2, r: float, chance: float) -> void:
-	ci.draw_circle(p, r, Color(0.15, 0.1, 0.2))
+	Shapes.circle(ci, p, r, Color(0.15, 0.1, 0.2))
 	var pts := PackedVector2Array([p])
 	var steps := maxi(3, int(24 * chance))
 	for i in steps + 1:
 		pts.append(p + Vector2.from_angle(-PI / 2 + TAU * chance * i / steps) * r)
 	if chance >= 0.999:
-		ci.draw_circle(p, r, MAGIC)
+		Shapes.circle(ci, p, r, MAGIC)
 	else:
 		ci.draw_colored_polygon(pts, MAGIC)
-	ci.draw_arc(p, r, 0, TAU, 20, MAGIC.lightened(0.3), 1.5, true)
+	Shapes.arc(ci, p, r, 0, TAU, 20, MAGIC.lightened(0.3), 1.5, true)
 
 
 static func arrow_right(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
-	ci.draw_line(p + Vector2(-r, 0), p + Vector2(r * 0.5, 0), col, r * 0.3, true)
+	Shapes.line(ci, p + Vector2(-r, 0), p + Vector2(r * 0.5, 0), col, r * 0.3, true)
 	ci.draw_colored_polygon(PackedVector2Array([p + Vector2(r * 0.2, -r * 0.55), p + Vector2(r, 0), p + Vector2(r * 0.2, r * 0.55)]), col)
 
 
@@ -590,16 +571,16 @@ static func stat_icon(ci: CanvasItem, key: String, p: Vector2, r: float) -> void
 		"hp":
 			heart(ci, p, r, Color(0.9, 0.25, 0.3))
 		"dmg":
-			ci.draw_line(p + Vector2(-r * 0.8, r * 0.8), p + Vector2(r * 0.8, -r * 0.8), Color(0.85, 0.88, 0.92), r * 0.3, true)
-			ci.draw_line(p + Vector2(-r * 0.75, r * 0.2), p + Vector2(-r * 0.2, r * 0.75), GOLD, r * 0.3, true)
+			Shapes.line(ci, p + Vector2(-r * 0.8, r * 0.8), p + Vector2(r * 0.8, -r * 0.8), Color(0.85, 0.88, 0.92), r * 0.3, true)
+			Shapes.line(ci, p + Vector2(-r * 0.75, r * 0.2), p + Vector2(-r * 0.2, r * 0.75), GOLD, r * 0.3, true)
 		"speed":
 			for i in 2:
 				var dx := (i - 0.5) * r * 0.8
-				ci.draw_polyline(PackedVector2Array([p + Vector2(dx - r * 0.35, -r * 0.6), p + Vector2(dx + r * 0.25, 0), p + Vector2(dx - r * 0.35, r * 0.6)]), Color(1.0, 0.85, 0.3), r * 0.25, true)
+				Shapes.polyline(ci, PackedVector2Array([p + Vector2(dx - r * 0.35, -r * 0.6), p + Vector2(dx + r * 0.25, 0), p + Vector2(dx - r * 0.35, r * 0.6)]), Color(1.0, 0.85, 0.3), r * 0.25, true)
 		"range":
-			ci.draw_arc(p, r * 0.9, 0, TAU, 16, Color(0.9, 0.5, 0.4), r * 0.2, true)
-			ci.draw_arc(p, r * 0.45, 0, TAU, 12, Color(0.9, 0.5, 0.4), r * 0.2, true)
-			ci.draw_circle(p, r * 0.15, Color(0.9, 0.5, 0.4))
+			Shapes.arc(ci, p, r * 0.9, 0, TAU, 16, Color(0.9, 0.5, 0.4), r * 0.2, true)
+			Shapes.arc(ci, p, r * 0.45, 0, TAU, 12, Color(0.9, 0.5, 0.4), r * 0.2, true)
+			Shapes.circle(ci, p, r * 0.15, Color(0.9, 0.5, 0.4))
 		"move":
 			ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.5, -r * 0.8), p + Vector2(r * 0.1, -r * 0.8), p + Vector2(r * 0.1, r * 0.3), p + Vector2(r * 0.9, r * 0.4), p + Vector2(r * 0.9, r * 0.8), p + Vector2(-r * 0.5, r * 0.8)]), Color(0.65, 0.45, 0.3))
 		"armour":
@@ -612,95 +593,95 @@ static func pack_emblem(ci: CanvasItem, kind: String, p: Vector2, highlighted: b
 	if highlighted:
 		rim = rim.lerp(GOLD, 0.45)
 	for side in [-1, 1]:
-		ci.draw_line(p + Vector2(26 * side, 0), p + Vector2(59 * side, 0), Color(rim, 0.65), 1.0, true)
-		ci.draw_circle(p + Vector2(59 * side, 0), 1.5, rim, true)
-	ci.draw_circle(p + Vector2(0, 2), 22, DARK, true)
-	ci.draw_circle(p, 21, Color(0.22, 0.16, 0.12), true)
-	ci.draw_circle(p, 21, rim, false, 1.5, true)
+		Shapes.line(ci, p + Vector2(26 * side, 0), p + Vector2(59 * side, 0), Color(rim, 0.65), 1.0, true)
+		Shapes.circle(ci, p + Vector2(59 * side, 0), 1.5, rim, true)
+	Shapes.circle(ci, p + Vector2(0, 2), 22, DARK, true)
+	Shapes.circle(ci, p, 21, Color(0.22, 0.16, 0.12), true)
+	Shapes.circle(ci, p, 21, rim, false, 1.5, true)
 	match kind:
 		"frost_shield":
 			var shield := [Vector2(-0.8, -0.8), Vector2(0.8, -0.8), Vector2(0.8, 0.23),
 				Vector2(0, 1.0), Vector2(-0.8, 0.23)]
 			_poly(ci, p, 15, shield, Color(0.25, 0.4, 0.75))
-			ci.draw_polyline(_pts(p, 15, shield + [shield[0]]), Color(0.78, 0.86, 0.95), 1.5, true)
+			Shapes.polyline(ci, _pts(p, 15, shield + [shield[0]]), Color(0.78, 0.86, 0.95), 1.5, true)
 			_snowflake(ci, p + Vector2(0, -2), 6, Color(0.85, 0.97, 1.0))
 		"song":
 			note_shadowed(ci, p + Vector2(7, 2), 10, Color(1.0, 0.6, 0.9))
 			note_shadowed(ci, p + Vector2(-5, -2), 14, GOLD)
 		"spear":
 			var shaft := Color(0.77, 0.49, 0.27)
-			ci.draw_line(p + Vector2(-12, 12), p + Vector2(8, -8), shaft, 3, true)
-			ci.draw_line(p + Vector2(-14, 2), p + Vector2(-7, -5), Color(shaft, 0.8), 2, true)
-			ci.draw_line(p + Vector2(0, 13), p + Vector2(7, 6), Color(shaft, 0.8), 2, true)
+			Shapes.line(ci, p + Vector2(-12, 12), p + Vector2(8, -8), shaft, 3, true)
+			Shapes.line(ci, p + Vector2(-14, 2), p + Vector2(-7, -5), Color(shaft, 0.8), 2, true)
+			Shapes.line(ci, p + Vector2(0, 13), p + Vector2(7, 6), Color(shaft, 0.8), 2, true)
 			_poly(ci, p, 1, [Vector2(3, -9), Vector2(14, -14), Vector2(9, -3)], Color(0.85, 0.87, 0.9))
 		"pitchfork":
 			# Wheat ear behind a peasant's pitchfork.
 			var straw := Color(0.95, 0.8, 0.35)
-			ci.draw_line(p + Vector2(-9, 13), p + Vector2(-3, -6), Color(straw, 0.8), 1.5, true)
+			Shapes.line(ci, p + Vector2(-9, 13), p + Vector2(-3, -6), Color(straw, 0.8), 1.5, true)
 			for k in 4:
 				var q := p + Vector2(-3, -6).lerp(Vector2(-8, 9), k / 4.0)
 				_ellipse(ci, q + Vector2(-2.5, 0), 1, Vector2.ZERO, 3.2, 1.6, straw, -0.9)
 				_ellipse(ci, q + Vector2(2.0, -1), 1, Vector2.ZERO, 3.2, 1.6, straw, 0.6)
 			var wood := Color(0.6, 0.38, 0.2)
 			var prong := Color(0.8, 0.8, 0.85)
-			ci.draw_line(p + Vector2(8, 15), p + Vector2(2, -4), wood, 3, true)
-			ci.draw_line(p + Vector2(-3, -4), p + Vector2(8, -4), prong, 2, true)
+			Shapes.line(ci, p + Vector2(8, 15), p + Vector2(2, -4), wood, 3, true)
+			Shapes.line(ci, p + Vector2(-3, -4), p + Vector2(8, -4), prong, 2, true)
 			for x in [-3.0, 2.5, 8.0]:
-				ci.draw_line(p + Vector2(x, -4), p + Vector2(x, -14), prong, 1.8, true)
+				Shapes.line(ci, p + Vector2(x, -4), p + Vector2(x, -14), prong, 1.8, true)
 		"halo":
 			# Rising sun of the temple, ringed by a halo.
 			for k in 8:
 				var d := Vector2.from_angle(TAU * k / 8.0 + 0.2)
-				ci.draw_line(p + d * 9, p + d * 15, Color(GOLD, 0.85), 2, true)
-			ci.draw_circle(p, 7, Color(1.0, 0.97, 0.85), true)
-			ci.draw_arc(p, 10.5, 0, TAU, 24, GOLD, 2, true)
+				Shapes.line(ci, p + d * 9, p + d * 15, Color(GOLD, 0.85), 2, true)
+			Shapes.circle(ci, p, 7, Color(1.0, 0.97, 0.85), true)
+			Shapes.arc(ci, p, 10.5, 0, TAU, 24, GOLD, 2, true)
 		"fire_ice":
 			_flame(ci, p + Vector2(-6, 3), 11)
 			_snowflake(ci, p + Vector2(7, -2), 6.5, Color(0.85, 0.97, 1.0))
 		"bow":
 			var wood := Color(0.72, 0.46, 0.22)
-			ci.draw_arc(p + Vector2(-6, 0), 14, -1.15, 1.15, 16, wood, 3, true)
+			Shapes.arc(ci, p + Vector2(-6, 0), 14, -1.15, 1.15, 16, wood, 3, true)
 			var top := p + Vector2(-6, 0) + Vector2.from_angle(-1.15) * 14
 			var bottom := p + Vector2(-6, 0) + Vector2.from_angle(1.15) * 14
-			ci.draw_line(top, bottom, Color(0.95, 0.95, 0.9), 1, true)
-			ci.draw_line(p + Vector2(-12, 0), p + Vector2(12, 0), Color(0.85, 0.8, 0.7), 1.6, true)
+			Shapes.line(ci, top, bottom, Color(0.95, 0.95, 0.9), 1, true)
+			Shapes.line(ci, p + Vector2(-12, 0), p + Vector2(12, 0), Color(0.85, 0.8, 0.7), 1.6, true)
 			_poly(ci, p, 1, [Vector2(15, 0), Vector2(9, -4), Vector2(9, 4)], Color(0.85, 0.87, 0.9))
 			_poly(ci, p, 1, [Vector2(-12, 0), Vector2(-15, -4), Vector2(-10, 0), Vector2(-15, 4)], Color(0.3, 0.6, 0.3))
 		"spear_wall":
 			# Three raised spears behind a row of shields.
 			var shaft := Color(0.72, 0.47, 0.25)
 			for x in [-8.0, 0.0, 8.0]:
-				ci.draw_line(p + Vector2(x, 8), p + Vector2(x, -9), shaft, 2, true)
+				Shapes.line(ci, p + Vector2(x, 8), p + Vector2(x, -9), shaft, 2, true)
 				_poly(ci, p, 1, [Vector2(x - 3, -9), Vector2(x + 3, -9), Vector2(x, -16)], Color(0.85, 0.87, 0.9))
 			for x in [-8.0, 0.0, 8.0]:
-				ci.draw_circle(p + Vector2(x, 7), 5, Color(0.45, 0.5, 0.25), true)
-				ci.draw_arc(p + Vector2(x, 7), 5, 0, TAU, 12, Color(0.75, 0.62, 0.3), 1.2, true)
+				Shapes.circle(ci, p + Vector2(x, 7), 5, Color(0.45, 0.5, 0.25), true)
+				Shapes.arc(ci, p + Vector2(x, 7), 5, 0, TAU, 12, Color(0.75, 0.62, 0.3), 1.2, true)
 		"moon_dagger":
-			ci.draw_circle(p + Vector2(-3, -3), 11, Color(0.95, 0.92, 0.75), true)
-			ci.draw_circle(p + Vector2(2, -6), 10, Color(0.22, 0.16, 0.12), true)
-			ci.draw_line(p + Vector2(-6, 13), p + Vector2(-2, 9), Color(0.35, 0.18, 0.45), 3, true)
-			ci.draw_line(p + Vector2(-6, 7), p + Vector2(0, 11), GOLD, 2, true)
+			Shapes.circle(ci, p + Vector2(-3, -3), 11, Color(0.95, 0.92, 0.75), true)
+			Shapes.circle(ci, p + Vector2(2, -6), 10, Color(0.22, 0.16, 0.12), true)
+			Shapes.line(ci, p + Vector2(-6, 13), p + Vector2(-2, 9), Color(0.35, 0.18, 0.45), 3, true)
+			Shapes.line(ci, p + Vector2(-6, 7), p + Vector2(0, 11), GOLD, 2, true)
 			_poly(ci, p, 1, [Vector2(-4, 8), Vector2(-1, 11), Vector2(12, -8)], Color(0.85, 0.87, 0.92))
 		"flame":
 			_flame(ci, p + Vector2(0, 4), 15)
 			for v in [Vector2(-11, -8), Vector2(10, -11), Vector2(12, 2)]:
-				ci.draw_circle(p + v, 1.6, Color(1.0, 0.7, 0.2), true)
+				Shapes.circle(ci, p + v, 1.6, Color(1.0, 0.7, 0.2), true)
 		"mug":
 			var wood := Color(0.62, 0.4, 0.2)
-			ci.draw_arc(p + Vector2(8, 1), 5.5, -PI * 0.5, PI * 0.5, 10, wood.darkened(0.2), 2.5, true)
+			Shapes.arc(ci, p + Vector2(8, 1), 5.5, -PI * 0.5, PI * 0.5, 10, wood.darkened(0.2), 2.5, true)
 			ci.draw_rect(Rect2(p + Vector2(-9, -6), Vector2(17, 19)), wood)
 			for y in [-1.0, 7.0]:
-				ci.draw_line(p + Vector2(-9, y), p + Vector2(8, y), Color(0.45, 0.45, 0.5), 1.5)
+				Shapes.line(ci, p + Vector2(-9, y), p + Vector2(8, y), Color(0.45, 0.45, 0.5), 1.5)
 			for v in [Vector2(-6, -7), Vector2(0, -9), Vector2(5, -7)]:
-				ci.draw_circle(p + v, 4.2, Color(0.98, 0.96, 0.9), true)
+				Shapes.circle(ci, p + v, 4.2, Color(0.98, 0.96, 0.9), true)
 		"banner":
-			ci.draw_line(p + Vector2(-9, 15), p + Vector2(-9, -15), Color(0.72, 0.47, 0.25), 2, true)
-			ci.draw_circle(p + Vector2(-9, -15), 2, GOLD, true)
+			Shapes.line(ci, p + Vector2(-9, 15), p + Vector2(-9, -15), Color(0.72, 0.47, 0.25), 2, true)
+			Shapes.circle(ci, p + Vector2(-9, -15), 2, GOLD, true)
 			var cloth := [Vector2(-8, -13), Vector2(12, -13), Vector2(12, 6), Vector2(2, 1), Vector2(-8, 6)]
 			_poly(ci, p, 1, cloth, Color(0.95, 0.93, 0.88))
-			ci.draw_polyline(_pts(p, 1, cloth + [cloth[0]]), GOLD, 1.2, true)
-			ci.draw_line(p + Vector2(2, -10), p + Vector2(2, -1), GOLD, 2.5)
-			ci.draw_line(p + Vector2(-2, -7), p + Vector2(6, -7), GOLD, 2.5)
+			Shapes.polyline(ci, _pts(p, 1, cloth + [cloth[0]]), GOLD, 1.2, true)
+			Shapes.line(ci, p + Vector2(2, -10), p + Vector2(2, -1), GOLD, 2.5)
+			Shapes.line(ci, p + Vector2(-2, -7), p + Vector2(6, -7), GOLD, 2.5)
 
 
 # --- Difficulty hats ------------------------------------------------------------
@@ -771,7 +752,7 @@ static func _archmage_hat(ci: CanvasItem, p: Vector2, s: float, t: float) -> voi
 	var cloth := Color(0.44, 0.17, 0.66)
 	var pulse := 0.5 + 0.5 * sin(t * 2.2)
 	for k in 4:
-		ci.draw_circle(p + Vector2(0, -0.25) * s, s * (1.05 + k * 0.12 + pulse * 0.06), Color(MAGIC, 0.07 - k * 0.012))
+		Shapes.circle(ci, p + Vector2(0, -0.25) * s, s * (1.05 + k * 0.12 + pulse * 0.06), Color(MAGIC, 0.07 - k * 0.012))
 	var orbit := func(front: bool) -> void:
 		for k in 5:
 			var a := t * 0.9 + TAU * k / 5.0
@@ -782,7 +763,7 @@ static func _archmage_hat(ci: CanvasItem, p: Vector2, s: float, t: float) -> voi
 	orbit.call(false)
 	_ellipse(ci, p, s, Vector2(0, 0.66), 1.12, 0.24, Color(0, 0, 0, 0.3))
 	_ellipse(ci, p, s, Vector2(0, 0.52), 1.12, 0.25, cloth.darkened(0.4))
-	ci.draw_polyline(_pts(p, s, Array(_ellipse_points(Vector2(0, 0.52), 1.12, 0.25, 0.0, PI))), GOLD, maxf(1.5, 0.05 * s), true)
+	Shapes.polyline(ci, _pts(p, s, Array(_ellipse_points(Vector2(0, 0.52), 1.12, 0.25, 0.0, PI))), GOLD, maxf(1.5, 0.05 * s), true)
 	var curl_tip := Vector2(0.62, -1.02)
 	_poly(ci, p, s, [Vector2(-0.6, 0.52), Vector2(0.6, 0.52), Vector2(0.24, -0.62), Vector2(curl_tip.x, curl_tip.y + 0.12),
 		curl_tip, Vector2(0.1, -1.04), Vector2(-0.14, -0.66)], cloth)
