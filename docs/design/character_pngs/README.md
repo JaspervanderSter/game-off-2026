@@ -1,7 +1,8 @@
 # Character PNG reference pack
 
 All 24 current Shapeshifter Duel forms, rendered directly from the prototype's
-procedural artwork. Each PNG has a transparent background and a centred pivot.
+default artwork: pixel sprites where available, with vector fallback. Each PNG
+has a transparent background and a centred pivot.
 Filenames use the game's form IDs (`guardian`, `rabbit`, `rhino`, etc.).
 
 See [Character Guide](Character%20Guide.md) for a short description of each form,
@@ -10,10 +11,12 @@ for the illustrated version in a browser.
 
 ## Folders
 
-- `64/characters/`: characters alone at the preparation board's resting scale.
+- `64/characters/`: current blue-team sprite where available (including its team
+  base), otherwise the vector character alone, at the board's resting scale.
 - `64/tokens_blue/` and `64/tokens_red/`: the same characters with their team base.
 - `512/`: the same three variants rendered at eight times the reference scale,
-  directly from the drawing code rather than enlarging a small bitmap.
+  using the same sprites and drawing code. Pixel sprites retain nearest-neighbour
+  scaling; vector fallbacks are rendered at the larger resolution.
 
 There are 144 PNGs: 24 forms × 3 variants × 2 sizes.
 
@@ -43,7 +46,9 @@ Compress-Archive -Path docs/design/character_pngs/* -DestinationPath docs/design
 ```
 
 Do not pass `--headless`: PNG export reads rendered viewport textures.
-The exporter reads `CreatureDB`, `Rules` and `Icons` directly.
+The exporter reads `CreatureDB`, `Rules`, `Icons` and `ArtStyle` directly. It
+explicitly selects the default pixel style without changing the player's saved
+choice. Pass `-- --vector-art` only for an intentional vector reference export.
 
 The `64/` and `512/` folders and ZIP archives are generated and ignored by Git.
 Keep this README, `Character Guide.md`, and the published HTML under version

@@ -2,7 +2,9 @@
 
 Meet the game's 12 fantasy fighters and 12 animal forms. Fighters can be
 recruited; animals appear through shapeshifting. Each has its own combat role.
-The illustrations show their current appearance in the prototype.
+The illustrations use the prototype's current default style: pixel sprites
+where available, with vector artwork for the remaining forms. Pixel sprites
+include their team base.
 
 ## Fantasy fighters
 

@@ -1,5 +1,5 @@
 extends SceneTree
-## Export the current procedural artwork using Godot's actual drawing code.
+## Export the current artwork using Godot's actual drawing code and sprites.
 ## Requires a rendering device (do not use --headless).
 ## godot --path prototypes/prototype_02 --minimized --script res://tools/export_character_pngs.gd
 
@@ -20,6 +20,9 @@ func _export() -> void:
 		if arg.begins_with("--output-dir="):
 			output_dir = arg.trim_prefix("--output-dir=")
 	output_dir = ProjectSettings.globalize_path(output_dir)
+	ArtStyle.save_path = "user://character_export_style.cfg"
+	ArtStyle.set_style(ArtStyle.Style.VECTOR if "--vector-art" in OS.get_cmdline_user_args() else ArtStyle.Style.PIXEL)
+	Shapes.warm_up()
 	var count := 0
 	for size: int in SIZES:
 		for variant: String in VARIANTS:
@@ -59,6 +62,10 @@ func _draw_character(canvas: Node2D, id: String, size: int, variant: String) -> 
 	var center := Vector2(32, 32)
 	var radius: float = GameRules.BODY_RADIUS * GameRules.CELL
 	if variant == "characters":
-		Art.creature(canvas, id, center, radius * 0.92)
+		var sprite := ArtStyle.creature_texture(id, 0)
+		if sprite != null:
+			ArtStyle.draw_token(canvas, sprite, center, radius)
+		else:
+			Art.creature(canvas, id, center, radius * 0.92)
 	else:
 		Art.token(canvas, id, center, radius, 0 if variant == "tokens_blue" else 1)

@@ -26,6 +26,22 @@ them without rebuilding the documents.
 
 ## Build the artist brief
 
+To refresh all game screenshots, portraits, videos and posters from the current
+default artwork, use Godot 4.7, Python/Pillow and FFmpeg:
+
+```powershell
+python tools/pages/refresh_game_media.py --godot "C:/path/to/godot_console.exe"
+```
+
+This exports the current characters, records a reproducible live-game sequence,
+encodes the four clips and their exact opening-frame posters, then rebuilds the
+artist brief, character guide and resource pages. The recording uses the real
+combat, casting and defeat presentation with a scripted demonstration roster.
+Raw movie files and isolated user data stay in a system temporary directory;
+only website-ready media are copied to `assets/artist_brief/`. The script does
+not change the player's saved style, deck or difficulty progress. Its Godot
+capture source is `prototypes/prototype_02/tools/capture_site_media.gd`.
+
 From the repository root, with Python, Pillow and Windows' Segoe UI font:
 
 ```powershell
