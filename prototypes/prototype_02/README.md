@@ -108,7 +108,11 @@ All confirmed rules and delegated defaults of the design note, notably:
 - The shop column has two sections told apart by their frames, without labels:
   a merchant stall (striped scalloped awning, wooden frame) holds the three
   creature offers and the reroll; below it, a purple scroll between two
-  gold-knobbed rods holds the wand upgrades. The round fight button sits alone in
+  gold-knobbed rods holds the wand upgrades. The stall and scroll move down
+  together (`Hud.layout_column`): centred on the board's height when they fit,
+  otherwise as low as the fight button allows, and always clear of the round
+  frieze. The board's six capacity pips sit in a row under its right edge,
+  clear of the column. The round fight button sits alone in
   the bottom-right corner: a medallion split vertically, red on the left and wand
   purple on the right, behind a sword (tip up-left) crossed with a wand (star
   up-right), both outlined in dark. When a click would start the fight, a band of
@@ -680,14 +684,15 @@ fifteen characters and their starting compositions.
 Forest is a safe introduction, not a challenge. Only archer, shield guardian and
 spearman humans, and rabbit, wolf and deer animals may appear there. This covers
 starting teams, shop offers and both wizards' transformations. Three small player
-teams use these humans; enemies field fixed armies of one or two creatures and
-never shop. Magical enemies demonstrate one cast after six seconds per round.
+teams use these humans; enemies field fixed armies that grow by one creature
+per lesson, from one to five (`OpponentDB.FOREST_ARMIES`), and never shop. Magical enemies demonstrate one cast after six seconds per round.
 Damage cannot kill the player's last creature in forest; normal battles retain
 lethal damage. The empty bench and its drop targets stay hidden until shopping.
 An animated wand invites the first allied cast, then the first enemy cast. In
 the druid's and the swamp witch's duels, combat stops while that cue waits and
 resumes once the player has tried the cast (`awaiting_learning_cast()` in
-`main.gd`). The hunter has a single heart (`"hearts"` in `OpponentDB`), so the
+`main.gd`). The cue appears only in those two duels, until that cast has been
+tried once (saved as `journey.cast_lessons`). The hunter has a single heart (`"hearts"` in `OpponentDB`), so the
 first duel ends after one won round.
 
 `Ruleset.FOREST_OUTCOMES` is an explicit closed six-form practice graph, using the
@@ -718,7 +723,7 @@ In the thief's duel a looping demonstration (`main.merge_demo()`, drawn by the
 HUD) shows a translucent copy travelling along a dotted gold arc onto an
 identical creature, whose merge pips fill, until the player's first merge.
 The board holds at most six creatures (`Rules.FIELD_CAP`): when it is full,
-empty cells stay dark under a drag, the capacity pips beside the board are
+empty cells stay dark under a drag, the capacity pips under the board are
 ringed in red, and a refused drop makes them blink.
 
 Progress is saved locally in `difficulty_progress.cfg`, under `journey.opponents`.

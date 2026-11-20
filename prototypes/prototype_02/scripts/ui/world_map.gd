@@ -24,6 +24,11 @@ const ZONE_SPOTS := [
 ## Extra waypoints (island coordinates) for a road that must go around a
 ## landmark: the school road passes in front of the tower, never behind it.
 const ROAD_VIAS := {13: [Vector2(-40, 26), Vector2(70, 22)]}
+## Bridge guards (the forest's and the town's last opponents) stand this far
+## inland from their bridge's landing, towards this point (island coordinates).
+const GUARD_INLAND := 36.0
+const GUARD_INLAND_TOWARD := Vector2(0, 10)
+var _guard_spots := {} # zone -> island-coordinate spot, set by _layout
 ## Opponents further back on an island are drawn slightly smaller.
 const DEPTH_SCALE := Vector2(0.86, 1.0)
 const OPPONENT_SIZE := 27.0
@@ -185,11 +190,16 @@ func _refresh_discovery() -> void:
 static func stage_island(index: int) -> int:
 	return OpponentDB.zone(index)
 
-static func stage_offset(index: int) -> Vector2:
-	return ZONE_SPOTS[stage_island(index)][index % OpponentDB.ZONE_SIZE]
+## Spot of an opponent on its island, in island coordinates. The last opponent
+## of the forest and of the town guards the bridge to the next island.
+func stage_offset(index: int) -> Vector2:
+	var zone := stage_island(index)
+	if OpponentDB.is_boss(index) and _guard_spots.has(zone):
+		return _guard_spots[zone]
+	return ZONE_SPOTS[zone][index % OpponentDB.ZONE_SIZE]
 
 ## Size factor of an opponent from its depth on the island: 1 at the front.
-static func depth_scale(index: int) -> float:
+func depth_scale(index: int) -> float:
 	return lerpf(DEPTH_SCALE.x, DEPTH_SCALE.y, inverse_lerp(-62.0, 52.0, clampf(stage_offset(index).y, -62.0, 52.0)))
 
 func stage_position(index: int) -> Vector2:
@@ -214,6 +224,12 @@ func _layout() -> void:
 	# Landings stay on the shore, clear of the opponents and the school tower.
 	bridges[0].set_span(_bridge_bank(0, islands[1].position), _bridge_bank(1, islands[0].position), false)
 	bridges[1].set_span(_bridge_bank(1, islands[2].position), islands[2].position + Vector2(0, 74) * islands[2].scale, true)
+	# Bridge guards stand just inland of their bridge's landing, which moves
+	# with the screen orientation.
+	for zone in bridges.size():
+		var island: Node2D = islands[zone]
+		var bank: Vector2 = (bridges[zone].from_point - island.position) / island.scale
+		_guard_spots[zone] = bank + (GUARD_INLAND_TOWARD - bank).normalized() * GUARD_INLAND
 	for index in buttons.size():
 		var target_size := Vector2(140, 144) if portrait else Vector2(104, 108)
 		buttons[index].size = target_size
@@ -372,12 +388,8 @@ func _rebuild_paths() -> void:
 			var bridge: Node2D = bridges[stage_island(stage) - 1]
 			var start: Vector2 = bridge.from_point
 			var finish: Vector2 = bridge.to_point
-			var source_scale: float = islands[stage_island(stage - 1)].scale.x
-			# Curve through clearings and the town street below the keep.
-			if stage_island(stage) == 2:
-				points = _append_curve(points, a, a + Vector2(-70, -22) * source_scale, start + Vector2(90, 30) * source_scale, start)
-			else:
-				points = _append_curve(points, a, a + Vector2(50, 18) * source_scale, start + Vector2(-25, 28) * source_scale, start)
+			# The guard stands just before the landing: a short, straight step on.
+			points = _append_curve(points, a, a.lerp(start, 0.33), a.lerp(start, 0.66), start)
 			var sag := minf(27, start.distance_to(finish) * 0.10)
 			for index in 65:
 				points.append(start.lerp(finish, index / 64.0) + Vector2(0, sin(index / 64.0 * PI) * sag))

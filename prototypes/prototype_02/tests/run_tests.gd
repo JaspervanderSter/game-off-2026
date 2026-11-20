@@ -727,7 +727,7 @@ func _test_preparation_input() -> void:
 	var offer_pos := Hud.offer_rect(1).get_center()
 	game._right_press(offer_pos)
 	check(game.player.locked[1], "shop right-click locks offer through game input")
-	game._left_press(Hud.REROLL_RECT.get_center())
+	game._left_press(Hud.reroll_rect().get_center())
 	check(game.player.gold == 19 and game.player.offers[1] == "archer", "reroll button refreshes through game input")
 	var field_count: int = game.player.field_count()
 	game._left_press(offer_pos)
@@ -1895,8 +1895,8 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 		"heal and hex upgrade shop rows work")
 	for i in Rules.WAND_UPGRADES.size():
 		var row := Hud.upgrade_rect(i)
-		check(not row.intersects(Rules.SHOP_RECT) and row.end.y < Rules.FIGHT_CENTER.y - Rules.FIGHT_RADIUS
-			and row.end.y <= Hud.SCROLL_TOP + Hud.SCROLL_LENGTH, "wand upgrade row %d sits on the scroll" % i)
+		check(not row.intersects(Hud.shop_rect()) and row.end.y < Rules.FIGHT_CENTER.y - Rules.FIGHT_RADIUS
+			and row.end.y <= Hud.scroll_top() + Hud.SCROLL_LENGTH, "wand upgrade row %d sits on the scroll" % i)
 	check(Rules.FIGHT_CENTER.x + Rules.FIGHT_RADIUS + 8 <= 1280 and Rules.FIGHT_CENTER.y + Rules.FIGHT_RADIUS + 8 <= 720,
 		"fight button fits in the bottom-right corner")
 	check(Hud.fight_glint(0.0) == 0.0 and is_equal_approx(Hud.fight_glint(Hud.FIGHT_GLINT_SWEEP * 0.5), 0.5)
@@ -2610,7 +2610,7 @@ func _test_scroll_shows_introduced_upgrades() -> void:
 	var caretaker := OpponentDB.ruleset(11)
 	var hex := Rules.WAND_UPGRADES.find("hex")
 	check(Hud.upgrade_rect(hex, caretaker) == Hud.upgrade_rect(1), "the long hex closes up under the fast recharge")
-	check(Hud.upgrade_rect(hex, caretaker).end.y <= Hud.SCROLL_TOP + Hud.scroll_length(caretaker),
+	check(Hud.upgrade_rect(hex, caretaker).end.y <= Hud.scroll_top() + Hud.scroll_length(caretaker),
 		"introduced rows fit the shortened scroll")
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
@@ -2688,6 +2688,7 @@ func _test_learning_pause() -> void:
 	game.set_physics_process(false)
 	game.difficulty_progress_path = "user://learning_pause_test_%d.cfg" % OS.get_process_id()
 	game.journey.completed.assign(range(Journey.stage_count()))
+	game.journey.cast_lessons.clear()
 	for index in [1, 2, 3]:
 		game.new_duel()
 		game.choose_stage(index)
@@ -2695,8 +2696,8 @@ func _test_learning_pause() -> void:
 		game._advance_enemy_preparation(1.0)
 		game.start_combat()
 		var stops: bool = index != 2
-		check(game.awaiting_learning_cast() == stops and game.learning_cast_target() != null,
-			"forest %d %s while its cast cue shows" % [index, "stops" if stops else "keeps running"])
+		check(game.awaiting_learning_cast() == stops and (game.learning_cast_target() != null) == stops,
+			"forest %d %s" % [index, "stops while its cast cue shows" if stops else "shows no cast cue and keeps running"])
 		var before: float = game.battle.time
 		game._physics_process(0.5)
 		check((game.battle.time == before) == stops, "forest %d combat time %s" % [index, "is frozen" if stops else "runs"])
@@ -2707,6 +2708,20 @@ func _test_learning_pause() -> void:
 			check(game.learning_cast_tried and not game.awaiting_learning_cast(), "the cast releases the duel")
 			game._physics_process(0.5)
 			check(game.battle.time > before, "combat resumes after the lesson cast")
+	check(game.journey.cast_lessons == [Ruleset.WAND, Ruleset.HEX], "tried lesson casts are remembered")
+	for index in [1, 3]:
+		game.new_duel()
+		game.choose_stage(index)
+		game.choose_pack(0)
+		game._advance_enemy_preparation(1.0)
+		game.start_combat()
+		check(game.learning_cast_target() == null and not game.awaiting_learning_cast(),
+			"forest %d shows its cast cue only until it was tried once" % index)
+	var restored := Journey.new()
+	var config := ConfigFile.new()
+	game.journey.save(config)
+	restored.restore(config, Difficulty.APPRENTICE)
+	check(restored.cast_lessons == game.journey.cast_lessons, "tried lesson casts are saved")
 	game.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://learning_pause_test_%d.cfg" % OS.get_process_id()))
 
@@ -2735,7 +2750,7 @@ func _test_rule_spotlight() -> void:
 	game._watch_rule_spotlight()
 	check(game.spotlight.active() and Ruleset.TRADE in game.journey.introduced,
 		"the reroll button is spotlit as soon as the shop is in place, and remembered")
-	check(game.spotlight.center == Hud.REROLL_RECT.get_center(), "the spotlight opens on the reroll button")
+	check(game.spotlight.center == Hud.reroll_rect().get_center(), "the spotlight opens on the reroll button")
 	game.spotlight.advance(RuleSpotlight.FADE_IN)
 	check(game.spotlight.time_scale() < 0.5, "the duel slows while the spotlight is on")
 	game.spotlight.advance(RuleSpotlight.DURATION)
@@ -2841,12 +2856,21 @@ func _test_forest_lessons() -> void:
 		check(game.battle.learning_duel, "forest battles enable the learning safety net")
 		# Observe an ordinary opening without shopping or casting. This is a
 		# bounded lesson smoke test, not a balance or win-rate investigation.
-		for tick in 3600:
+		for tick in 3700: # a little past Rules.COMBAT_TIMEOUT
 			game.battle.step(1.0 / 60.0)
 			if game.battle.finished:
 				break
-		check(game.battle.finished and game.battle.result.winner == 0,
-			"forest %d can be won without buying or casting" % index)
+		# Difficulty rises gently: the first three lessons fall to the opening
+		# alone; later ones expect purchases, but the safety net still holds.
+		if index <= 2:
+			check(game.battle.finished and game.battle.result.winner == 0,
+				"forest %d can be won without buying or casting" % index)
+		else:
+			check(game.battle.finished and game.battle.result.winner != 1,
+				"forest %d never beats the player's opening" % index)
+		if index > 0:
+			check(OpponentDB.learning_army(index).size() > OpponentDB.learning_army(index - 1).size(),
+				"forest %d fields more creatures than the previous lesson" % index)
 		game.new_duel()
 	game.free()
 	var forest := OpponentDB.ruleset(1)

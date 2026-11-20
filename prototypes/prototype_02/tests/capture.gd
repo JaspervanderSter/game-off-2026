@@ -67,7 +67,7 @@ func _ready() -> void:
 	game._left_press(Hud.offer_rect(0).get_center())
 	game._left_release(Hud.offer_rect(0).get_center())
 	game._right_press(Hud.offer_rect(1).get_center())
-	game._left_press(Hud.REROLL_RECT.get_center())
+	game._left_press(Hud.reroll_rect().get_center())
 	game.shop_out = 0.0
 	game.scroll_open = 0.0
 	await _seconds(game.SCROLL_UNROLL_TIME * 0.5) # wand scroll halfway unrolled

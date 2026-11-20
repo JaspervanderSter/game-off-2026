@@ -59,7 +59,7 @@ const LEVEL_SCALE := 0.20 # max HP and basic damage per level above 1
 const BOARD_POS := Vector2(352, 84)
 const RESERVE_POS := Vector2(424, 548)
 const SHOP_RECT := Rect2(968, 74, 288, 284) # creature offers and reroll; sell drop zone
-const FIGHT_CENTER := Vector2(1188, 652)
+const FIGHT_CENTER := Vector2(1188, 664)
 const FIGHT_RADIUS := 46.0
 
 

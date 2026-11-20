@@ -36,10 +36,10 @@ Related notes: [[Prototype 02]], [[Roster and Transformation Map]],
 | # | Zone | Opponent | Magic | Rule introduced | Opening |
 | ---: | --- | --- | --- | --- | --- |
 | 1 | Forest | Hunter | No | Placing creatures, automatic combat, hearts lost per surviving enemy | One wolf |
-| 2 | Forest | Druid | Yes | The wand: shapeshifting one's own creatures (blessing), charge crystals | One deer |
-| 3 | Forest | Lumberjack | No | Creature shop: buying, income every round, gold for lost hearts | One spearman |
-| 4 | Forest | Swamp witch | Yes | Hex: shapeshifting and stunning enemy creatures | One wolf |
-| 5 | Forest (boss) | Archdruid | Yes | Animal bonuses after an allied shapeshift (rabbit leap within the forest roster) | Wolf and rabbit |
+| 2 | Forest | Druid | Yes | The wand: shapeshifting one's own creatures (blessing), charge crystals | Deer and wolf |
+| 3 | Forest | Lumberjack | No | Creature shop: buying, income every round, gold for lost hearts | Two spearmen and a wolf |
+| 4 | Forest | Swamp witch | Yes | Hex: shapeshifting and stunning enemy creatures | Two wolves, a deer and an archer |
+| 5 | Forest (boss) | Archdruid | Yes | Animal bonuses after an allied shapeshift (rabbit leap within the forest roster) | Two wolves, two rabbits and a spearman |
 | 6 | Town | Merchant | No | Selling, rerolling and locking offers | Troupe |
 | 7 | Town | Innkeeper | No | Peasants and their harvest | Tavern |
 | 8 | Town | Thief | No | Merging three identical creatures into a star | Shadows |
@@ -108,8 +108,17 @@ Current implementation defaults, available for playtest revision:
 
 - Three small starting choices: guardian + two archers; guardian + two spearmen;
   guardian + archer + spearman. No bonus gold. All creatures start on the board.
-- Opponents use the small fixed armies above. They never buy, replace, merge or
-  optimise their army. They remain beatable without purchases or player casts.
+- Opponents use small fixed armies. They never buy, replace, merge or optimise
+  their army. **Revised after playtest (20 November 2026):** single-creature
+  armies were too trivial; each lesson now fields one creature more than the
+  previous one, a gentle rise in difficulty (confirmed request; the armies are
+  implementation choices): hunter a wolf; druid a deer and a wolf; lumberjack two
+  spearmen and a wolf; swamp witch two wolves, a deer and an archer; archdruid two
+  wolves, two rabbits and a spearman. The first three fall to the player's
+  opening alone; the witch and the archdruid need purchases. In simulation a
+  player buying whatever is affordable, without casting, beats the witch in two
+  rounds and the archdruid in six or seven. An archdruid army with a healing
+  deer stalemated every round, so the boss has none.
 - Magical opponents demonstrate at most one cast per round, after six seconds:
   an allied transformation before hexes, an enemy transformation afterwards.
 - Normal damage and creature deaths remain visible, but damage cannot kill the
@@ -126,8 +135,11 @@ Current implementation defaults, available for playtest revision:
 - **Confirmed after playtest:** in the druid's duel, combat time **stops while
   the cast cue waits** and resumes once the player has tried the allied cast, so
   the lesson cannot be passed by doing nothing. The swamp witch's duel does the
-  same for its hex (implementation choice, same reasoning). Other forest duels
-  keep the non-blocking cue.
+  same for its hex (implementation choice, same reasoning).
+- **Confirmed after playtest:** the invitation ring appears only in the duel
+  that teaches its cast and only until the player has tried that cast once,
+  ever (saved as `journey.cast_lessons`). It no longer appears with the
+  lumberjack or the archdruid, nor when replaying the druid or the witch.
 
 ### Closed forest transformation graph
 
@@ -239,8 +251,10 @@ with five full-length opponents placed on each island without changing its shape
 or buildings. After a playtest found them lined up along the island edge, they
 stand at natural spots spread over each island's surface (confirmed request;
 spots are implementation choices): forest clearings between the groves, town
-streets ending with the king before the keep, and the school courtyard ending
-with the archmage at the tower door. The road winds between them and passes in
+streets, and the school courtyard ending with the archmage at the tower door.
+The last opponent of the forest (archdruid) and of the town (king) stands just
+inland of the landing of the bridge to the next island, as its guard (confirmed
+request); the spot follows the bridge in landscape and portrait. The road winds between them and passes in
 front of the tower, never behind it. Opponents further back are drawn slightly
 smaller. It fits the whole screen with no scroll or header. Both bridges
 are complete and visible from the start. Only the first opponent is visible on a

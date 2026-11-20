@@ -200,6 +200,7 @@ func _start_duel() -> void:
 	merge_lesson_done = false
 	field_full_flash = 0.0
 	spotlight.reset(journey.rule_to_introduce(opponent))
+	Hud.layout_column(ruleset)
 	player.max_hp = Journey.hearts_for_stage(journey.selected)
 	enemy.max_hp = Journey.enemy_hearts_for_stage(journey.selected)
 	for state in states:
@@ -278,11 +279,14 @@ func _save_difficulty_progress(level: int) -> bool:
 func _reset_difficulty_progress() -> void:
 	var previous := journey.completed.duplicate()
 	var shown := journey.introduced.duplicate()
+	var practised := journey.cast_lessons.duplicate()
 	journey.completed.clear()
 	journey.introduced.clear()
+	journey.cast_lessons.clear()
 	if not _save_difficulty_progress(Difficulty.APPRENTICE):
 		journey.completed.assign(previous)
 		journey.introduced.assign(shown)
+		journey.cast_lessons.assign(practised)
 		Sfx.play("ui/fail")
 		return
 	difficulty = Difficulty.APPRENTICE
@@ -420,6 +424,10 @@ func _on_unit_died(u: Unit) -> void:
 func _on_unit_transformed(u: Unit, caster: int, _from: String) -> void:
 	if caster == 0 and u.team == (1 if ruleset.has(Ruleset.HEX) else 0):
 		learning_cast_tried = true
+		var lesson := _cast_lesson()
+		if lesson != "" and lesson not in journey.cast_lessons:
+			journey.cast_lessons.append(lesson)
+			_save_difficulty_progress(unlocked_difficulty)
 	# Animal bonus: the first creature its own wizard turns into a bonus form.
 	if spotlight.pending() and spotlight.rule == Ruleset.ANIMAL_BONUS and caster == u.team \
 			and u.data.has("ally_shift"):
@@ -680,7 +688,7 @@ func _left_press(pos: Vector2) -> void:
 					else:
 						Sfx.play("ui/fail")
 					return
-			if ruleset.has(Ruleset.TRADE) and Hud.REROLL_RECT.has_point(pos):
+			if ruleset.has(Ruleset.TRADE) and Hud.reroll_rect().has_point(pos):
 				if player.reroll(rng):
 					Sfx.play("ui/purchase_confirmed")
 				elif player.gold < Rules.REROLL_COST:
@@ -725,7 +733,7 @@ func _left_release(pos: Vector2) -> void:
 	drag = null
 	if phase != Phase.PREP:
 		return
-	if Rules.SHOP_RECT.has_point(pos) and player.can_sell(c):
+	if Hud.shop_rect().has_point(pos) and player.can_sell(c):
 		player.sell(c)
 		Sfx.play("ui/buy")
 		return
@@ -860,8 +868,13 @@ func _process(dt: float) -> void:
 
 ## Forest lesson cue: the creature the player is invited to shapeshift (an ally
 ## before hexes, an enemy afterwards), or null once tried or when none is ready.
+## Shown only in the duel that teaches that cast (the druid's wand, the swamp
+## witch's hex) and only until the player has tried it once, ever (saved).
 func learning_cast_target() -> Unit:
 	if not player.learning_duel or phase != Phase.COMBAT or battle == null or learning_cast_tried:
+		return null
+	var lesson := _cast_lesson()
+	if lesson == "" or lesson in journey.cast_lessons:
 		return null
 	if not player.can_cast() or not battle.spells[0].can_cast():
 		return null
@@ -874,9 +887,15 @@ func learning_cast_target() -> Unit:
 ## The druid's and the swamp witch's duels stop the fight while their cast
 ## waits, so the lesson cannot be skipped by doing nothing.
 func awaiting_learning_cast() -> bool:
-	if opponent < 0 or OpponentDB.get_opponent(opponent).rule not in [Ruleset.WAND, Ruleset.HEX]:
-		return false
 	return learning_cast_target() != null
+
+
+## The cast this duel teaches: Ruleset.WAND or Ruleset.HEX, else "".
+func _cast_lesson() -> String:
+	if opponent < 0:
+		return ""
+	var rule: String = OpponentDB.get_opponent(opponent).rule
+	return rule if rule in [Ruleset.WAND, Ruleset.HEX] else ""
 
 
 ## Starts the spotlight on the rule waiting in this duel and remembers it.
@@ -896,9 +915,9 @@ func _watch_rule_spotlight() -> void:
 	var rule := spotlight.rule
 	var shop_shown := phase == Phase.PREP and shop_out <= 0.0 and not enemy_preparing
 	if rule == Ruleset.SHOP and shop_shown:
-		_spotlight(Hud.STALL_RECT.get_center(), Hud.STALL_RECT.size * 0.54)
+		_spotlight(Hud.stall_rect().get_center(), Hud.STALL_RECT.size * 0.54)
 	elif rule == Ruleset.TRADE and shop_shown:
-		_spotlight(Hud.REROLL_RECT.get_center(), Vector2(Hud.REROLL_RECT.size.x * 0.56, 34))
+		_spotlight(Hud.reroll_rect().get_center(), Vector2(Hud.REROLL_RECT.size.x * 0.56, 34))
 	elif rule.begins_with("upgrade_") and shop_shown and scroll_open >= 1.0:
 		var row := Rules.WAND_UPGRADES.find(rule.trim_prefix("upgrade_"))
 		_spotlight(Hud.upgrade_rect(row, ruleset).get_center(), Vector2(Hud.UPGRADE_SIZE.x * 0.58, 32))

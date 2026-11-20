@@ -119,7 +119,8 @@ func _draw_reserve() -> void:
 			if game.can_drop_merge(c):
 				draw_rect(r.grow(-4), Icons.GOLD, false, 3.0)
 	Shapes.set_transform(self, Vector2.ZERO, 0.0, Vector2.ONE)
-	# Field capacity pips. While a full board refuses the dragged creature they
+	# Field capacity pips, in a row under the board's right edge (clear of the
+	# shop column at every height). While a full board refuses the dragged creature they
 	# are ringed in red; a refused drop makes the rings blink.
 	var fielded: int = game.player.field_count()
 	var warn := 0.0
@@ -128,7 +129,7 @@ func _draw_reserve() -> void:
 	elif game.drag_visual_active() and game.board_full_for(game.drag):
 		warn = 0.55
 	for i in Rules.FIELD_CAP:
-		var p := Vector2(Rules.BOARD_SIZE.x + 22, Rules.BOARD_SIZE.y - 14 - i * 22)
+		var p := Vector2(Rules.BOARD_SIZE.x - 14 - (Rules.FIELD_CAP - 1 - i) * 22, Rules.BOARD_SIZE.y + 23)
 		Shapes.circle(self, p, 7, Color(0.2, 0.14, 0.1))
 		if i < fielded:
 			Shapes.circle(self, p, 5, Icons.team_color(0))

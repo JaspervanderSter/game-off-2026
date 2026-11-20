@@ -5,7 +5,7 @@ extends Node2D
 const ENEMY_BLOCK := Rect2(24, 84, 300, 140)
 const PLAYER_BLOCK := Rect2(24, 376, 300, 156)
 # Round frieze centred above the board, clear of the combat timer bar (y 50).
-const FRIEZE_CENTER := Vector2(640, 26)
+const FRIEZE_CENTER := Vector2(640, 23)
 const FRIEZE_STEP := 36.0
 const FRIEZE_PAST := 7 # finished rounds shown left of the current one
 const FRIEZE_FUTURE := 3
@@ -328,7 +328,51 @@ static func gold_pos(team: int) -> Vector2:
 # --- Geometry used for hit tests -------------------------------------------------
 
 static func offer_rect(i: int) -> Rect2:
-	return Rect2(Rules.SHOP_RECT.position + Vector2(0, i * OFFER_STEP), OFFER_SIZE)
+	return Rect2(shop_rect().position + Vector2(0, i * OFFER_STEP), OFFER_SIZE)
+
+
+## Vertical offset of the stall and the scroll (set per duel by layout_column):
+## the constants above describe the column at offset 0.
+static var column_dy := 0.0
+## Least offset: keeps the awning clear of the round frieze.
+const COLUMN_MIN_DY := 10.0
+## Space kept between the bottom of the column and the fight button.
+const COLUMN_FIGHT_GAP := 12.0
+
+
+## Places the stall (and the scroll, once introduced) for a duel's rules:
+## centred on the board's height when it fits, otherwise as low as the fight
+## button allows, and never against the frieze.
+static func layout_column(rules: Ruleset) -> void:
+	var top := AWNING_TOP
+	var bottom := STALL_RECT.end.y
+	if rules.any_upgrade():
+		bottom = SCROLL_TOP + scroll_length(rules) + 8.0 # lower rod
+	var centred := Rules.BOARD_POS.y + Rules.BOARD_SIZE.y * 0.5 - (top + bottom) * 0.5
+	var lowest := Rules.FIGHT_CENTER.y - Rules.FIGHT_RADIUS * FIGHT_HOVER_SCALE - COLUMN_FIGHT_GAP - bottom
+	column_dy = maxf(COLUMN_MIN_DY, minf(centred, lowest))
+
+
+static func stall_rect() -> Rect2:
+	return Rect2(STALL_RECT.position + Vector2(0, column_dy), STALL_RECT.size)
+
+
+static func awning_top() -> float:
+	return AWNING_TOP + column_dy
+
+
+## Creature offers and reroll; also the sell drop zone.
+static func shop_rect() -> Rect2:
+	return Rect2(Rules.SHOP_RECT.position + Vector2(0, column_dy), Rules.SHOP_RECT.size)
+
+
+static func reroll_rect() -> Rect2:
+	return Rect2(REROLL_RECT.position + Vector2(0, column_dy), REROLL_RECT.size)
+
+
+## Centre of the scroll's top rod.
+static func scroll_top() -> float:
+	return SCROLL_TOP + column_dy
 
 
 ## Centre of the creature token drawn on offer i.
@@ -346,7 +390,7 @@ static func upgrade_rect(i: int, rules: Ruleset = null) -> Rect2:
 		for j in i:
 			if rules.allows_upgrade(Rules.WAND_UPGRADES[j]):
 				row += 1
-	return Rect2(Vector2(SCROLL_X.x + 8, UPGRADE_TOP + row * UPGRADE_STEP), UPGRADE_SIZE)
+	return Rect2(Vector2(SCROLL_X.x + 8, UPGRADE_TOP + column_dy + row * UPGRADE_STEP), UPGRADE_SIZE)
 
 
 ## Rod-to-rod length of the unrolled scroll: just enough for the introduced
@@ -436,7 +480,7 @@ func _shop_key() -> Array:
 	for i in Rules.WAND_UPGRADES.size():
 		key.append(upgrade_rect(i, game.ruleset).has_point(mouse))
 	key.append(Rules.FIGHT_CENTER.distance_to(mouse) < Rules.FIGHT_RADIUS)
-	key.append(Rules.SHOP_RECT.has_point(mouse))
+	key.append(shop_rect().has_point(mouse))
 	if game.enemy_preparing:
 		key.append(Time.get_ticks_msec()) # the spinner around the fight button turns
 	elif _fight_ready() and fight_glint(Time.get_ticks_msec() / 1000.0) >= 0.0:
@@ -813,23 +857,23 @@ func _draw_shop_column() -> void:
 ## Merchant stall around the creature offers: wooden frame under a striped,
 ## scalloped awning.
 func _draw_stall() -> void:
-	_ci.draw_rect(STALL_RECT, Color(0.17, 0.115, 0.08))
-	_ci.draw_rect(STALL_RECT, Color(0.54, 0.38, 0.22), false, 5.0)
-	_ci.draw_rect(STALL_RECT.grow(-5), Color(0.29, 0.19, 0.125), false, 2.0)
-	var left := STALL_RECT.position.x - 6
-	var width := STALL_RECT.size.x + 12
-	var bottom := STALL_RECT.position.y
+	_ci.draw_rect(stall_rect(), Color(0.17, 0.115, 0.08))
+	_ci.draw_rect(stall_rect(), Color(0.54, 0.38, 0.22), false, 5.0)
+	_ci.draw_rect(stall_rect().grow(-5), Color(0.29, 0.19, 0.125), false, 2.0)
+	var left := stall_rect().position.x - 6
+	var width := stall_rect().size.x + 12
+	var bottom := stall_rect().position.y
 	var stripe := width / AWNING_STRIPES
 	for i in AWNING_STRIPES:
 		var col := Color(0.79, 0.64, 0.29) if i % 2 else Color(0.48, 0.29, 0.16)
 		var x := left + i * stripe
-		_ci.draw_rect(Rect2(x, AWNING_TOP, stripe, bottom - AWNING_TOP), col)
+		_ci.draw_rect(Rect2(x, awning_top(), stripe, bottom - awning_top()), col)
 		var scallop := PackedVector2Array()
 		for j in 9:
 			var a := PI * j / 8.0
 			scallop.append(Vector2(x + stripe * 0.5 + cos(a) * stripe * 0.5, bottom + sin(a) * AWNING_SCALLOP))
 		_ci.draw_colored_polygon(scallop, col)
-	Shapes.line(_ci, Vector2(left - 4, AWNING_TOP), Vector2(left + width + 4, AWNING_TOP), Color(0.35, 0.23, 0.13), 6.0)
+	Shapes.line(_ci, Vector2(left - 4, awning_top()), Vector2(left + width + 4, awning_top()), Color(0.35, 0.23, 0.13), 6.0)
 
 
 func _draw_shop() -> void:
@@ -858,14 +902,14 @@ func _draw_shop() -> void:
 	if not trading:
 		return # no reroll and no selling before the journey introduces trading
 	var reroll_ok: bool = game.player.can_reroll()
-	_panel(REROLL_RECT, Color(0.23, 0.18, 0.12) if reroll_ok else Color(0.1, 0.09, 0.08))
-	Icons.restart(_ci, REROLL_RECT.position + Vector2(30, 18), 11, Icons.GOLD if reroll_ok else Color.DIM_GRAY)
-	Icons.coin(_ci, REROLL_RECT.position + Vector2(116, 18), 10)
-	_ci.draw_string(font, REROLL_RECT.position + Vector2(134, 25), str(Rules.REROLL_COST), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Icons.GOLD)
+	_panel(reroll_rect(), Color(0.23, 0.18, 0.12) if reroll_ok else Color(0.1, 0.09, 0.08))
+	Icons.restart(_ci, reroll_rect().position + Vector2(30, 18), 11, Icons.GOLD if reroll_ok else Color.DIM_GRAY)
+	Icons.coin(_ci, reroll_rect().position + Vector2(116, 18), 10)
+	_ci.draw_string(font, reroll_rect().position + Vector2(134, 25), str(Rules.REROLL_COST), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Icons.GOLD)
 	if not reroll_ok:
-		_ci.draw_rect(REROLL_RECT, Color(0, 0, 0, 0.35))
+		_ci.draw_rect(reroll_rect(), Color(0, 0, 0, 0.35))
 	if selling:
-		var r := Rules.SHOP_RECT
+		var r := shop_rect()
 		var over := r.has_point(get_global_mouse_position())
 		_ci.draw_rect(r, Color(0.9, 0.7, 0.1, 0.35 if over else 0.18))
 		_ci.draw_rect(r, Icons.GOLD, false, 3.0)
@@ -930,9 +974,9 @@ func _draw_fight_glint(c: Vector2, r: float, sweep: float) -> void:
 ## as it unrolls; each row appears once the parchment has passed it.
 func _draw_wand_scroll() -> void:
 	var length := scroll_length(game.ruleset) * smoothstep(0.0, 1.0, float(game.scroll_open))
-	var bottom := SCROLL_TOP + length
+	var bottom := scroll_top() + length
 	if length > 0.0:
-		var body := Rect2(SCROLL_X.x, SCROLL_TOP, SCROLL_X.y - SCROLL_X.x, length)
+		var body := Rect2(SCROLL_X.x, scroll_top(), SCROLL_X.y - SCROLL_X.x, length)
 		_ci.draw_rect(body, Color(0.21, 0.12, 0.29))
 		_ci.draw_rect(body.grow_individual(-6, 0, -6, 0), Color(0.33, 0.22, 0.45), false, 1.5)
 	for i in Rules.WAND_UPGRADES.size():
@@ -942,7 +986,7 @@ func _draw_wand_scroll() -> void:
 		if r.end.y + 6.0 <= bottom:
 			_draw_upgrade_row(Rules.WAND_UPGRADES[i], r)
 	_draw_scroll_rod(bottom)
-	_draw_scroll_rod(SCROLL_TOP)
+	_draw_scroll_rod(scroll_top())
 
 
 func _draw_scroll_rod(y: float) -> void:

@@ -31,14 +31,16 @@ const OPPONENTS := [
 	{"id": "archmage", "name": "Archmage", "magic": true, "rule": "", "pack": ""},
 ]
 
-## Forest encounters are demonstrations, not competitive duels. Their small,
-## fixed armies never grow; ordinary creature stats and abilities still apply.
+## Forest encounters are lessons, not competitive duels. Their small, fixed
+## armies never grow during a duel, but each opponent fields a little more than
+## the previous one, so the island's difficulty rises gently (playtest request).
+## Ordinary creature stats and abilities still apply.
 const FOREST_ARMIES := [
 	["wolf"],
-	["deer"],
-	["spearman"],
-	["wolf"],
-	["wolf", "rabbit"],
+	["deer", "wolf"],
+	["spearman", "spearman", "wolf"],
+	["wolf", "wolf", "deer", "archer"],
+	["wolf", "rabbit", "wolf", "spearman", "rabbit"],
 ]
 
 
