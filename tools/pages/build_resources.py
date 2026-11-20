@@ -22,7 +22,7 @@ def write_page(filename, title, body, body_class="document-page"):
 </head><body class="{body_class}">
 <nav class="site-nav" aria-label="Site navigation">
 <a class="brand" href="index.html">Shapeshifter Duel</a>
-<a href="how-to-play.html">Complete guide</a><a href="audio.html">Sound &amp; music</a>
+<a href="how-to-play.html">Game rules</a><a href="audio.html">Sound &amp; music</a>
 <a class="itch-link" href="{ITCH}">Play on itch.io</a>
 </nav><main>{body}</main></body></html>'''
     (DOCS / filename).write_text(page, encoding="utf-8")
@@ -36,7 +36,7 @@ def build():
     guide = guide.replace("@@BOARD@@", board_uri)
     for marker, content in render_reference().items():
         guide = guide.replace(marker, content)
-    write_page("how-to-play.html", "Complete guide", guide, "document-page manual-page")
+    write_page("how-to-play.html", "Game rules", guide, "document-page manual-page")
     audio = (HERE / "content/audio.html").read_text(encoding="utf-8")
     write_page("audio.html", "Sound & music", audio)
 

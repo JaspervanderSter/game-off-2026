@@ -149,24 +149,22 @@ figcaption, .caption { margin-top: 10px; }
 .manual-contents li { margin: 0 0 7px; font-size: 14px; line-height: 1.45; }
 .manual-chapters { min-width: 0; }
 .manual-chapters > section:first-child { margin-top: 0; }
-.manual-page .content-section h3 { margin-top: 28px; }
+.manual-page .content-section > h3 { margin-top: 22px; }
 .manual-page .content-section li { margin-bottom: 8px; }
 .manual-page :is(section, article)[id] { scroll-margin-top: 24px; }
 .manual-table { overflow-x: auto; margin: 20px 0; border: 1px solid var(--line); border-radius: 10px; }
-.manual-table table { width: 100%; border-collapse: collapse; min-width: 540px; text-align: left; font-size: 14px; }
+.manual-table table { width: 100%; border-collapse: collapse; min-width: 400px; text-align: left; font-size: 14px; }
 .manual-table th, .manual-table td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .manual-table thead { background: #46306540; color: var(--gold); }
 .manual-stages { padding-left: 24px; }
 .manual-roster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .manual-creature { min-width: 0; scroll-margin-top: 24px; }
-.manual-creature header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
-.manual-creature header img { flex: 0 0 64px; image-rendering: pixelated; }
-.manual-creature h4 { margin: 0; color: var(--gold); font: normal 25px/1.2 Georgia, serif; }
+.manual-creature { padding: 18px; }
+.manual-creature header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.manual-creature header img { width: 40px; height: 40px; flex: 0 0 40px; image-rendering: pixelated; }
+.manual-creature h3 { margin: 0; color: var(--gold); font: normal 23px/1.2 Georgia, serif; }
 .manual-creature p { font-size: 14px; }
-.manual-stats { margin: 20px 0; font-size: 13px; }
-.manual-stats > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
-.manual-stats dt { color: var(--muted); }
-.manual-stats dd { margin: 0; color: var(--gold); text-align: right; }
+.manual-creature .manual-base-stats { color: var(--muted); font-size: 13px; }
 .manual-controls { margin: 24px 0; }
 .manual-controls > div { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 20px; border-bottom: 1px solid var(--line); padding: 12px 0; }
 .manual-controls dt { color: var(--gold); font-weight: 600; }
@@ -187,7 +185,7 @@ figcaption, .caption { margin-top: 10px; }
   .manual-contents { position: static; max-height: none; overflow: visible; }
   .manual-roster { display: block; }
   .manual-creature { break-inside: avoid; margin: 16px 0; }
-  .manual-stats dd, .manual-controls dt, .manual-creature h4 { color: #222; }
+  .manual-base-stats, .manual-controls dt, .manual-creature h3 { color: #222; }
   .manual-table { overflow: visible; }
   .manual-table table { min-width: 0; }
 }
@@ -319,11 +317,11 @@ footer { display: flex; justify-content: space-between; gap: 20px; padding: 22px
 }
 
 </style>
-<link rel="stylesheet" href="assets/site.css?v=a7f3d3d4be4f">
+<link rel="stylesheet" href="assets/site.css?v=aa5c71134abe">
 </head><body class="document-page">
 <nav class="site-nav" aria-label="Site navigation">
 <a class="brand" href="index.html">Shapeshifter Duel</a>
-<a href="how-to-play.html">Complete guide</a><a href="audio.html">Sound &amp; music</a>
+<a href="how-to-play.html">Game rules</a><a href="audio.html">Sound &amp; music</a>
 <a class="itch-link" href="https://spacemonkeyc.itch.io/shapeshifter-duel">Play on itch.io</a>
 </nav><main><header class="page-heading">
   <p class="eyebrow">Working together</p>

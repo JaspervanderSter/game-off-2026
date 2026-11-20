@@ -68,7 +68,8 @@ The resources homepage, `docs/index.html`, is maintained directly.
 The complete guide is the single rules document, with section shortcuts. Its
 teaching order remains under exploration; progression hypotheses stay in
 `docs/reflections/`. `player_reference.py` reads live creature data and character
-role descriptions to embed packs, base statistics and transformation outcomes.
+names to embed packs, compact base statistics and transformation outcomes, with
+short role summaries maintained in that builder.
 The guide's screenshot and 24 small creature illustrations are embedded for
 standalone reading. There is no duplicate game card in its body.
 
