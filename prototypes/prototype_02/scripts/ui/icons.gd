@@ -497,15 +497,52 @@ static func wizard_hat(ci: CanvasItem, p: Vector2, r: float, team: int) -> void:
 	star(ci, p + Vector2(0, r * 0.05), r * 0.3)
 
 
-## Charge orb with recharge progress arc.
-static func charge_orb(ci: CanvasItem, p: Vector2, r: float, filled: bool, progress := 0.0) -> void:
-	Shapes.circle(ci, p, r, Color(0.1, 0.07, 0.15))
+## Spell charge crystal: a hexagonal prism pointed at both ends, r being the
+## size of the round charge it replaced. Empty, it is dark glass; recharging, magic
+## rises from the bottom to `progress` under a bright surface; full, it is purple
+## with a light outline and a white reflection. A visible `outline` colour
+## replaces the outline (gold for the charge an upgrade adds).
+static func charge_crystal(ci: CanvasItem, p: Vector2, r: float, filled: bool, progress := 0.0, outline := Color(0, 0, 0, 0)) -> void:
+	var h := r * 1.2
+	var w := r * 0.52
+	var shape := PackedVector2Array([p + Vector2(0, -h), p + Vector2(w, -h * 0.62), p + Vector2(w, h * 0.62),
+		p + Vector2(0, h), p + Vector2(-w, h * 0.62), p + Vector2(-w, -h * 0.62)])
+	ci.draw_colored_polygon(shape, Color(0.11, 0.08, 0.19))
+	var level := 1.0 if filled else clampf(progress, 0.0, 1.0)
+	if level >= 1.0:
+		ci.draw_colored_polygon(shape, MAGIC)
+	elif level > 0.0:
+		var top := p.y + h - 2.0 * h * level
+		_fill_clipped(ci, shape, _band(p.x - w - 1, p.x + w + 1, top, p.y + h + 1), MAGIC)
+		_fill_clipped(ci, shape, _band(p.x - w - 1, p.x + w + 1, top, top + maxf(1.5, r * 0.09)), MAGIC.lightened(0.6))
 	if filled:
-		Shapes.circle(ci, p, r * 0.8, MAGIC)
-		Shapes.circle(ci, p + Vector2(-r * 0.25, -r * 0.25), r * 0.25, Color(1, 1, 1, 0.6))
-	elif progress > 0.0:
-		Shapes.arc(ci, p, r * 0.7, -PI / 2, -PI / 2 + TAU * progress, 20, MAGIC, r * 0.3, true)
-	Shapes.arc(ci, p, r, 0, TAU, 20, MAGIC.darkened(0.3), 2.0, true)
+		ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-w * 0.72, -h * 0.5), p + Vector2(-w * 0.3, -h * 0.6),
+			p + Vector2(-w * 0.3, h * 0.3), p + Vector2(-w * 0.72, h * 0.4)]), Color(1, 1, 1, 0.35))
+	var facet := Color(1, 1, 1, 0.3)
+	var fw := maxf(1.0, r * 0.06)
+	Shapes.line(ci, p + Vector2(0, -h), p + Vector2(0, h), facet, fw, true)
+	Shapes.polyline(ci, PackedVector2Array([p + Vector2(-w, -h * 0.62), p + Vector2(0, -h * 0.38), p + Vector2(w, -h * 0.62)]), facet, fw, true)
+	Shapes.polyline(ci, PackedVector2Array([p + Vector2(-w, h * 0.62), p + Vector2(0, h * 0.38), p + Vector2(w, h * 0.62)]), Color(1, 1, 1, 0.18), fw, true)
+	var edge := MAGIC.lightened(0.45) if filled else MAGIC.darkened(0.3)
+	if outline.a > 0.0:
+		edge = outline
+	shape.append(shape[0])
+	Shapes.polyline(ci, shape, edge, maxf(1.5, r * 0.11), true)
+
+
+## Fills the part of shape inside clip, skipping slivers too thin to see (and to
+## triangulate), such as the bottom tip of a crystal that has just started filling.
+static func _fill_clipped(ci: CanvasItem, shape: PackedVector2Array, clip: PackedVector2Array, col: Color) -> void:
+	for piece in Geometry2D.intersect_polygons(shape, clip):
+		var area := 0.0
+		for i in piece.size():
+			area += piece[i].cross(piece[(i + 1) % piece.size()])
+		if absf(area) > 1.0: # twice the area, in square pixels
+			ci.draw_colored_polygon(piece, col)
+
+
+static func _band(x0: float, x1: float, y0: float, y1: float) -> PackedVector2Array:
+	return PackedVector2Array([Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)])
 
 
 static func swords(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
@@ -573,9 +610,10 @@ static func wand(ci: CanvasItem, p: Vector2, r: float) -> void:
 
 ## Icon of a wand upgrade (Rules.WAND_UPGRADES), drawn rightward from its
 ## left-middle point, r tall on each side:
-##   recharge  a recharging orb with speed lines
-##   charges   three orbs: the starting ones filled, then the one the next level
-##             adds, filled and ringed in gold under a gold plus (all filled once maxed)
+##   recharge  a recharging charge crystal with speed lines
+##   charges   three charge crystals: the starting ones filled, then the one the
+##             next level adds, filled and outlined in gold under a gold plus (all
+##             filled once maxed)
 ##   heal      the wand beside a green cross
 ##   hex       the wand beside a stun spiral
 static func wand_upgrade(ci: CanvasItem, id: String, left: Vector2, r: float, charges := 1) -> void:
@@ -584,16 +622,16 @@ static func wand_upgrade(ci: CanvasItem, id: String, left: Vector2, r: float, ch
 			for i in 3:
 				var y := (i - 1) * r * 0.45
 				Shapes.line(ci, left + Vector2(r * (0.0 if i == 1 else 0.3), y), left + Vector2(r * 0.95, y), Color(0.95, 0.92, 0.85), r * 0.15, true)
-			charge_orb(ci, left + Vector2(r * 2.1, 0), r * 0.92, false, 0.75)
+			charge_crystal(ci, left + Vector2(r * 1.65, 0), r * 0.85, false, 0.6)
 		"charges":
 			for i in Rules.MAX_CHARGES:
-				var p := left + Vector2(r * 0.7 + i * r * 1.55, r * 0.12)
-				if i == charges:
-					Shapes.arc(ci, p, r * 0.8, 0, TAU, 20, GOLD, r * 0.12, true)
-					var plus := p + Vector2(r * 0.75, -r * 0.82)
-					Shapes.line(ci, plus + Vector2(-r * 0.3, 0), plus + Vector2(r * 0.3, 0), GOLD, r * 0.18)
-					Shapes.line(ci, plus + Vector2(0, -r * 0.3), plus + Vector2(0, r * 0.3), GOLD, r * 0.18)
-				charge_orb(ci, p, r * 0.62, i <= charges)
+				var p := left + Vector2(r * 0.5 + i * r * 1.25, r * 0.1)
+				var gold := i == charges
+				if gold:
+					var plus := p + Vector2(r * 0.6, -r * 0.78)
+					Shapes.line(ci, plus + Vector2(-r * 0.28, 0), plus + Vector2(r * 0.28, 0), GOLD, r * 0.18)
+					Shapes.line(ci, plus + Vector2(0, -r * 0.28), plus + Vector2(0, r * 0.28), GOLD, r * 0.18)
+				charge_crystal(ci, p, r * 0.72, i <= charges, 0.0, GOLD if gold else Color(0, 0, 0, 0))
 		"heal":
 			wand(ci, left + Vector2(r * 0.95, 0), r * 1.2)
 			var c := left + Vector2(r * 2.55, 0)

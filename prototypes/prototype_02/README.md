@@ -39,8 +39,11 @@ can itself produce a large interval. It does no sampling while hidden and does
 not intercept mouse input.
 
 Reading the board: blue ring = yours, red ring = the AI's. The opponent's panel
-shows the hat of the chosen difficulty. Purple orbs = spell
-charges (the arc shows recharge). Base creatures have no stars. Gold stars (1–3) show permanent merge upgrades.
+shows the hat of the chosen difficulty. Purple crystals = spell
+charges: hexagonal prisms pointed at both ends, dark glass when empty, filling with
+magic from the bottom as they recharge, bright with a white reflection when full;
+the same crystal stands for a charge in the panels, under the board in combat,
+in the wand upgrade icons and in their tooltips. Base creatures have no stars. Gold stars (1–3) show permanent merge upgrades.
 Three small circles show progress towards the next star: a single copy fills one,
 a manually combined pair fills two. A pair has no combat-stat bonus.
 These circles are hidden at rest. Hover reveals a creature's progress; dragging
@@ -171,16 +174,16 @@ All confirmed rules and delegated defaults of the design note, notably:
 
   | Upgrade | Icon | Effect | Cost |
   | --- | --- | --- | ---: |
-  | Fast recharge | Recharging orb with speed lines | Recharge 3 s → 2.4 s | 4 |
-  | Starting charges | Three orbs: current starting charges filled, the next one gold-ringed under a gold plus | Combat starts with 2, then 3 charges | 3, then 5 |
+  | Fast recharge | Recharging charge crystal with speed lines | Recharge 3 s → 2.4 s | 4 |
+  | Starting charges | Three charge crystals: current starting charges filled, the next one outlined in gold under a gold plus | Combat starts with 2, then 3 charges | 3, then 5 |
   | Healing shift | Wand + green cross | Allied casts heal 25% of new max HP instead of 10% | 4 |
   | Long hex | Wand + stun spiral | Enemy casts stun for 4.5 s instead of 3 s | 4 |
 
   Hovering a row of the unrolled scroll opens a card to its left with no text
   and no price: the same looping scene plays side by side at the current level
   (dim frame) and the next level (gold frame), restarting with each new hover.
-  A maxed upgrade compares its last two levels. Recharge: an empty orb fills in
-  3 s, then 2.4 s. Charges: the starting orbs pop in at combat start. Heal: the
+  A maxed upgrade compares its last two levels. Recharge: an empty crystal fills in
+  3 s, then 2.4 s. Charges: the starting crystals pop in at combat start. Heal: the
   wand's star flashes on an ally, a green cross appears and its health bar gains
   10%, then 25%. Hex: the star flashes on an enemy, which spins under a stun
   spiral while a ring drains over 3 s, then 4.5 s.

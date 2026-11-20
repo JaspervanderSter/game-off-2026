@@ -530,7 +530,7 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 		var prog := 0.0
 		if spell and i == spell.charges:
 			prog = spell.progress()
-		Icons.charge_orb(_ci, p, 12, filled, prog)
+		Icons.charge_crystal(_ci, p, 14, filled, prog)
 	Icons.coin(_ci, gold_pos(team), 15 * (1.0 + coin_pulse * 0.45))
 	_ci.draw_string(font, block.position + Vector2(66, 135 - coin_pulse * 5), str(displayed_gold(state)), HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Icons.GOLD.lerp(Color.WHITE, coin_pulse))
 	if team == 0 and game.phase != game.Phase.PACK:
@@ -895,17 +895,17 @@ func _draw_upgrade_tooltip() -> void:
 func _draw_upgrade_scene(id: String, value: float, c: Vector2, t: float) -> void:
 	match id:
 		"recharge":
-			# An empty orb recharges in `value` seconds, then shows full.
+			# An empty crystal fills with magic in `value` seconds, then shows full.
 			var progress := clampf(fmod(t, 3.6) / value, 0.0, 1.0)
-			Icons.charge_orb(_ci, c, 30, progress >= 1.0, progress)
+			Icons.charge_crystal(_ci, c, 30, progress >= 1.0, progress)
 		"charges":
-			# Combat start: the starting orbs pop in one after another.
+			# Combat start: the starting crystals pop in one after another.
 			var phase := fmod(t, 2.6)
 			for k in Rules.MAX_CHARGES:
 				var p := c + Vector2((k - 1) * 36, 0)
 				var appear := clampf((phase - 0.3 - k * 0.3) / 0.2, 0.0, 1.0)
 				var shown := k < int(value) and appear > 0.0
-				Icons.charge_orb(_ci, p, 15 * (1.0 + 0.25 * sin(appear * PI)) if shown else 15.0, shown)
+				Icons.charge_crystal(_ci, p, 15 * (1.0 + 0.25 * sin(appear * PI)) if shown else 15.0, shown)
 		"heal":
 			# The wand blesses an ally: a green cross, then the health it gains.
 			var phase := fmod(t, 3.0)
@@ -1012,7 +1012,7 @@ func _draw_combat_hud() -> void:
 	var spell: ShiftSpell = b.spells[0]
 	for i in Rules.MAX_CHARGES:
 		var prog: float = spell.progress() if i == spell.charges else 0.0
-		Icons.charge_orb(_ci, charge_pos(i), 24, spell.charges > i, prog)
+		Icons.charge_crystal(_ci, charge_pos(i), 24, spell.charges > i, prog)
 
 
 func _draw_frenzy(b: Battle, bar: Rect2, color: Color) -> void:
