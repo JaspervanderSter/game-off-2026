@@ -13,9 +13,8 @@ const LANDSCAPE_ORIGINS := [Vector2(280, 425), Vector2(1000, 425), Vector2(640, 
 const PORTRAIT_ORIGINS := [Vector2(165, 860), Vector2(515, 860), Vector2(340, 240)]
 const LANDSCAPE_SCALES := [0.72, 0.72, 0.62]
 const PORTRAIT_SCALES := [0.55, 0.55, 0.72]
-const STAGE_ISLAND := Journey.ISLANDS
-const STAGE_OFFSETS := [Vector2(-78, 28), Vector2(28, -22), Vector2(133, 28), Vector2(-100, 25), Vector2(25, 24), Vector2(135, -10), Vector2(122, 25)]
-const OPPONENTS := ["rabbit", "deer", "wolf", "guardian", "archer", "spearman", "hat2"]
+const ZONE_SPOTS := [Vector2(-182, 42), Vector2(-94, 66), Vector2(-4, 54), Vector2(86, 70), Vector2(176, 42)]
+const OPPONENT_SIZE := 27.0
 var game
 var sky: Node2D
 var world: Node2D
@@ -61,9 +60,9 @@ func _ready() -> void:
 	roads.z_index = 1
 	world.add_child(roads)
 	roads.draw.connect(_draw_roads)
-	for index in STAGE_OFFSETS.size():
-		var island := islands[STAGE_ISLAND[index]]
-		var button := _button(island, Rect2(STAGE_OFFSETS[index] - Vector2(52, 54), Vector2(104, 108)))
+	for index in Journey.stage_count():
+		var island := islands[stage_island(index)]
+		var button := _button(island, Rect2(stage_offset(index) - Vector2(52, 54), Vector2(104, 108)))
 		button.pressed.connect(_activate.bind(index))
 		button.z_index = 2
 		button.focus_entered.connect(_stage_focused.bind(index))
@@ -171,8 +170,14 @@ func _refresh_discovery() -> void:
 		button.modulate = Color(1, 1, 1, pop)
 		button.scale = Vector2.ONE * lerpf(0.85, 1.0, pop)
 
+static func stage_island(index: int) -> int:
+	return OpponentDB.zone(index)
+
+static func stage_offset(index: int) -> Vector2:
+	return ZONE_SPOTS[index % OpponentDB.ZONE_SIZE]
+
 func stage_position(index: int) -> Vector2:
-	return islands[STAGE_ISLAND[index]].position + STAGE_OFFSETS[index] * islands[STAGE_ISLAND[index]].scale
+	return islands[stage_island(index)].position + stage_offset(index) * islands[stage_island(index)].scale
 
 func _stage_focused(index: int) -> void:
 	focus_stage = index
@@ -196,7 +201,7 @@ func _layout() -> void:
 	for index in buttons.size():
 		var target_size := Vector2(140, 144) if portrait else Vector2(104, 108)
 		buttons[index].size = target_size
-		buttons[index].position = STAGE_OFFSETS[index] - target_size * 0.5
+		buttons[index].position = stage_offset(index) - target_size * 0.5
 		buttons[index].pivot_offset = target_size * 0.5
 	_rebuild_paths()
 	if revealing >= 0:
@@ -297,17 +302,16 @@ func _draw_stage(index: int, button: Button) -> void:
 	var open: bool = game.journey.available(index)
 	var won: bool = index in game.journey.completed
 	var hot := open and (button.is_hovered() or button.has_focus())
-	Shapes.ellipse(button, p + Vector2(0, 27), 32, 10, Color(0.12, 0.08, 0.06, 0.2))
+	Shapes.ellipse(button, p, 32, 10, Color(0.12, 0.08, 0.06, 0.2))
 	if hot or won:
-		Shapes.ellipse(button, p + Vector2(0, 27), 33 + sin(age * 2) * 2, 12, Color(GOLD, 0.45))
-	if OPPONENTS[index].begins_with("hat"):
-		Icons.difficulty_hat(button, 2, p + Vector2(0, -4 + sin(age * 1.8) * 2), 31, age)
-	else:
-		Icons.creature(button, OPPONENTS[index], p + Vector2(0, -6), 28)
+		Shapes.ellipse(button, p, 33 + sin(age * 2) * 2, 12, Color(GOLD, 0.45))
+	# Full-length opponents stand on the path spot; creatures remain on the board.
+	Icons.opponent(button, OpponentDB.get_opponent(index).id,
+		p + Vector2(0, -OPPONENT_SIZE * 0.94 + sin(age * 1.8 + index) * 1.2), OPPONENT_SIZE, age)
 	if won:
-		Icons.star(button, p + Vector2(0, 40), 9, GOLD)
+		Icons.star(button, p + Vector2(0, 15), 9, GOLD)
 	if hot:
-		var q := p + Vector2(0, -50 + sin(age * 3) * 3)
+		var q := p + Vector2(0, -63 + sin(age * 3) * 3)
 		button.draw_colored_polygon(PackedVector2Array([q + Vector2(-7, -7), q + Vector2(7, -7), q]), GOLD)
 
 func _append_curve(points: PackedVector2Array, a: Vector2, b: Vector2, c: Vector2, d: Vector2) -> PackedVector2Array:
@@ -335,27 +339,27 @@ func _rebuild_paths() -> void:
 		var a := stage_position(stage - 1)
 		var b := stage_position(stage)
 		var points := PackedVector2Array()
-		if stage in [3, 6]:
-			var bridge: Node2D = bridges[0 if stage == 3 else 1]
+		if stage_island(stage) != stage_island(stage - 1):
+			var bridge: Node2D = bridges[stage_island(stage) - 1]
 			var start: Vector2 = bridge.from_point
 			var finish: Vector2 = bridge.to_point
-			var source_scale: float = islands[STAGE_ISLAND[stage - 1]].scale.x
+			var source_scale: float = islands[stage_island(stage - 1)].scale.x
 			# Curve through clearings and the town street below the keep.
-			if stage == 6:
+			if stage_island(stage) == 2:
 				points = _append_curve(points, a, a + Vector2(-70, -22) * source_scale, start + Vector2(90, 30) * source_scale, start)
 			else:
 				points = _append_curve(points, a, a + Vector2(50, 18) * source_scale, start + Vector2(-25, 28) * source_scale, start)
 			var sag := minf(27, start.distance_to(finish) * 0.10)
 			for index in 65:
 				points.append(start.lerp(finish, index / 64.0) + Vector2(0, sin(index / 64.0 * PI) * sag))
-			var target_scale: float = islands[STAGE_ISLAND[stage]].scale.x
+			var target_scale: float = islands[stage_island(stage)].scale.x
 			points = _append_curve(points, finish, finish + Vector2(55, 28) * target_scale, b + Vector2(-35, 35) * target_scale, b)
 		else:
-			var scale_factor: float = islands[STAGE_ISLAND[stage]].scale.x
+			var scale_factor: float = islands[stage_island(stage)].scale.x
 			var lower := maxf(a.y, b.y) + 24 * scale_factor
 			points = _append_curve(points, a, Vector2(lerpf(a.x, b.x, 0.35), lower), Vector2(lerpf(a.x, b.x, 0.75), lower), b)
-		var trim_start: float = 26 * islands[STAGE_ISLAND[stage - 1]].scale.x
-		var trim_end: float = 30 * islands[STAGE_ISLAND[stage]].scale.x
+		var trim_start: float = 26 * islands[stage_island(stage - 1)].scale.x
+		var trim_end: float = 30 * islands[stage_island(stage)].scale.x
 		var length := maxf(1.0, _length(points) - trim_start - trim_end)
 		var count := clampi(roundi(length / 8.0), 6, 40)
 		var dots := PackedVector2Array()

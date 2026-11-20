@@ -24,6 +24,7 @@ controls, combat rules and presentation are not inherited automatically.
 - [[Art Direction]] — readability and presentation preferences.
 - [[Ideas to Explore]] — optional features awaiting validation.
 - [[Meeting - 2026-11-02]] — origin and status of the design directions.
+- [[Journey and Opponents]] — the fifteen journey opponents and the order in which they introduce the rules.
 
 ## Primary learning goal — confirmed
 
@@ -91,9 +92,9 @@ statistics or upgrade-unlock economy is specified by this decision.
 
 | Order | Territory and encounters | Duel terrain | Starting hearts, each side | Pacing intent |
 | --- | --- | --- | --- | --- |
-| 1 | Forest: begin against woodland animals. | Existing grass tiles, `forest`. | **3** | Short learning duels. |
-| 2 | Fortified medieval town: meet human opponents. | Existing stone paving, `town`. | **6** | Intermediate duels. |
-| 3 | Magic school: sorcerers enter the journey and become increasingly powerful. | Existing violet slabs with gold inlays, `school`. | **10** | Longer, demanding late-game duels. |
+| 1 | Forest: Hunter, Lumberjack, Druid, Swamp witch and Archdruid. | Existing grass tiles, `forest`. | **3** | Short learning duels. |
+| 2 | Town: Merchant, Innkeeper, Thief, Court mage and King. | Existing stone paving, `town`. | **6** | Intermediate duels. |
+| 3 | School: Apprentice, Caretaker, Adept, Transmutation teacher and Archmage. | Existing violet slabs with gold inlays, `school`. | **10** | Longer, demanding late-game duels. |
 
 **3 -> 6 -> 10 is the selected heart progression.** The earlier suggestions of
 four starting hearts and the 4/6/10 alternative were not selected. Both the player
@@ -132,12 +133,15 @@ round counts are not fixed or guaranteed by this decision.
 ### Progression structure and replay
 
 **Confirmed refinement, 20 November 2026: use a linear journey.** This supersedes
-the earlier two-fork route. The seven stages now follow:
+the earlier two-fork route. The imported opponent design extends the route to
+**fifteen full-length characters, five per island**, in this order:
 
-`1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7`
+`1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15`
 
-Stages 1-3 belong to the forest, stages 4-6 to the town, and stage 7 to the magic
-school. Winning a full duel discovers only its immediate successor. A defeat
+Stages 1-5 belong to the forest, stages 6-10 to the town, and stages 11-15
+to the magic school. See [[Journey and Opponents]] for their identities, openings
+and the existing rule each introduces. Opponents are full characters, not the
+creature forms they field. The islands are unchanged; five positions fit on each. Winning a full duel discovers only its immediate successor. A defeat
 never discovers a new encounter. Completed stages remain replayable. Save progress
 locally; old branching saves retain their furthest earned access by crediting the
 intermediate stages that now precede it. Return to the map after each duel.
@@ -162,11 +166,13 @@ hat-unlock presentation must not play behind the map. Difficulty becomes part of
 progression rather than the player's only choice of destination.
 
 Current AI tiers are Apprentice on the forest, Adept on the town and Archmage on
-the school. The animals -> humans -> sorcerers encounter progression is a confirmed
-design requirement. The current implementation still shares opponent decks and
-shop pools; restricting those by territory is remaining implementation work,
-not an unapproved design proposal. Exact encounter compositions and the precise
-visual milestones of the travelling wizard remain to be specified.
+the school. The fifteen-opponent design in [[Journey and Opponents]] refines the
+earlier animals -> humans -> sorcerers idea: opponents are full-length people,
+including non-magical characters, druids and witches; creatures remain their
+fielded army. Each duel uses only the rules introduced so far, for both sides.
+The player receives the wand with the Druid; opponents without magic never cast.
+This integration retains the confirmed triangle, island terrain, 3/6/10 hearts,
+static bridges, hidden discoveries and four-second path presentation.
 
 ### Sky, sound and entry point
 
@@ -193,7 +199,7 @@ in this section temporary.
 | Fortified town, island-specific battlefield tiles, full-screen layouts and icon-only interface | Implemented. |
 | Four-state sky cycle, direct map entry and music limited to duels | Implemented. |
 | Three / six / ten starting hearts and matching heart capacity in the HUD | Implemented with this decision. |
-| Animal / human / sorcerer encounter decks and shop restrictions by territory | Required; not yet implemented. |
+| Fifteen full-length opponents, fixed openings and cumulative rule introductions | Implemented from [[Journey and Opponents]]; five per unchanged island. |
 | Wizard appearance milestones outside the map | Still to be defined; the protagonist is not represented on the world map. |
 | Menu development | Deferred while work focuses on the world map. |
 
@@ -420,6 +426,18 @@ per form in both directions and requested an allied buff / enemy debuff per cast
 They confirmed +1 gold to round income each round, with 3 as a working starting
 grant, and explicitly excluded creature merging and wizard upgrades. Cheap
 creatures with transformation potential remain an exploratory hypothesis.
+
+### 20 November 2026 — journey opponents
+
+The user decided that the journey map teaches the existing rules gradually through
+fifteen opponents, five per zone (forest, town, school of magic). Opponents are
+complete characters, never creatures; some are wizards, others have no magic and
+never cast. No opponent adds a rule or a special power: each introduces one
+existing rule, every opponent of a zone must be beaten in order, and the fifth
+opens the next zone. A merchant earning bonus gold and an alchemist shapeshifting
+with potions were rejected because they added mechanics; a court mage replaces
+the alchemist. The opponents, the rule order and how rules not yet introduced are
+withheld are recorded in [[Journey and Opponents]].
 
 ## Playtest plan and completion criteria
 

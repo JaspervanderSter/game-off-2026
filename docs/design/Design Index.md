@@ -8,6 +8,7 @@ Open the repository as an Obsidian vault to follow the internal links.
 
 - [[Pitch]] — working pitch draft based on the prototype; not an approved specification.
 - [[Artist Brief]] — first character exploration, with a standalone HTML brief showing the current roster and animated gameplay clips.
+- [[Journey and Opponents]] — fifteen full-length opponents and the rules they introduce.
 - [[Prototype 02]] — confirmed journey roadmap and progression decisions (20 November 2026), prototype-specific rules and earlier experiments.
 - [[Roster and Transformation Map]] — Prototype 02 creature sheets, proposed statistics and editable Obsidian Canvas maps.
 - [[Game Vision]] — core concept, references and design priorities.

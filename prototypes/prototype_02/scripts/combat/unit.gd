@@ -121,8 +121,11 @@ func transform_to(new_form: String, ally_cast: bool, heal := Rules.SHIFT_HEAL, s
 
 
 ## Positive post-transformation effect of the new form. Only a shapeshift by
-## the creature's own wizard triggers it; an enemy hex never does.
+## the creature's own wizard triggers it; an enemy hex never does. Journey duels
+## before the animal bonuses are introduced skip it.
 func _ally_shift_effect() -> void:
+	if not battle.ruleset.has(Ruleset.ANIMAL_BONUS):
+		return
 	match data.get("ally_shift", ""):
 		"leap":
 			# Rabbit: its defining entry action is an immediate backline leap.
@@ -603,7 +606,7 @@ func _draw() -> void:
 		var glow := Icons.GOLD
 		glow.a = (0.55 + 0.45 * beat_k) * clampf(statuses.inspired.t, 0.25, 1.0)
 		Shapes.arc(self, p, r * scale_k * (1.12 + 0.12 * beat_k), 0, TAU, 32, glow, 2.5 + 2.5 * beat_k, true)
-	if hovered and battle != null and battle.casting_enabled and not battle.finished:
+	if hovered and battle != null and battle.casting_enabled and not battle.finished and battle.can_target(0, self):
 		# The local player is team 0: hovering previews its shapeshift on this unit.
 		var ready := battle.spells[0].can_cast() and immune_t <= 0.0
 		Icons.shift_reticle(self, p, r * scale_k, anim_t, team == 0, ready)

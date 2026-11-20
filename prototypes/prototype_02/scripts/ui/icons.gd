@@ -831,6 +831,12 @@ static func difficulty_hat(ci: CanvasItem, level: int, p: Vector2, r: float, t: 
 			_archmage_hat(ci, p, r, t)
 
 
+## A journey opponent drawn full length (OpponentDB id), centred on p; s is
+## about half its width, `t` animation time. See OpponentArt.
+static func opponent(ci: CanvasItem, id: String, p: Vector2, s: float, t: float) -> void:
+	OpponentArt.draw(ci, id, p, s, t)
+
+
 ## Ring polygon of an ellipse, for brims and trims.
 static func _ellipse_points(c: Vector2, rx: float, ry: float, from := 0.0, to := TAU, steps := 24) -> PackedVector2Array:
 	var pts := PackedVector2Array()

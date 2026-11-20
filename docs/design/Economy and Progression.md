@@ -4,8 +4,9 @@
 
 [[Prototype 02#Journey roadmap and progression — confirmed 20 November 2026]]
 records the confirmed across-duel design: a wizard travels through forest,
-medieval town and magic-school islands; encounters progress from animals to
-humans to sorcerers, and each side starts its duels with **3, 6, then 10 hearts**.
+medieval town and magic-school islands; the fifteen opponents introduce existing rules one at a time, and each side
+starts its duels with **3, 6, then 10 hearts**. See [[Journey and Opponents]] for
+the five characters in each territory.
 The map uses a triangle layout and suspended bridges, fits one screen without
 scrolling, and has no textual interface or upper UI banner. These are selected
 design decisions, separate from the older resource-economy experiments below.

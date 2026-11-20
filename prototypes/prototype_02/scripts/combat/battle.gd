@@ -27,6 +27,9 @@ var ai_levels: Array[int] = [Difficulty.ARCHMAGE, Difficulty.ARCHMAGE]
 # Calibration only: per-team Difficulty casting key overrides (training/arena.gd).
 var cast_overrides: Array[Dictionary] = [{}, {}]
 var casting_enabled := true
+# Rules of the duel and which teams may cast, copied from WizardState in setup().
+var ruleset := Ruleset.new()
+var can_cast: Array[bool] = [true, true]
 var time := 0.0
 var frenzy_level := 0
 var finished := false
@@ -59,6 +62,8 @@ func setup(teams: Array[WizardState], seed_value: int = -1) -> void:
 	else:
 		rng.randomize()
 	for state in teams:
+		ruleset = state.rules
+		can_cast[state.team] = state.can_cast()
 		ai_levels[state.team] = state.ai_level
 		ai_profiles[state.team] = EnemyAI.profile_for(state.ai_level)
 		spells[state.team].recharge_time = state.shift_recharge_time()
@@ -133,6 +138,8 @@ func frenzy_multiplier() -> float:
 
 
 func _update_frenzy() -> void:
+	if not ruleset.has(Ruleset.FRENZY):
+		return
 	var elapsed := time - Rules.FRENZY_START + 1e-9 # Allow for accumulated frame rounding.
 	var level := clampi(1 + floori(elapsed / Rules.FRENZY_STEP_SECONDS), 0, Rules.FRENZY_MAX_LEVEL)
 	if level != frenzy_level:
@@ -144,6 +151,8 @@ func _update_frenzy() -> void:
 func cast(team: int, u: Unit) -> bool:
 	if finished or not casting_enabled or u == null or not u.alive:
 		return false
+	if not can_target(team, u):
+		return false
 	if u.immune_t > 0.0 or not spells[team].can_cast():
 		return false
 	var from := u.form_id
@@ -154,8 +163,14 @@ func cast(team: int, u: Unit) -> bool:
 	return true
 
 
+## Whether the duel's rules let a team shapeshift this creature: the wand for
+## its own creatures, the hex for the opponent's.
+func can_target(team: int, u: Unit) -> bool:
+	return can_cast[team] and (u.team == team or ruleset.has(Ruleset.HEX))
+
+
 func _ai_cast(team: int, dt: float) -> void:
-	if not spells[team].can_cast():
+	if not can_cast[team] or not spells[team].can_cast():
 		return
 	_ai_delay[team] -= dt
 	if _ai_delay[team] > 0.0:
@@ -164,7 +179,7 @@ func _ai_cast(team: int, dt: float) -> void:
 	var choice := EnemyAI.choose_cast(self, team, ai_profiles[team], profile.threshold)
 	# Easier wizards sometimes spend a well-timed charge on the wrong creature.
 	if choice != null and profile.blunder > 0.0 and rng.randf() < profile.blunder:
-		choice = EnemyAI.random_cast_target(self)
+		choice = EnemyAI.random_cast_target(self, team)
 	if choice != null and cast(team, choice):
 		var delay: Vector2 = profile.cast_delay
 		_ai_delay[team] = rng.randf_range(delay.x, delay.y)

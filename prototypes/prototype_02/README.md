@@ -632,11 +632,11 @@ The three floating territories are a forest, a fortified medieval town and a
 magic school. The town has curtain walls, crenellated towers, a keep, dense
 pitched-roof houses and paved streets. Islands and scenery are drawn in code.
 Each stage selects its island's existing battlefield tiles when the duel starts:
-stages 1-3 use `tiles/forest/` grass, stages 4-6 use `tiles/town/` stone paving,
-and stage 7 uses `tiles/school/` violet slabs with gold inlays. The terrain remains
+stages 1-5 use `tiles/forest/` grass, stages 6-10 use `tiles/town/` stone paving,
+and stages 11-15 use `tiles/school/` violet slabs with gold inlays. The terrain remains
 through preparation, combat and subsequent rounds. Starting a different island's
 duel replaces the cached board; direct developer/test duels use the forest default.
-The mapping lives in `Journey.ISLANDS` and `Journey.ENVIRONMENTS`. Each side starts
+The mapping lives in `OpponentDB.zone()` and `Journey.ENVIRONMENTS`. Each side starts
 with 3, 6 or 10 full hearts respectively (`Journey.HEARTS`); hearts reset for every
 duel. AI health-dependent decisions use the fraction of that duel's capacity.
 These are confirmed design decisions, recorded with their rationale and remaining
@@ -651,7 +651,7 @@ and does not alter combat. `scripts/ui/day_night_sky.gd` exposes `cycle_seconds`
 for adjusting the duration. `scripts/ui/world_map.gd` owns navigation and layout;
 `scripts/ui/map_island.gd` draws the floating land masses.
 
-The linear journey follows `1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7`. A fresh map shows
+The linear journey contains fifteen opponents, five on each unchanged island. A fresh map shows
 only the first opponent. Winning a full duel completes that stage and discovers
 its immediate successor. On return to the map, the curved route draws itself
 point by point in about four seconds, with soft taps (`ui/map_step`) as the dots
@@ -663,14 +663,21 @@ A defeat discovers nothing. Completed stages remain replayable. Old branching
 saves are migrated to preserve their furthest earned stage. Every stage starts a
 fresh duel with the existing pack decks, economy and rules.
 
-Stages 1–3 use Apprentice AI, 4–6 use Adept, and 7 uses Archmage. The opponent's
-hat stays visible during the duel. Unlock rules live in
-`scripts/core/journey.gd`; island positions and visual opponent markers live in
-`scripts/ui/world_map.gd`. The biome markers establish the journey visually;
-combat still uses the existing opponent decks and AI tiers. Progress is saved locally in `difficulty_progress.cfg`.
-Older saves retain their access: unlocked Adept marks the Apprentice stages
-complete, and unlocked Archmage also marks the Adept stages complete. The hidden
-Ctrl+Shift+R shortcut on the menu or map resets progression.
+Stages 1-5 use Apprentice AI, 6-10 use Adept, and 11-15 use Archmage. The
+full-length characters in `OpponentDB` replace the old creature markers. Each
+introduces one existing rule; `Ruleset` applies the cumulative rules to both
+sides, limits creature offers and openings, and hides unavailable controls.
+Characters without magic never cast. The first two duels have no wand; the Druid
+introduces it, and the Swamp witch introduces hexes. The town introduces trading,
+harvest, merging, casters and frenzy; the school introduces the wand upgrades.
+The enemy panel uses the selected opponent's portrait. See [Journey and
+Opponents](../../docs/design/prototype_02/Journey%20and%20Opponents.md) for all
+fifteen characters and their existing starting compositions.
+
+Progress is saved locally in `difficulty_progress.cfg`, under `journey.opponents`.
+The previous seven-stage `journey.completed` saves retain proportional advancement
+inside each zone, including access to the school. Older difficulty-only saves
+retain their unlocked zones. Ctrl+Shift+R on the menu or map resets progression.
 
 - **Archmage** plays its own tuned strategy (`EnemyAI.ARCHMAGE_PROFILE`), with
   the same rules, gold and information as the player: it draws its opening from

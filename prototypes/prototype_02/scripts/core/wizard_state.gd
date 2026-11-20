@@ -13,6 +13,10 @@ var shift_recharge_upgraded: bool:
 	set(value):
 		upgrades["recharge"] = 1 if value else 0
 var ai_level := Difficulty.ARCHMAGE # opponent strength; the player ignores it
+## Rules of the duel, shared by both wizards (complete outside the journey).
+var rules := Ruleset.new()
+## False for journey opponents without magic: they never cast.
+var magic := true
 var ai_rerolls := 0
 var ai_whims := {} # form id -> taste drawn once per duel by whimsical AI levels
 var gold := 0
@@ -31,11 +35,12 @@ func take_starting_pack(pack: Dictionary) -> void:
 	gold += pack.bonus_gold
 
 
-## A surviving loser receives one gold per heart lost. Lethal losses grant none.
+## A surviving loser receives one gold per heart lost once the shop is
+## introduced. Lethal losses grant none.
 func take_round_damage(survivors: int) -> float:
 	var lost := minf(maxi(survivors, 0) * Rules.DAMAGE_PER_SURVIVOR, hp)
 	hp -= lost
-	if hp > 0:
+	if hp > 0 and rules.has(Ruleset.SHOP):
 		loss_gold_progress += lost
 		var reward := floori(loss_gold_progress)
 		gold += reward
@@ -46,6 +51,8 @@ func take_round_damage(survivors: int) -> float:
 ## Fielded harvesters (peasants) as [{"creature", "gold"}]; benched ones idle.
 func harvest_yields() -> Array[Dictionary]:
 	var yields: Array[Dictionary] = []
+	if not rules.has(Ruleset.HARVEST):
+		return yields
 	for c in fielded():
 		var amount := Rules.harvest_gold(c.form_id, c.stars)
 		if amount > 0:
@@ -82,7 +89,7 @@ func upgrade_cost(id: String) -> int:
 
 
 func can_buy_upgrade(id: String) -> bool:
-	return not upgrade_maxed(id) and gold >= upgrade_cost(id)
+	return rules.allows_upgrade(id) and not upgrade_maxed(id) and gold >= upgrade_cost(id)
 
 
 func buy_upgrade(id: String) -> bool:
@@ -107,6 +114,11 @@ func shift_heal() -> float:
 
 func hex_stun() -> float:
 	return Rules.wand_value("hex", upgrade_level("hex"))
+
+
+## Whether this wizard casts at all: the wand is introduced and it has magic.
+func can_cast() -> bool:
+	return magic and rules.has(Ruleset.WAND)
 
 
 func fielded() -> Array[OwnedCreature]:
@@ -201,8 +213,11 @@ func add_creature(form_id: String) -> OwnedCreature:
 
 
 func refresh_offers(rng: RandomNumberGenerator) -> void:
-	var pool := CreatureDB.shop_ids()
+	var pool := rules.shop_ids()
 	offers.resize(Rules.SHOP_SIZE)
+	if not rules.has(Ruleset.SHOP):
+		offers.fill("") # no stall before the journey introduces it
+		return
 	for i in Rules.SHOP_SIZE:
 		if not locked[i] or offers[i] == "":
 			# Draw a different offer in this slot when replacing an existing one.
@@ -213,14 +228,14 @@ func refresh_offers(rng: RandomNumberGenerator) -> void:
 
 
 func toggle_lock(index: int) -> bool:
-	if index < 0 or index >= offers.size() or offers[index] == "":
+	if not rules.has(Ruleset.TRADE) or index < 0 or index >= offers.size() or offers[index] == "":
 		return false
 	locked[index] = not locked[index]
 	return true
 
 
 func can_reroll() -> bool:
-	if gold < Rules.REROLL_COST:
+	if not rules.has(Ruleset.TRADE) or gold < Rules.REROLL_COST:
 		return false
 	for i in offers.size():
 		if not locked[i] or offers[i] == "":
@@ -241,7 +256,7 @@ func can_buy(index: int) -> bool:
 
 
 func _offer_affordable(index: int) -> bool:
-	if index < 0 or index >= offers.size() or offers[index] == "":
+	if not rules.has(Ruleset.SHOP) or index < 0 or index >= offers.size() or offers[index] == "":
 		return false
 	return gold >= CreatureDB.get_form(offers[index]).price
 
@@ -289,7 +304,7 @@ func buy_to_slot(index: int, slot: int) -> OwnedCreature:
 
 
 func can_merge_offer(index: int, target: OwnedCreature) -> bool:
-	return _offer_affordable(index) and target != null and target in creatures \
+	return rules.has(Ruleset.MERGE) and _offer_affordable(index) and target != null and target in creatures \
 		and target.form_id == offers[index] and target.stars == 0
 
 
@@ -305,7 +320,7 @@ func _purchase(index: int) -> OwnedCreature:
 
 ## A manual drop combines only identical forms at the same permanent rank.
 func can_merge(source: OwnedCreature, target: OwnedCreature) -> bool:
-	return source != null and target != null and source != target \
+	return rules.has(Ruleset.MERGE) and source != null and target != null and source != target \
 		and source in creatures and target in creatures \
 		and source.form_id == target.form_id and source.stars == target.stars \
 		and target.stars < Rules.MAX_STARS
@@ -327,11 +342,17 @@ func merge(source: OwnedCreature, target: OwnedCreature) -> bool:
 	return true
 
 
-## Sells for the purchase price (delegated default).
-func sell(c: OwnedCreature) -> void:
-	if c in creatures:
-		gold += c.price()
-		creatures.erase(c)
+## Sells for the purchase price (delegated default), once trading is introduced.
+func can_sell(c: OwnedCreature) -> bool:
+	return rules.has(Ruleset.TRADE) and c in creatures
+
+
+func sell(c: OwnedCreature) -> bool:
+	if not can_sell(c):
+		return false
+	gold += c.price()
+	creatures.erase(c)
+	return true
 
 
 ## Moves a creature to a board cell (own half) or reserve slot, swapping with

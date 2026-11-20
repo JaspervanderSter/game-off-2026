@@ -50,6 +50,7 @@ func _ready() -> void:
 	_test_blizzard_and_recharge_upgrade()
 	_test_ai_strategy()
 	_test_difficulty()
+	_test_journey_rules()
 	_test_day_night_cycle()
 	_test_journey_health()
 	_test_journey_discovery()
@@ -2076,9 +2077,9 @@ func _test_difficulty() -> void:
 	check(game.journey.completed.is_empty(), "a defeat never completes a stage")
 	game._left_press(Hud.RESTART_POS)
 	check(game.map_screen.visible, "the end-of-duel button returns to the map")
-	for index in [0, 1, 2, 3, 4, 5, 6]:
+	for index in Journey.stage_count():
 		game.choose_stage(index)
-		check(game.enemy.ai_level == Journey.LEVELS[index], "stage %d selects its AI tier" % index)
+		check(game.enemy.ai_level == OpponentDB.ai_level(index), "stage %d selects its AI tier" % index)
 		game.choose_pack(0)
 		_finish_test_difficulty_win(game)
 		check(index in game.journey.completed, "winning stage %d saves completion" % index)
@@ -2089,7 +2090,7 @@ func _test_difficulty() -> void:
 	game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = progress_path
 	add_child(game)
-	check(game.journey.completed == [0, 1, 2, 3, 4, 5, 6], "map progress survives reloading")
+	check(game.journey.completed == range(Journey.stage_count()), "map progress survives reloading")
 	game._reset_difficulty_progress()
 	check(game.journey.completed.is_empty() and not game.journey.available(1), "reset clears the map")
 	game.free()
@@ -2099,7 +2100,7 @@ func _test_difficulty() -> void:
 	game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = progress_path
 	add_child(game)
-	check(game.journey.available(6), "legacy archmage access migrates to the final seal")
+	check(game.journey.available(10), "legacy archmage access migrates to the school entrance")
 	game.free()
 	DirAccess.remove_absolute(progress_path)
 
@@ -2313,19 +2314,19 @@ func _test_journey_navigation() -> void:
 	game.new_duel()
 	check(is_equal_approx(map.sky.elapsed, sky_time), "returning to the map retains its time of day")
 	# Every selectable stage must choose its own board, even after a school duel.
-	game.journey.completed.assign([0, 1, 2, 3, 4, 5, 6])
-	for index in [6, 3, 0, 1, 2, 4, 5]:
+	game.journey.completed.assign(range(Journey.stage_count()))
+	for index in [14, 5, 0, 1, 2, 6, 9, 10]:
 		game.new_duel()
 		game.choose_stage(index)
-		var expected: String = ["forest", "forest", "forest", "town", "town", "town", "school"][index]
+		var expected: String = ["forest", "town", "school"][OpponentDB.zone(index)]
 		check(game.board_view.environment == expected, "stage %d selects %s tiles" % [index, expected])
-		var hearts: int = [3, 3, 3, 6, 6, 6, 10][index]
+		var hearts: int = [3, 6, 10][OpponentDB.zone(index)]
 		check(game.player.hp == hearts and game.enemy.hp == hearts
 			and game.player.max_hp == hearts and game.enemy.max_hp == hearts,
 			"stage %d gives both wizards %d full hearts" % [index, hearts])
 		game.choose_pack(0)
 		check(game.board_view.environment == expected, "stage %d keeps its terrain during preparation" % index)
-		if index in [0, 3, 6]:
+		if index in [0, 5, 10]:
 			_finish_enemy_preparation(game)
 			game.start_combat()
 			check(game.phase == game.Phase.COMBAT and game.board_view.environment == expected,
@@ -2386,12 +2387,12 @@ func _test_journey_health() -> void:
 	game.difficulty_progress_path = progress_path
 	add_child(game)
 	game.set_physics_process(false)
-	game.journey.completed.assign([0, 1, 2, 3, 4, 5, 6])
-	for index in [0, 3, 6, 0]:
+	game.journey.completed.assign(range(Journey.stage_count()))
+	for index in [0, 5, 10, 0]:
 		game.new_duel()
 		game.choose_stage(index)
 		game.choose_pack(0)
-		var hearts: int = {0: 3, 3: 6, 6: 10}[index]
+		var hearts: int = {0: 3, 5: 6, 10: 10}[index]
 		var lost: float = game.player.take_round_damage(1)
 		check(lost == 0.5 and game.player.hp == hearts - 0.5 and game.player.max_hp == hearts,
 			"%d-heart duels preserve half-heart damage and capacity" % hearts)
@@ -2421,7 +2422,7 @@ func _test_journey_discovery() -> void:
 	map.set_process(false)
 	check(map.discovered == [0] and map.buttons[0].visible,
 		"a new journey shows only the first encounter")
-	for index in range(1, 7):
+	for index in range(1, Journey.stage_count()):
 		check(not map.buttons[index].visible and map.visible_path_points(index) == 0,
 			"undiscovered stage %d has no opponent, lock or path" % index)
 	check(map.bridges[0].visible and map.bridges[1].visible,
@@ -2465,19 +2466,19 @@ func _test_journey_discovery() -> void:
 	game.new_duel()
 	check(map.revealing == -1 and ticks.size() == old_ticks,
 		"known paths are not redrawn on later visits")
-	for index in range(1, 6):
+	for index in range(1, Journey.stage_count() - 1):
 		game.choose_stage(index)
 		game.choose_pack(0)
 		_finish_test_difficulty_win(game)
 		game.new_duel()
 		check(map.revealing == index + 1, "stage %d discovers its successor" % index)
-		if index == 2:
+		if index == 4:
 			var start: Vector2 = map.bridges[0].from_point
 			var finish: Vector2 = map.bridges[0].to_point
 			map.advance_discovery(2.0)
 			check(map.bridges[0].visible and map.bridges[1].visible
 				and map.bridges[0].from_point == start and map.bridges[0].to_point == finish
-				and not map.buttons[3].visible,
+				and not map.buttons[5].visible,
 				"points advance while both bridges stay complete and the next opponent remains hidden")
 		map.advance_discovery(map.REVEAL_DURATION + 0.1)
 		check(map.buttons[index + 1].visible and not map.buttons[index + 1].disabled,
@@ -2494,5 +2495,96 @@ func _test_journey_discovery() -> void:
 	legacy.set_value("journey", "completed", [0, 2, 3, 5])
 	var journey := Journey.new()
 	journey.restore(legacy, Difficulty.APPRENTICE)
-	check(journey.completed == [0, 1, 2, 3, 4, 5] and journey.available(6),
+	check(journey.completed == range(10) and journey.available(10),
 		"branching saves retain their furthest earned access on the linear route")
+	for entry in [[[], 0], [[0], 1], [[0, 1, 2], 5], [[0, 1, 2, 3, 4, 5], 10], [[0, 1, 2, 3, 4, 5, 6], 15]]:
+		var old_save := ConfigFile.new()
+		old_save.set_value("journey", "completed", entry[0])
+		var migrated := Journey.new()
+		migrated.restore(old_save, Difficulty.APPRENTICE)
+		check(migrated.completed.size() == entry[1], "seven-stage saves migrate to %d completed opponents" % entry[1])
+
+
+func _test_journey_rules() -> void:
+	check(OpponentDB.count() == 15 and OpponentDB.zone(4) == 0 and OpponentDB.zone(5) == 1 and OpponentDB.zone(14) == 2,
+		"fifteen opponents, five per zone")
+	check(OpponentDB.is_boss(4) and OpponentDB.is_boss(9) and OpponentDB.is_boss(14) and not OpponentDB.is_boss(3),
+		"the fifth opponent of each zone is its boss")
+	var introduced := []
+	for index in OpponentDB.count():
+		var o: Dictionary = OpponentDB.get_opponent(index)
+		if o.rule != "":
+			check(o.rule in Ruleset.ALL and o.rule not in introduced, "opponent %d introduces a new existing rule" % index)
+			introduced.append(o.rule)
+		var rules := OpponentDB.ruleset(index)
+		var pack := OpponentDB.pack_index(index)
+		check((pack >= 0) == (o.pack != ""), "opponent %d names an existing composition" % index)
+		if pack >= 0:
+			check(rules.allows_pack(CreatureDB.PACKS[pack]), "opponent %d opens with creatures already introduced" % index)
+		for id in rules.shop_ids():
+			check(rules.allows_form(id), "stage %d offers only introduced creatures" % index)
+	check(introduced.size() == Ruleset.ALL.size(), "the journey introduces every rule")
+	check(OpponentDB.ruleset(13).is_complete() and not OpponentDB.ruleset(12).is_complete()
+		and OpponentDB.get_opponent(14).rule == "", "the last rule arrives before the archmage, who adds none")
+	check(not OpponentDB.ruleset(5).allows_form("peasant") and OpponentDB.ruleset(6).allows_form("peasant")
+		and not OpponentDB.ruleset(7).allows_form("pyromancer") and OpponentDB.ruleset(8).allows_form("frost_mage"),
+		"peasants arrive with the innkeeper and casters with the court mage")
+
+	# Wizard state: shop, trade, merge, harvest and upgrades follow the rules.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var s := WizardState.new(0)
+	s.rules = OpponentDB.ruleset(0)
+	s.gold = 20
+	s.refresh_offers(rng)
+	check(s.offers.count("") == Rules.SHOP_SIZE and not s.can_buy(0), "no stall before the lumberjack")
+	s.take_round_damage(2)
+	check(s.gold == 20, "no gold for lost hearts before the shop")
+	s.rules = OpponentDB.ruleset(4)
+	s.refresh_offers(rng)
+	check(s.offers[0] != "" and s.can_buy(0), "the stall is open from the lumberjack on")
+	check(not s.can_reroll() and not s.toggle_lock(0), "no reroll or lock before the merchant")
+	var a := s.add_creature("archer")
+	var b := s.add_creature("archer")
+	check(not s.can_merge(a, b) and not s.can_sell(a) and not s.sell(a), "no merge before the thief and no selling before the merchant")
+	s.add_creature("peasant")
+	check(s.harvest_total() == 0, "no harvest before the innkeeper")
+	check(not s.can_buy_upgrade("recharge") and EnemyAI.next_upgrade(s) == "", "no wand upgrade before the school")
+	s.rules = OpponentDB.ruleset(10)
+	check(s.can_reroll() and s.can_merge(a, b) and s.harvest_total() == 1, "the town introduces trading, harvest and merging")
+	check(s.can_buy_upgrade("recharge") and not s.can_buy_upgrade("hex") and EnemyAI.next_upgrade(s) == "recharge",
+		"the apprentice introduces only the fast recharge")
+
+	# Enemy shopping does nothing before the shop.
+	var e := WizardState.new(1)
+	e.rules = OpponentDB.ruleset(0)
+	e.ai_level = Difficulty.ARCHMAGE
+	e.add_creature("archer")
+	e.gold = 20
+	check(EnemyAI.shop_step(e, rng).is_empty() and e.gold == 20, "the hunter never shops")
+
+	# Combat: wand, hex, animal bonuses and frenzy.
+	var player := WizardState.new(0)
+	var foe := WizardState.new(1)
+	foe.magic = false
+	for state in [player, foe]:
+		state.rules = OpponentDB.ruleset(2)
+	var battle := Battle.new()
+	add_child(battle)
+	var teams: Array[WizardState] = [player, foe]
+	battle.setup(teams, 3)
+	var mine := battle.spawn(0, "guardian", Vector2(200, 300))
+	var theirs := battle.spawn(1, "guardian", Vector2(200, 80))
+	check(battle.can_cast[0] and not battle.can_cast[1], "a wizard without magic never casts")
+	check(not battle.cast(0, theirs) and battle.cast(0, mine), "the druid's duel allows blessings but no hex")
+	battle.time = 50.0
+	battle.step(0.1)
+	check(battle.frenzy_level == 0, "no frenzy before the king")
+	var blessed := battle.spawn(0, "peasant", Vector2(100, 400))
+	blessed.ability_timer = 0.0
+	blessed.transform_to("rabbit", true)
+	check(is_equal_approx(blessed.ability_timer, CreatureDB.get_form("rabbit").cd), "no animal bonus before the archdruid")
+	battle.free()
+	var hunter_player := WizardState.new(0)
+	hunter_player.rules = OpponentDB.ruleset(1)
+	check(not hunter_player.can_cast(), "the player has no wand before the druid")
