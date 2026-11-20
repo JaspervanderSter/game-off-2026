@@ -42,7 +42,8 @@ can itself produce a large interval. It does no sampling while hidden and does
 not intercept mouse input.
 
 Reading the board: blue ring = yours, red ring = the AI's. The opponent's panel
-shows the hat of the chosen difficulty. Purple crystals = spell
+shows the journey opponent's portrait (the difficulty hat in duels started
+outside the journey). Purple crystals = spell
 charges: hexagonal prisms pointed at both ends, dark glass when empty, filling with
 magic from the bottom as they recharge, bright with a white reflection when full;
 the same crystal stands for a charge in the panels, under the board in combat,
@@ -630,21 +631,65 @@ and does not alter combat. `scripts/ui/day_night_sky.gd` exposes `cycle_seconds`
 for adjusting the duration. `scripts/ui/world_map.gd` owns navigation and layout;
 `scripts/ui/map_island.gd` draws the floating land masses.
 
-The roads follow `1 -> (2 or 3) -> 4 -> (5 or 6) -> 7`. Winning a full duel
-completes its seal and opens all outgoing roads. Either incoming road is enough
-to unlock a merge. Defeats do not advance progress. Completed stages and side
-branches remain replayable, and the end-of-duel map button returns to the map.
-Gold stars mark completed stages; padlocks mark inaccessible ones. The seven
-header pips track completion. Every stage starts a fresh duel with the
-existing pack decks, economy and rules; there are no branch-specific modifiers yet.
+### Journey opponents and rule introduction
 
-Stages 1–3 use Apprentice AI, 4–6 use Adept, and 7 uses Archmage. The opponent's
-hat stays visible during the duel. Unlock rules live in
-`scripts/core/journey.gd`; island positions and visual opponent markers live in
-`scripts/ui/world_map.gd`. The biome markers establish the journey visually;
-combat still uses the existing opponent decks and AI tiers. Progress is saved locally in `difficulty_progress.cfg`.
-Older saves retain their access: unlocked Adept marks the Apprentice stages
-complete, and unlocked Archmage also marks the Adept stages complete. The hidden
+The design is recorded in
+[Journey and Opponents](../../docs/design/prototype_02/Journey%20and%20Opponents.md).
+Each island holds five opponents (`OpponentDB`), fifteen in all, played in order
+along a winding road: forest left to right, town right to left, school left to
+right. Winning a duel opens the next opponent; the fifth of an island (its boss,
+circled in gold) opens the next island. Defeats do not advance progress. Beaten
+opponents stay replayable, and the end-of-duel map button returns to the map.
+Gold stars mark beaten opponents; padlocked ones wait in the shade. The player's
+blue-hatted wizard stands beside the next opponent. Fifteen header pips, grouped
+by island, track completion.
+
+Opponents are full-length characters drawn in code (`OpponentArt`, through
+`Icons.opponent`), never creature tokens; their portrait replaces the
+difficulty hat in the enemy panel during the duel. The apprentice, adept and
+archmage wear the three difficulty hats.
+
+No opponent has a special power. Each introduces one existing rule, and a duel
+uses only the rules introduced so far, for both wizards (`Ruleset`, built by
+`OpponentDB.ruleset`):
+
+| # | Opponent | Magic | Introduces | Opening |
+| ---: | --- | --- | --- | --- |
+| 1 | Hunter | No | Placement, combat, hearts | Hunt |
+| 2 | Lumberjack | No | Creature stall, income, gold for lost hearts | Raid |
+| 3 | Druid | Yes | The wand on one's own creatures, charge crystals | Temple |
+| 4 | Swamp witch | Yes | Hexing enemy creatures | Shadows |
+| 5 | Archdruid | Yes | Rabbit and skunk bonuses after an allied shift | Hunt |
+| 6 | Merchant | No | Selling, rerolling, locking offers | Troupe |
+| 7 | Innkeeper | No | Peasants and harvest | Tavern |
+| 8 | Thief | No | Merging | Shadows |
+| 9 | Court mage | Yes | Pyromancer and frost mage | Arcane |
+| 10 | King | No | Frenzy | Crusade |
+| 11 | Apprentice | Yes | Scroll: fast recharge | Village |
+| 12 | Caretaker | No | Scroll: long hex | Phalanx |
+| 13 | Adept | Yes | Scroll: starting charges | Fortress |
+| 14 | Transmutation teacher | Yes | Scroll: healing shift | Inferno |
+| 15 | Archmage | Yes | Nothing new: the complete game | From its deck |
+
+Before a rule is introduced it is simply absent: no stall, gold counter or loss
+gold before the lumberjack; no charge crystals, casting, reticle or outcome
+preview before the druid; no reroll button, selling or locking before the
+merchant; peasants, pyromancers and frost mages are neither offered nor dealt in
+an opening before their opponent (they can still appear through a shapeshift);
+copies do not combine before the thief; combat keeps its speed before the king;
+the wand scroll appears with the apprentice, with a padlock on each upgrade not
+yet introduced. The player's three opening cards are drawn among the
+compositions already allowed, without touching the player's deck, until the
+complete rules are reached. Opponents without magic never cast. Duels started
+outside the journey (tests, tools) use the complete rules.
+
+Forest opponents use the Apprentice AI, town opponents the Adept AI and school
+opponents the Archmage AI. Unlock rules live in `scripts/core/journey.gd`, the
+opponents in `scripts/data/opponent_db.gd`, the rule gate in
+`scripts/core/ruleset.gd`, and island spots in `scripts/ui/world_map.gd`.
+Progress is saved locally in `difficulty_progress.cfg` (`journey/opponents`).
+Saves from before the fifteen opponents keep their access: unlocked Adept
+finishes the forest, and unlocked Archmage also finishes the town. The hidden
 Ctrl+Shift+R shortcut on the menu or map resets progression.
 
 - **Archmage** plays its own tuned strategy (`EnemyAI.ARCHMAGE_PROFILE`), with

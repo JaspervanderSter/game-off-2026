@@ -28,6 +28,10 @@ var unlocked_difficulty := Difficulty.APPRENTICE
 var newly_unlocked_difficulty := -1
 var difficulty_progress_path := "user://difficulty_progress.cfg"
 var journey := Journey.new()
+## OpponentDB index of the current journey opponent; -1 outside the journey.
+var opponent := -1
+## Rules of the current duel: those its journey opponent has introduced so far.
+var ruleset := Ruleset.new()
 var menu_screen: Node2D
 var map_screen: Node2D
 const PACK_CHOICES := 3
@@ -131,7 +135,9 @@ func choose_stage(index: int) -> void:
 		return
 	journey.selected = index
 	# The roads, rather than the former difficulty locks, grant access.
-	difficulty = Journey.LEVELS[index]
+	opponent = index
+	difficulty = OpponentDB.ai_level(index)
+	ruleset = OpponentDB.ruleset(index)
 	_start_duel()
 
 
@@ -174,6 +180,8 @@ func choose_difficulty(level: int) -> void:
 		Sfx.play("ui/fail")
 		return
 	difficulty = level
+	opponent = -1
+	ruleset = Ruleset.new()
 	_start_duel()
 
 
@@ -185,10 +193,29 @@ func _start_duel() -> void:
 	board_view.show()
 	hud.show()
 	enemy.ai_level = difficulty
-	offered_packs = player_deck.deal(PACK_CHOICES, rng)
-	player_deck.save_state()
+	for state in states:
+		state.rules = ruleset
+	enemy.magic = opponent < 0 or OpponentDB.get_opponent(opponent).magic
+	if ruleset.is_complete():
+		offered_packs = player_deck.deal(PACK_CHOICES, rng)
+		player_deck.save_state()
+	else:
+		offered_packs = _allowed_packs(PACK_CHOICES)
 	phase = Phase.PACK
 	Sfx.play("ui/click")
+
+
+## Journey duels that still withhold creatures offer only compositions made of
+## creatures already introduced, without touching the player's deck.
+func _allowed_packs(count: int) -> Array[int]:
+	var allowed: Array[int] = []
+	for i in CreatureDB.PACKS.size():
+		if ruleset.allows_pack(CreatureDB.PACKS[i]):
+			allowed.append(i)
+	var cards: Array[int] = []
+	while cards.size() < count and not allowed.is_empty():
+		cards.append(allowed.pop_at(rng.randi_range(0, allowed.size() - 1)))
+	return cards
 
 
 func is_difficulty_unlocked(level: int) -> bool:
@@ -218,7 +245,7 @@ func _unlock_next_difficulty() -> void:
 func _save_difficulty_progress(level: int) -> bool:
 	var config := ConfigFile.new()
 	config.set_value("progress", "unlocked_difficulty", level)
-	config.set_value("journey", "completed", journey.completed)
+	journey.save(config)
 	var error := config.save(difficulty_progress_path)
 	if error != OK:
 		push_warning("Could not save difficulty progress: %s" % error_string(error))
@@ -243,8 +270,13 @@ func choose_pack(slot: int) -> void:
 	if phase != Phase.PACK or slot < 0 or slot >= offered_packs.size():
 		return
 	player.take_starting_pack(CreatureDB.PACKS[offered_packs[slot]])
-	enemy.take_starting_pack(CreatureDB.PACKS[enemy_deck.deal(1, rng)[0]])
-	enemy_deck.save_state()
+	# A journey opponent opens with its own composition; the archmage and duels
+	# outside the journey deal from the opponent's deck.
+	var enemy_pack := OpponentDB.pack_index(opponent) if opponent >= 0 else -1
+	if enemy_pack < 0:
+		enemy_pack = enemy_deck.deal(1, rng)[0]
+		enemy_deck.save_state()
+	enemy.take_starting_pack(CreatureDB.PACKS[enemy_pack])
 	Sfx.play("ui/buy")
 	start_round()
 
@@ -589,7 +621,7 @@ func _left_press(pos: Vector2) -> void:
 					return
 		Phase.PREP:
 			for i in Rules.WAND_UPGRADES.size():
-				if Hud.upgrade_rect(i).has_point(pos):
+				if ruleset.any_upgrade() and Hud.upgrade_rect(i).has_point(pos):
 					var id := Rules.WAND_UPGRADES[i]
 					if player.buy_upgrade(id):
 						Sfx.play("ui/purchase_confirmed")
@@ -598,7 +630,7 @@ func _left_press(pos: Vector2) -> void:
 					else:
 						Sfx.play("ui/fail")
 					return
-			if Hud.REROLL_RECT.has_point(pos):
+			if ruleset.has(Ruleset.TRADE) and Hud.REROLL_RECT.has_point(pos):
 				if player.reroll(rng):
 					Sfx.play("ui/purchase_confirmed")
 				elif player.gold < Rules.REROLL_COST:
@@ -643,7 +675,7 @@ func _left_release(pos: Vector2) -> void:
 	drag = null
 	if phase != Phase.PREP:
 		return
-	if Rules.SHOP_RECT.has_point(pos):
+	if Rules.SHOP_RECT.has_point(pos) and player.can_sell(c):
 		player.sell(c)
 		Sfx.play("ui/buy")
 		return
@@ -714,8 +746,8 @@ func _right_press(pos: Vector2) -> void:
 ## Left click / tap on a living creature during combat casts the shapeshift.
 ## Clicks on empty board cells fizzle; clicks outside the board are ignored.
 func _cast_at(pos: Vector2) -> void:
-	if not Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE).has_point(pos):
-		return
+	if not Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE).has_point(pos) or not player.can_cast():
+		return # before the journey hands the player a wand, clicks do nothing
 	var u := battle.unit_at(pos - Rules.BOARD_POS)
 	if u == null or not battle.cast(0, u):
 		fx.add("fizzle", pos - Rules.BOARD_POS)

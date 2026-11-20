@@ -50,6 +50,7 @@ func _ready() -> void:
 	_test_blizzard_and_recharge_upgrade()
 	_test_ai_strategy()
 	_test_difficulty()
+	_test_journey_rules()
 	_test_day_night_cycle()
 	await _test_journey_navigation()
 	_simulate_duels()
@@ -2054,11 +2055,13 @@ func _test_difficulty() -> void:
 	game.menu_screen._activate(0)
 	check(game.map_screen.visible and not game.menu_screen.visible and game.journey.available(0),
 		"the menu opens the map with its first stage available")
-	game.choose_stage(6)
+	game.choose_stage(1)
 	check(game.phase == game.Phase.DIFFICULTY, "locked map stages cannot launch")
 	game.map_screen._activate(0)
 	check(game.phase == game.Phase.PACK and game.hud.visible and not game.map_screen.visible,
-		"a map seal starts pack selection")
+		"a map opponent starts pack selection")
+	check(game.opponent == 0 and not game.enemy.magic and not game.ruleset.has(Ruleset.SHOP),
+		"the first opponent is the hunter, without magic or shop")
 	game.choose_pack(0)
 	game.player.hp = 0.5
 	game._on_battle_ended({"winner": 1, "survivors": 1})
@@ -2068,30 +2071,37 @@ func _test_difficulty() -> void:
 	check(game.journey.completed.is_empty(), "a defeat never completes a stage")
 	game._left_press(Hud.RESTART_POS)
 	check(game.map_screen.visible, "the end-of-duel button returns to the map")
-	for index in [0, 2, 3, 5, 6]:
+	for index in 6:
+		check(game.journey.available(index) and not game.journey.available(index + 1),
+			"only the next opponent is open before stage %d" % index)
 		game.choose_stage(index)
-		check(game.enemy.ai_level == Journey.LEVELS[index], "stage %d selects its AI tier" % index)
+		check(game.enemy.ai_level == OpponentDB.ai_level(index), "stage %d selects its zone's AI tier" % index)
+		check(game.enemy.rules == game.ruleset and game.player.rules == game.ruleset, "stage %d shares its rules" % index)
 		game.choose_pack(0)
+		var expected_pack: Dictionary = CreatureDB.PACKS[OpponentDB.pack_index(index)]
+		check(game.enemy.creatures.size() == expected_pack.forms.size(), "stage %d opponent opens with its composition" % index)
 		_finish_test_difficulty_win(game)
 		check(index in game.journey.completed, "winning stage %d saves completion" % index)
 		game._left_press(Hud.RESTART_POS)
-	check(game.journey.available(1) and game.journey.available(4), "unplayed side branches remain available")
-	check(game.journey.available(6), "the final seal remains replayable")
+	check(game.journey.available(6) and not game.journey.available(7), "beating an opponent opens only the next one")
+	check(game.journey.available(0), "beaten opponents remain replayable")
 	game.free()
 	game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = progress_path
 	add_child(game)
-	check(game.journey.completed == [0, 2, 3, 5, 6], "map progress survives reloading")
+	check(game.journey.completed == [0, 1, 2, 3, 4, 5], "map progress survives reloading")
 	game._reset_difficulty_progress()
 	check(game.journey.completed.is_empty() and not game.journey.available(1), "reset clears the map")
 	game.free()
 	var legacy := ConfigFile.new()
 	legacy.set_value("progress", "unlocked_difficulty", Difficulty.ARCHMAGE)
+	legacy.set_value("journey", "completed", [0, 2, 3, 5, 6])
 	legacy.save(progress_path)
 	game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = progress_path
 	add_child(game)
-	check(game.journey.available(6), "legacy archmage access migrates to the final seal")
+	check(game.journey.available(10) and not game.journey.available(11),
+		"legacy archmage access finishes the forest and the town")
 	game.free()
 	DirAccess.remove_absolute(progress_path)
 
@@ -2161,6 +2171,93 @@ func _test_difficulty() -> void:
 		picks[EnemyAI.random_cast_target(b)] = true
 	check(picks.size() == 1 and picks.has(ally), "clumsy casts only pick creatures that can be shapeshifted")
 	b.free()
+
+
+## Journey opponents each introduce one existing rule, in order; a rule not yet
+## introduced is absent for both wizards (Journey and Opponents.md).
+func _test_journey_rules() -> void:
+	check(OpponentDB.count() == 15 and OpponentDB.zone(4) == 0 and OpponentDB.zone(5) == 1 and OpponentDB.zone(14) == 2,
+		"fifteen opponents, five per zone")
+	check(OpponentDB.is_boss(4) and OpponentDB.is_boss(9) and OpponentDB.is_boss(14) and not OpponentDB.is_boss(3),
+		"the fifth opponent of each zone is its boss")
+	var introduced := []
+	for index in OpponentDB.count():
+		var o: Dictionary = OpponentDB.get_opponent(index)
+		if o.rule != "":
+			check(o.rule in Ruleset.ALL and o.rule not in introduced, "opponent %d introduces a new existing rule" % index)
+			introduced.append(o.rule)
+		var rules := OpponentDB.ruleset(index)
+		var pack := OpponentDB.pack_index(index)
+		check((pack >= 0) == (o.pack != ""), "opponent %d names an existing composition" % index)
+		if pack >= 0:
+			check(rules.allows_pack(CreatureDB.PACKS[pack]), "opponent %d opens with creatures already introduced" % index)
+		for id in rules.shop_ids():
+			check(rules.allows_form(id), "stage %d offers only introduced creatures" % index)
+	check(introduced.size() == Ruleset.ALL.size(), "the journey introduces every rule")
+	check(OpponentDB.ruleset(13).is_complete() and not OpponentDB.ruleset(12).is_complete()
+		and OpponentDB.get_opponent(14).rule == "", "the last rule arrives before the archmage, who adds none")
+	check(not OpponentDB.ruleset(5).allows_form("peasant") and OpponentDB.ruleset(6).allows_form("peasant")
+		and not OpponentDB.ruleset(7).allows_form("pyromancer") and OpponentDB.ruleset(8).allows_form("frost_mage"),
+		"peasants arrive with the innkeeper and casters with the court mage")
+
+	# Wizard state: shop, trade, merge, harvest and upgrades follow the rules.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var s := WizardState.new(0)
+	s.rules = OpponentDB.ruleset(0)
+	s.gold = 20
+	s.refresh_offers(rng)
+	check(s.offers.count("") == Rules.SHOP_SIZE and not s.can_buy(0), "no stall before the lumberjack")
+	s.take_round_damage(2)
+	check(s.gold == 20, "no gold for lost hearts before the shop")
+	s.rules = OpponentDB.ruleset(4)
+	s.refresh_offers(rng)
+	check(s.offers[0] != "" and s.can_buy(0), "the stall is open from the lumberjack on")
+	check(not s.can_reroll() and not s.toggle_lock(0), "no reroll or lock before the merchant")
+	var a := s.add_creature("archer")
+	var b := s.add_creature("archer")
+	check(not s.can_merge(a, b) and not s.can_sell(a) and not s.sell(a), "no merge before the thief and no selling before the merchant")
+	s.add_creature("peasant")
+	check(s.harvest_total() == 0, "no harvest before the innkeeper")
+	check(not s.can_buy_upgrade("recharge") and EnemyAI.next_upgrade(s) == "", "no wand upgrade before the school")
+	s.rules = OpponentDB.ruleset(10)
+	check(s.can_reroll() and s.can_merge(a, b) and s.harvest_total() == 1, "the town introduces trading, harvest and merging")
+	check(s.can_buy_upgrade("recharge") and not s.can_buy_upgrade("hex") and EnemyAI.next_upgrade(s) == "recharge",
+		"the apprentice introduces only the fast recharge")
+
+	# Enemy shopping does nothing before the shop.
+	var e := WizardState.new(1)
+	e.rules = OpponentDB.ruleset(0)
+	e.ai_level = Difficulty.ARCHMAGE
+	e.add_creature("archer")
+	e.gold = 20
+	check(EnemyAI.shop_step(e, rng).is_empty() and e.gold == 20, "the hunter never shops")
+
+	# Combat: wand, hex, animal bonuses and frenzy.
+	var player := WizardState.new(0)
+	var foe := WizardState.new(1)
+	foe.magic = false
+	for state in [player, foe]:
+		state.rules = OpponentDB.ruleset(2)
+	var battle := Battle.new()
+	add_child(battle)
+	var teams: Array[WizardState] = [player, foe]
+	battle.setup(teams, 3)
+	var mine := battle.spawn(0, "guardian", Vector2(200, 300))
+	var theirs := battle.spawn(1, "guardian", Vector2(200, 80))
+	check(battle.can_cast[0] and not battle.can_cast[1], "a wizard without magic never casts")
+	check(not battle.cast(0, theirs) and battle.cast(0, mine), "the druid's duel allows blessings but no hex")
+	battle.time = 50.0
+	battle.step(0.1)
+	check(battle.frenzy_level == 0, "no frenzy before the king")
+	var blessed := battle.spawn(0, "peasant", Vector2(100, 400))
+	blessed.ability_timer = 0.0
+	blessed.transform_to("rabbit", true)
+	check(is_equal_approx(blessed.ability_timer, CreatureDB.get_form("rabbit").cd), "no animal bonus before the archdruid")
+	battle.free()
+	var hunter_player := WizardState.new(0)
+	hunter_player.rules = OpponentDB.ruleset(1)
+	check(not hunter_player.can_cast(), "the player has no wand before the druid")
 
 
 func _finish_test_difficulty_win(game: Node) -> void:
@@ -2261,6 +2358,11 @@ func _test_journey_navigation() -> void:
 	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
 	wheel.pressed = true
 	Input.parse_input_event(wheel)
+	# A real wheel notch releases at once; a dangling press would keep the mouse
+	# captured by whatever encounter sits under the cursor.
+	wheel = wheel.duplicate()
+	wheel.pressed = false
+	Input.parse_input_event(wheel)
 	await get_tree().process_frame
 	check(map.scroll.scroll_vertical < initial_scroll, "mouse wheel moves the journey toward the upper islands")
 	var before_swipe: int = map.scroll.scroll_vertical
@@ -2314,7 +2416,7 @@ func _test_journey_navigation() -> void:
 	check(map.content.custom_minimum_size.y > map.scroll.size.y, "portrait map keeps vertical scrolling")
 	check(map.scroll.scroll_vertical > 0, "rotating to portrait keeps the current island in view")
 	check(map.buttons[0].size.x * 390.0 / map.get_viewport_rect().size.x >= 44.0, "portrait menu target remains touch sized")
-	for index in map.STAGE_OFFSETS.size():
+	for index in Journey.stage_count():
 		var target: Vector2 = map.buttons[index + 1].get_global_transform_with_canvas() * (map.buttons[index + 1].size * 0.5)
 		check(target.x >= 20 and target.x <= map.get_viewport_rect().size.x - 20,
 			"portrait encounter %d remains within the map width" % index)

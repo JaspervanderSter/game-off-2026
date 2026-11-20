@@ -1,37 +1,43 @@
 class_name Journey
 extends RefCounted
-## A won duel opens every outgoing road. Branches remain replayable.
-
-const LEVELS := [0, 0, 0, 1, 1, 1, 2]
-const ROADS := [Vector2i(0, 1), Vector2i(0, 2), Vector2i(1, 3), Vector2i(2, 3), Vector2i(3, 4), Vector2i(3, 5), Vector2i(4, 6), Vector2i(5, 6)]
-const NAMES := ["The clearing", "The old grove", "The wolf trail", "The village gate", "The village watch", "The crossroads", "The archmage"]
+## Fifteen opponents in three linear zones (OpponentDB). Beating an opponent
+## opens the next one; the fifth of a zone opens the next zone. Beaten
+## opponents remain replayable.
 
 var completed: Array[int] = []
 var selected := -1
 
-func available(index: int) -> bool:
-	if index < 0 or index >= LEVELS.size():
-		return false
-	if index == 0 or index in completed:
-		return true
-	for road in ROADS:
-		if road.y == index and road.x in completed:
-			return true
-	return false
 
+static func stage_count() -> int:
+	return OpponentDB.count()
+
+
+func available(index: int) -> bool:
+	if index < 0 or index >= stage_count():
+		return false
+	return index == 0 or index in completed or index - 1 in completed
+
+
+## Loads the beaten opponents. Saves from before the fifteen-opponent journey
+## keep their access through the difficulty they had unlocked: Adept finishes
+## the forest, Archmage the forest and the town.
 func restore(config: ConfigFile, legacy_difficulty: int) -> void:
 	completed.clear()
-	if config.has_section_key("journey", "completed"):
-		var saved = config.get_value("journey", "completed", [])
+	if config.has_section_key("journey", "opponents"):
+		var saved = config.get_value("journey", "opponents", [])
 		if saved is Array:
 			for index in saved:
-				if index is int and index >= 0 and index < LEVELS.size() and index not in completed:
+				if index is int and index >= 0 and index < stage_count() and index not in completed:
 					completed.append(index)
 	else:
-		# Preserve access earned before the map existed.
-		for index in LEVELS.size():
-			if LEVELS[index] < legacy_difficulty:
+		for index in stage_count():
+			if OpponentDB.zone(index) < legacy_difficulty:
 				completed.append(index)
+
+
+func save(config: ConfigFile) -> void:
+	config.set_value("journey", "opponents", completed)
+
 
 func record_win() -> void:
 	if available(selected) and selected not in completed:

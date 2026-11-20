@@ -3,7 +3,6 @@ extends Node2D
 const SkyCycle := preload("res://scripts/ui/day_night_sky.gd")
 var biome := 0
 var age := 0.0
-var hero_tier := -1
 var cloud_color := Color("d1dccf")
 const GOLD := Color("ddba70")
 const INK := Color("49372e")
@@ -48,18 +47,6 @@ func tower(p: Vector2, s: float) -> void:
 		draw_rect(Rect2(p+Vector2(-5,y)*s,Vector2(10,17)*s),GOLD)
 	Icons.star(self,p+Vector2(0,-129)*s,9*s,GOLD)
 	draw_rect(Rect2(p+Vector2(-9,-24)*s,Vector2(18,24)*s),Color("342339"))
-func hero(p: Vector2, tier := 0, s := 1.0) -> void:
-	oval(p+Vector2(0,30)*s,28*s,9*s,Color(0.1,0.07,0.06,0.3))
-	var robe := Color("3a66b0") if tier < 2 else Color("593787")
-	poly([[p.x-19*s,p.y+24*s],[p.x-12*s,p.y-6*s],[p.x+12*s,p.y-6*s],[p.x+19*s,p.y+24*s]],robe)
-	disc(p+Vector2(0,-8)*s,9*s,Color("e4bb8a"))
-	Icons.difficulty_hat(self,tier,p+Vector2(0,-26)*s,24*s,0.7)
-	line(p+Vector2(24,-12)*s,p+Vector2(24,28)*s,Color("855f39"),4*s)
-	disc(p+Vector2(24,-16)*s,5*s,Color("8dbfe5") if tier < 2 else GOLD)
-	if tier > 0:
-		Icons.star(self,p+Vector2(0,12)*s,5*s,GOLD)
-	if tier == 2:
-		ring(p+Vector2(0,30)*s,36*s,Color(GOLD,0.65))
 func rock(p: Vector2, s: float, col: Color) -> void:
 	poly([[p.x-15*s,p.y],[p.x+9*s,p.y-7*s],[p.x+20*s,p.y+4*s],[p.x+2*s,p.y+34*s]],col)
 	poly([[p.x+9*s,p.y-7*s],[p.x+20*s,p.y+4*s],[p.x+2*s,p.y+34*s]],col.darkened(0.3))
@@ -109,9 +96,5 @@ func _draw() -> void:
 				line(Vector2(-175,-36+i*9),Vector2(-130,-44+i*9),Color("897548"),3)
 		2:
 			tower(Vector2(0,-15),1.05)
-			Icons.difficulty_hat(self,0,Vector2(-170,-11),23,age)
-			Icons.difficulty_hat(self,1,Vector2(-100,-8),26,age)
 			for p in [Vector2(-190,35),Vector2(178,-15)]:
 				poly([[p.x-9,p.y],[p.x,p.y-34],[p.x+9,p.y],[p.x,p.y+9]],Color("b192c4"))
-	if hero_tier >= 0:
-		hero(Vector2(-165,35 + sin(age * 1.7) * 2), hero_tier, 0.9)

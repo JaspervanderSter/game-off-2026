@@ -492,10 +492,15 @@ func _hat_position(team: int) -> Vector2:
 	return block.position + Vector2(42, 48) + shake
 
 
-## The opponent's hat animates (its level shows on hover during the choice), so
-## it is drawn every frame above its panel.
+## The opponent animates, so it is drawn every frame above its panel: a journey
+## opponent's portrait, otherwise the hat of the difficulty (its level shows on
+## hover during the choice).
 func _draw_enemy_hat() -> void:
 	var impact := _wizard_pulse(1).x
+	if game.opponent >= 0:
+		var id: String = OpponentDB.get_opponent(game.opponent).id
+		Icons.opponent(_ci, id, _hat_position(1) + Vector2(0, 2), 22 * (1.0 + impact * 0.12), Time.get_ticks_msec() / 1000.0)
+		return
 	Icons.difficulty_hat(_ci, shown_difficulty(), _hat_position(1) + Vector2(0, 5), 22 * (1.0 + impact * 0.12), Time.get_ticks_msec() / 1000.0)
 
 
@@ -519,11 +524,12 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 	for i in Rules.WIZARD_HP:
 		var p := block.position + Vector2(92 + i * 20.5, 36)
 		Icons.wizard_heart(_ci, p, 9, clampf(shown_hp - i, 0.0, 1.0))
-	# Spell charges (live in combat; the starting charges otherwise).
+	# Spell charges (live in combat; the starting charges otherwise), for a
+	# wizard who casts in this duel.
 	var spell: ShiftSpell = null
 	if game.battle != null:
 		spell = game.battle.spells[team]
-	for i in Rules.MAX_CHARGES:
+	for i in (Rules.MAX_CHARGES if state.can_cast() else 0):
 		var p := block.position + Vector2(100 + i * 34, 84)
 		var count: int = spell.charges if spell else state.start_charges()
 		var filled: bool = count > i
@@ -531,6 +537,8 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 		if spell and i == spell.charges:
 			prog = spell.progress()
 		Icons.charge_crystal(_ci, p, 14, filled, prog)
+	if not state.rules.has(Ruleset.SHOP):
+		return # no gold before the journey introduces the shop
 	Icons.coin(_ci, gold_pos(team), 15 * (1.0 + coin_pulse * 0.45))
 	_ci.draw_string(font, block.position + Vector2(66, 135 - coin_pulse * 5), str(displayed_gold(state)), HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Icons.GOLD.lerp(Color.WHITE, coin_pulse))
 	if team == 0 and game.phase != game.Phase.PACK:
@@ -698,9 +706,12 @@ func _draw_shop_column() -> void:
 	if k >= 1.0:
 		return
 	Shapes.set_transform(_ci, Vector2(SHOP_SLIDE * k, 0), 0.0, Vector2.ONE)
-	_draw_stall()
-	_draw_shop()
-	_draw_wand_scroll()
+	# The stall and the scroll appear as the journey introduces their rules.
+	if game.ruleset.has(Ruleset.SHOP):
+		_draw_stall()
+		_draw_shop()
+	if game.ruleset.any_upgrade():
+		_draw_wand_scroll()
 	_draw_fight_button()
 	Shapes.set_transform(_ci, Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -728,7 +739,8 @@ func _draw_stall() -> void:
 
 
 func _draw_shop() -> void:
-	var selling: bool = game.drag != null and game.shop_drag_index < 0
+	var trading: bool = game.ruleset.has(Ruleset.TRADE)
+	var selling: bool = trading and game.drag != null and game.shop_drag_index < 0
 	for i in Rules.SHOP_SIZE:
 		var r := offer_rect(i)
 		var id: String = game.player.offers[i] if i < game.player.offers.size() else ""
@@ -749,6 +761,8 @@ func _draw_shop() -> void:
 		if game.player.locked[i]:
 			_ci.draw_rect(r.grow(-2), Icons.GOLD, false, 3.0)
 			Icons.padlock(_ci, r.position + Vector2(266, 19))
+	if not trading:
+		return # no reroll and no selling before the journey introduces trading
 	var reroll_ok: bool = game.player.can_reroll()
 	_panel(REROLL_RECT, Color(0.23, 0.18, 0.12) if reroll_ok else Color(0.1, 0.09, 0.08))
 	Icons.restart(_ci, REROLL_RECT.position + Vector2(30, 18), 11, Icons.GOLD if reroll_ok else Color.DIM_GRAY)
@@ -851,7 +865,7 @@ func hovered_upgrade() -> int:
 		return -1
 	var mouse := get_global_mouse_position()
 	for i in Rules.WAND_UPGRADES.size():
-		if upgrade_rect(i).has_point(mouse):
+		if game.ruleset.allows_upgrade(Rules.WAND_UPGRADES[i]) and upgrade_rect(i).has_point(mouse):
 			return i
 	return -1
 
@@ -948,6 +962,12 @@ func _draw_wand_zap(p: Vector2, phase: float) -> void:
 ## charges), then the next level's price in coins or a check once maxed.
 func _draw_upgrade_row(id: String, r: Rect2) -> void:
 	var player: WizardState = game.player
+	if not player.rules.allows_upgrade(id):
+		# A page of the scroll not yet learned on the journey.
+		_ci.draw_rect(r, Color(0.16, 0.1, 0.22))
+		_ci.draw_rect(r, Color(0.35, 0.24, 0.48), false, 1.5)
+		Icons.padlock(_ci, r.get_center(), 0.0, 0.8, 0.7)
+		return
 	var maxed := player.upgrade_maxed(id)
 	var affordable: bool = game.phase == game.Phase.PREP and player.can_buy_upgrade(id)
 	var hovered := r.has_point(get_global_mouse_position()) and game.drag == null
@@ -1010,7 +1030,7 @@ func _draw_combat_hud() -> void:
 	_ci.draw_rect(Rect2(bar.position, Vector2(bar.size.x * left, bar.size.y)), timer_color)
 	# Large player charges under the board.
 	var spell: ShiftSpell = b.spells[0]
-	for i in Rules.MAX_CHARGES:
+	for i in (Rules.MAX_CHARGES if game.player.can_cast() else 0):
 		var prog: float = spell.progress() if i == spell.charges else 0.0
 		Icons.charge_crystal(_ci, charge_pos(i), 24, spell.charges > i, prog)
 
@@ -1132,7 +1152,7 @@ func _draw_pack_choice() -> void:
 		var divider := Color(0.45, 0.32, 0.2, 0.65)
 		Shapes.line(_ci, coin_row + Vector2(-66, -17), coin_row + Vector2(66, -17), divider, 1.0)
 		var starting_gold := Rules.income(1) + int(pack.bonus_gold)
-		for j in starting_gold:
+		for j in (starting_gold if game.ruleset.has(Ruleset.SHOP) else 0):
 			Icons.coin(_ci, coin_row + Vector2((j - (starting_gold - 1) * 0.5) * 21, 0), 8)
 
 
@@ -1171,8 +1191,10 @@ func _draw_hover_card(info: Dictionary) -> void:
 	if u != null:
 		if u.immune_t > 0.0:
 			Icons.immunity_ring(_ci, main, 31, u.immune_t / Rules.TARGET_IMMUNITY, u.anim_t)
-	Icons.arrow_right(_ci, pos + Vector2(78, 40), 9, Icons.MAGIC)
-	var outs := CreatureDB.outcomes(form)
+	# Shapeshift outcomes, once the player has a wand.
+	var outs := CreatureDB.outcomes(form) if game.player.can_cast() else []
+	if not outs.is_empty():
+		Icons.arrow_right(_ci, pos + Vector2(78, 40), 9, Icons.MAGIC)
 	for i in outs.size():
 		var op := pos + Vector2(116 + i * 46, 32)
 		Icons.token(_ci, outs[i].id, op, 18, team)

@@ -162,12 +162,15 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 			state.merge(source, target)
 			arrange(state, profile)
 			return {"kind": "merge", "uid": target.uid, "promoted": target.stars > old_stars}
+	# Before the journey introduces the shop, the opening is all there is.
+	if not state.rules.has(Ruleset.SHOP):
+		return {}
 	var full := state.field_count() >= Rules.FIELD_CAP
 	var weakest := _weakest_fielded(state, profile) if full else null
 	var replacement_value := _protected_value(state, weakest, profile) * float(profile.replacement_margin) if full else 0.0
 	var bench_full := state.free_slot() < 0
 	var plans := {}
-	for id in CreatureDB.shop_ids():
+	for id in state.rules.shop_ids():
 		var role: String = CreatureDB.get_form(id).role
 		var value: float = field_value(state, id, 0, profile) + profile.get("focus", {}).get(id, 0.0)
 		var need := _role_need(state, role)
@@ -175,7 +178,8 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 		var copies := 0
 		var can_build := false
 		for c in state.creatures:
-			if c.form_id != id:
+			# Copies only count once merging is introduced.
+			if c.form_id != id or not state.rules.has(Ruleset.MERGE):
 				continue
 			if c.stars == 0:
 				copies += c.merge_copies
@@ -185,7 +189,7 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 				can_build = true
 		var replace := false
 		if full and target == null and (bench_full or not can_build):
-			if not difficulty.replace or value + need * 20 < replacement_value:
+			if not difficulty.replace or not state.rules.has(Ruleset.TRADE) or value + need * 20 < replacement_value:
 				continue
 			replace = true
 		var price: int = CreatureDB.get_form(id).price
@@ -201,7 +205,7 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 			state.locked[i] = false
 			continue
 		var plan: Dictionary = plans[id]
-		state.locked[i] = difficulty.lock and plan.duplicate and plan.price > state.gold
+		state.locked[i] = difficulty.lock and state.rules.has(Ruleset.TRADE) and plan.duplicate and plan.price > state.gold
 		if plan.price > state.gold:
 			continue
 		var score: float = plan.score + rng.randf() * difficulty.shop_noise
@@ -303,10 +307,10 @@ static func _role_need(state: WizardState, role: String) -> float:
 	return ROLE_TARGET[role] - share
 
 
-## The wand upgrade the AI buys next, or "" once all are maxed.
+## The wand upgrade the AI buys next, or "" once all the introduced ones are maxed.
 static func next_upgrade(state: WizardState) -> String:
 	for id in UPGRADE_ORDER:
-		if not state.upgrade_maxed(id):
+		if state.rules.allows_upgrade(id) and not state.upgrade_maxed(id):
 			return id
 	return ""
 
@@ -326,7 +330,7 @@ static func choose_cast(battle: Battle, team: int, profile: Dictionary = DEFAULT
 	var best: Unit = null
 	var best_score: float = (profile.full_cast_threshold if full else profile.cast_threshold) + extra_threshold
 	for u in battle.units:
-		if not u.alive or u.immune_t > 0.0:
+		if not u.alive or u.immune_t > 0.0 or not battle.can_target(team, u):
 			continue
 		var allied := u.team == team
 		if allied and (u.jump_t > 0 or u.dive_target != null or u.charging or u.channel_t > 0.0):
@@ -368,10 +372,11 @@ static func choose_cast(battle: Battle, team: int, profile: Dictionary = DEFAULT
 	return best
 
 
-## Clumsy cast of easier wizards: any living creature that can be shapeshifted.
-static func random_cast_target(battle: Battle) -> Unit:
+## Clumsy cast of easier wizards: any living creature that can be shapeshifted
+## (by `team` under the duel's rules, when given).
+static func random_cast_target(battle: Battle, team := -1) -> Unit:
 	var targets: Array[Unit] = []
 	for u in battle.units:
-		if u.alive and u.immune_t <= 0.0:
+		if u.alive and u.immune_t <= 0.0 and (team < 0 or battle.can_target(team, u)):
 			targets.append(u)
 	return null if targets.is_empty() else targets[battle.rng.randi_range(0, targets.size() - 1)]

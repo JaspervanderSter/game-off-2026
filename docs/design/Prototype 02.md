@@ -21,6 +21,7 @@ controls, combat rules and presentation are not inherited automatically.
 - [[Art Direction]] — readability and presentation preferences.
 - [[Ideas to Explore]] — optional features awaiting validation.
 - [[Meeting - 2026-11-02]] — origin and status of the design directions.
+- [[Journey and Opponents]] — the fifteen journey opponents and the order in which they introduce the rules.
 
 ## Primary learning goal — confirmed
 
@@ -290,6 +291,18 @@ per form in both directions and requested an allied buff / enemy debuff per cast
 They confirmed +1 gold to round income each round, with 3 as a working starting
 grant, and explicitly excluded creature merging and wizard upgrades. Cheap
 creatures with transformation potential remain an exploratory hypothesis.
+
+### 20 November 2026 — journey opponents
+
+The user decided that the journey map teaches the existing rules gradually through
+fifteen opponents, five per zone (forest, town, school of magic). Opponents are
+complete characters, never creatures; some are wizards, others have no magic and
+never cast. No opponent adds a rule or a special power: each introduces one
+existing rule, every opponent of a zone must be beaten in order, and the fifth
+opens the next zone. A merchant earning bonus gold and an alchemist shapeshifting
+with potions were rejected because they added mechanics; a court mage replaces
+the alchemist. The opponents, the rule order and how rules not yet introduced are
+withheld are recorded in [[Journey and Opponents]].
 
 ## Playtest plan and completion criteria
 
