@@ -1,10 +1,11 @@
-"""Build the quick player guide, audio page and adapted Tuning Fork tutorial."""
+"""Build the complete player guide, audio page and adapted Tuning Fork tutorial."""
 from pathlib import Path
 import base64
 import re
 
 from page_theme import refresh_homepage, stylesheet
 from itch_card import ITCH, render_itch_card
+from player_reference import render_reference
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -21,7 +22,7 @@ def write_page(filename, title, body, body_class="document-page"):
 </head><body class="{body_class}">
 <nav class="site-nav" aria-label="Site navigation">
 <a class="brand" href="index.html">Shapeshifter Duel</a>
-<a href="how-to-play.html">Quick guide</a><a href="audio.html">Sound &amp; music</a>
+<a href="how-to-play.html">Complete guide</a><a href="audio.html">Sound &amp; music</a>
 <a class="itch-link" href="{ITCH}">Play on itch.io</a>
 </nav><main>{body}</main></body></html>'''
     (DOCS / filename).write_text(page, encoding="utf-8")
@@ -31,8 +32,11 @@ def write_page(filename, title, body, body_class="document-page"):
 def build():
     board = (HERE / "assets/artist_brief/preparation.png").read_bytes()
     board_uri = "data:image/png;base64," + base64.b64encode(board).decode()
-    quick = (HERE / "content/how-to-play.html").read_text(encoding="utf-8")
-    write_page("how-to-play.html", "Quick guide", quick.replace("@@BOARD@@", board_uri))
+    guide = (HERE / "content/how-to-play.html").read_text(encoding="utf-8")
+    guide = guide.replace("@@BOARD@@", board_uri)
+    for marker, content in render_reference().items():
+        guide = guide.replace(marker, content)
+    write_page("how-to-play.html", "Complete guide", guide, "document-page manual-page")
     audio = (HERE / "content/audio.html").read_text(encoding="utf-8")
     write_page("audio.html", "Sound & music", audio)
 

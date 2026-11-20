@@ -1,33 +1,255 @@
-<header class="page-heading">
-  <p class="eyebrow">Playing the game</p>
-  <h1>Quick guide</h1>
-  <p class="lead">A few things to know before your first duel.</p>
-  @@ITCH_CARD@@
+<header class="page-heading" id="top">
+  <p class="eyebrow">Playing Shapeshifter Duel · current prototype · 20 November 2026</p>
+  <h1>The complete guide</h1>
+  <p class="lead">From your very first auto-battler to the details of every creature and transformation.</p>
+  <p>Read from beginning to end to learn the game, or use the shortcuts to find a rule. This document describes the current prototype. Its teaching order remains open to discussion; no creature-tier or narrative progression system is implied.</p>
 </header>
-<figure class="guide-shot">
-  <img src="@@BOARD@@" alt="Preparation screen with blue allied creatures below the red enemy team and a shop on the right">
-  <figcaption>Blue is your team; red is your opponent. Your reserve sits below the board.</figcaption>
-</figure>
-<div class="resource-sections">
-  <section class="panel text-panel">
-    <h2>Build your team</h2>
-    <p>Choose a starting pack, buy fighters and drag them onto your half of the board. You can field up to six creatures and keep six in reserve.</p>
-    <p>Drag matching creatures of the same star rank together to combine them. Three copies earn a permanent star upgrade; a pair alone gives no combat bonus.</p>
-  </section>
-  <section class="panel text-panel">
-    <h2>Change the fight</h2>
-    <p>Creatures fight automatically. Left-click an ally or enemy during combat to shapeshift it. Hover first to see its three possible forms and their chances: you choose the target, not the result.</p>
-    <p><strong>On an ally:</strong> heals a little, clears negative effects, readies its attack and grants a temporary level. <strong>On an enemy:</strong> resets its temporary level and stuns it for three seconds.</p>
-  </section>
-  <section class="panel text-panel">
-    <h2>Watch your charges</h2>
-    <p>Start each fight with one spell charge. A charge returns every three seconds, up to three stored. A transformed creature is immune to another cast for three seconds.</p>
-    <p>Forms and temporary levels reset between rounds. Your purchased creatures and merge stars remain.</p>
-  </section>
-  <section class="panel text-panel">
-    <h2>Win the duel</h2>
-    <p>After a lost round, each surviving enemy costs your wizard half a heart. The duel ends when a wizard runs out of hearts.</p>
-    <p>Between fights, spend new income and adjust your team. Unspent gold carries over. Drag a creature onto the shop to sell it.</p>
-  </section>
-</div>
-<p class="related-links">Want to know what each creature does? Open the <a href="design/character_pngs/Character%20Guide.html">character guide</a>.</p>
+<div class="manual-layout">
+<nav class="panel text-panel manual-contents" id="contents" aria-label="Guide shortcuts">
+  <h2>Shortcuts</h2>
+  <ol>
+    <li><a href="#basics">The idea of the game</a></li>
+    <li><a href="#screen">Reading the board</a></li>
+    <li><a href="#opening">Starting a duel</a></li>
+    <li><a href="#preparation">Placing your team</a></li>
+    <li><a href="#combat">Automatic combat</a></li>
+    <li><a href="#resolution">Rounds, hearts &amp; defeat</a></li>
+    <li><a href="#shop">Buying, locking &amp; selling</a></li>
+    <li><a href="#gold">All sources of gold</a></li>
+    <li><a href="#shapeshifting">Your first transformation</a></li>
+    <li><a href="#spell-effects">Allied &amp; enemy spell effects</a></li>
+    <li><a href="#timing">Charges, immunity &amp; upgrade</a></li>
+    <li><a href="#network">Transformation routes</a></li>
+    <li><a href="#merging">Merges, stars &amp; levels</a></li>
+    <li><a href="#creatures">All 24 creatures</a></li>
+    <li><a href="#example">A round, step by step</a></li>
+    <li><a href="#controls">Controls &amp; common questions</a></li>
+  </ol>
+  <a href="#top">Back to the beginning ↑</a>
+</nav>
+<div class="manual-chapters">
+<section class="content-section" id="basics">
+  <p class="eyebrow">01 · The idea of the game</p>
+  <h2>You prepare the team. The creatures do the fighting.</h2>
+  <p>You are a wizard playing a succession of battles against an AI wizard. You choose creatures, place them on a board and improve your team between fights. Once a fight starts, creatures move and attack on their own. This is what <strong>auto-battler</strong> means: you do not give each fighter attack orders.</p>
+  <p>Your special power is <strong>shapeshifting</strong>. During combat, you can change a living allied or enemy creature into another form. You select the target, while chance determines the result from three possibilities. Choosing who to transform and when is your direct way to influence a fight.</p>
+  <p>A <strong>round</strong> consists of preparation, one fight and its result. A <strong>duel</strong> is the entire match of several rounds against the same wizard. Both wizards start with ten hearts. Lost rounds cost hearts; the duel ends when a wizard has none left.</p>
+  <p class="callout"><strong>The loop:</strong> prepare → fight → resolve hearts → earn gold and adapt → fight again. Losing one fight usually gives you another chance to improve.</p>
+</section>
+<section class="content-section" id="screen">
+  <p class="eyebrow">02 · Reading the board</p>
+  <h2>Find your creatures, resources and controls</h2>
+  <figure class="guide-shot"><img src="@@BOARD@@" alt="Preparation screen: red enemy team above blue allied team, reserve below the board, shop on the right"><figcaption>Prototype reference image. Artwork may differ between styles; the board, team colours and preparation areas serve the same purpose.</figcaption></figure>
+  <ul>
+    <li><strong>Blue bases:</strong> your creatures. <strong>Red bases:</strong> the enemy’s creatures. Transforming a creature does not change its owner.</li>
+    <li><strong>The board:</strong> eight columns by six rows. You prepare in the bottom three rows; the opponent prepares in the top three.</li>
+    <li><strong>The reserve:</strong> six slots below the board for owned creatures that are not fighting.</li>
+    <li><strong>The shop:</strong> three offers on the right, plus the reroll, spell-upgrade and crossed-swords controls.</li>
+    <li><strong>Hearts:</strong> wizard health. A half-filled heart represents half a heart.</li>
+    <li><strong>Gold:</strong> money for creatures, rerolls and the spell upgrade.</li>
+    <li><strong>Purple orbs and their recharge arc:</strong> available spell charges and progress toward the next one.</li>
+    <li><strong>Gold stars:</strong> permanent merge rank, from zero to three. Three small circles show progress toward the next merge when you inspect a creature or drag a compatible copy.</li>
+    <li><strong>A white dashed ring:</strong> temporary immunity to shapeshifting. Small status pips use a green rim for positive effects and a red rim for negative effects.</li>
+    <li><strong>The round strip above the board:</strong> the numbered gold medallion marks the current round. Recent results use the winner’s colour, or grey for a draw.</li>
+  </ul>
+  <p>Hover a creature to inspect its statistics and three possible transformation results. During combat, the cast preview is cyan for your ally, violet for an enemy and grey when you cannot cast on that target.</p>
+</section>
+<section class="content-section" id="opening">
+  <p class="eyebrow">03 · Starting a duel</p>
+  <h2>Choose an opponent, then an opening team</h2>
+  <p>Choose an available hat on the difficulty screen. Apprentice is available on a new profile. Defeating Apprentice unlocks Adept; defeating Adept unlocks Archmage. Unlocks are saved locally. These levels change the AI’s choices and casting behaviour; they do not restrict your creature roster.</p>
+  <p>The AI uses the same gold, spell charges and core rules as you. Apprentice makes less effective and sometimes eccentric choices; Archmage uses the strongest strategy. The selected hat stays visible in the opponent’s panel.</p>
+  <p>Next, choose one of three starting-pack cards. Its creatures are free and begin on your board. Any bonus gold is granted once, in addition to the first round’s normal 3 gold. Coins on the card show the gold available for your first shop, including that bonus.</p>
+  <h3>All starting packs</h3>
+  @@PACKS@@
+  <p>The three choices come from a hidden shuffled deck of twelve packs. A pack does not repeat within nine offered cards, covering three duels; the deck then reshuffles. The opponent draws from a separate deck. Both decks retain their progress across restarts. You do not need to manage either deck.</p>
+</section>
+<section class="content-section" id="preparation">
+  <p class="eyebrow">04 · Placing your team</p>
+  <h2>Choose who fights and where they begin</h2>
+  <p>You can field up to six creatures and keep six more in reserve. Drag an owned creature between valid board cells and reserve slots. Dropping onto another creature swaps their positions unless the drop is a valid merge. Creatures in reserve do not fight or count as survivors.</p>
+  <p>A durable front line can occupy enemies while ranged fighters attack from behind. Support creatures need allies that can benefit from their abilities. These are starting principles, not rigid formation rules: assassins, leaps, movement and transformations can change the fight.</p>
+  <p>There is no need to fill every cell of your half; the limit is six fielded creatures. Your cell choice determines a starting position, not a fixed combat square. Movement becomes continuous once the fight begins.</p>
+  <p>The enemy prepares at the same time, visibly buying, combining and moving creatures. You can continue preparing while it acts. If you request combat before its preparation sequence finishes, combat waits for that sequence.</p>
+  <p class="callout"><strong>Before pressing fight:</strong> check that the creatures you want to use are on the board. An excellent purchase left in reserve contributes nothing to this round.</p>
+</section>
+<section class="content-section" id="combat">
+  <p class="eyebrow">05 · Automatic combat</p>
+  <h2>Watch how your preparation plays out</h2>
+  <p>Click the crossed-swords button or press Space. The shop slides away; the reserve becomes smaller beneath the board. You can still inspect reserve creatures, but they do not join combat. Buying, selling, moving your formation and merging belong to preparation.</p>
+  <p>Living combat creatures seek targets, move into range and attack automatically. The usual first target is the nearest enemy. Most keep a target until it dies, with adjustments when a different enemy is already within reach. Some creatures have special targeting behaviour, described in the creature reference.</p>
+  <p>Maximum health determines how much damage a creature can take. Basic damage is the strength of an ordinary hit. Attack interval is the time between attacks: a smaller number means faster attacks. Range is measured between the edges of creatures in board-cell units. Movement speed is measured in cells per second.</p>
+  <p>Armour reduces incoming damage as a percentage, clamped between 0% and 85%. The Crossbowman’s bolts and the Pyromancer’s heavy fireball ignore armour. Ordinary fire-shot splash, poison, burning, blizzard and retaliation damage still meet armour. A creature reaching zero health leaves this fight, but its purchased copy is not permanently destroyed.</p>
+  <p>For a normal hit, damage received is attack damage × the frenzy multiplier × (1 − armour / 100). For example, 20 damage against 40% armour deals 12 before frenzy. Armour-ignoring damage skips that reduction.</p>
+  <h3>Frenzy and the time limit</h3>
+  <p>At 45 seconds, frenzy grants both teams +20% damage, basic attack speed and movement speed. The bonus grows by another 20 percentage points every three seconds: +40% at 48 seconds, +60% at 51, +80% at 54 and +100% at 57. The timer and arena outline announce it. Spell recharge keeps its normal timing.</p>
+  <p>A fight has a 60-second limit. If both sides still have living creatures when time runs out, the round is a draw.</p>
+</section>
+<section class="content-section" id="resolution">
+  <p class="eyebrow">06 · Rounds, hearts and defeat</p>
+  <h2>Lose a fight, then decide how to recover</h2>
+  <p>When one team is eliminated, the surviving team wins the round. The losing wizard takes <strong>half a heart of damage per surviving enemy</strong>. It is the number of survivors that matters, not their stars, form or remaining health. Three survivors cost 1.5 hearts; six cost 3 hearts.</p>
+  <p>Mutual elimination is a draw, as is the combat timeout. A draw deals no heart damage. If a result brings a wizard to zero hearts, the duel ends. Restarting returns to difficulty selection for a new duel.</p>
+  <p>For the next round, purchased creatures return healthy in their original purchased forms. Combat transformations, temporary spell levels and statuses reset. Your roster, formation, reserve, merge stars, remaining gold and purchased recharge upgrade persist within the duel.</p>
+  <p class="callout"><strong>Example:</strong> you lose with two enemy survivors, taking one heart of damage. If you still have hearts, your defeated creatures return for preparation. You can buy support, reposition, merge or save gold before trying again.</p>
+  <p>A new duel starts a new team and economy: previous creatures, gold, stars and recharge upgrade do not carry into it. Unlocked opponent difficulties remain saved.</p>
+</section>
+<section class="content-section" id="shop">
+  <p class="eyebrow">07 · The shop</p>
+  <h2>Buy, reroll, lock, combine or sell</h2>
+  <p>Each preparation offers three random fantasy fighters, priced from 1 to 3 gold. Each displayed offer can be bought once. Animals are transformation forms and are not sold in the shop.</p>
+  <h3>Buying and placing</h3>
+  <p>Click and release an offer to buy it into a free reserve slot. Alternatively, drag an offer directly onto a free board cell, a reserve slot or a compatible merge recipient. The purchase occurs on release, not on mouse-down. An invalid drop consumes no gold and leaves the offer available.</p>
+  <p>A full reserve prevents a normal click purchase, but a direct drag to a valid board cell or merge target can still work. The six-creature field limit remains in effect. Buying a matching creature does not automatically combine it; you must explicitly drop it onto a compatible recipient.</p>
+  <h3>Rerolling</h3>
+  <p>The circular-arrow button costs 1 gold and replaces all unlocked shop slots, including empty slots where you already bought an offer. This gives you more chances to find a role or matching copy, but consumes gold you could spend on a creature. If every slot is locked, rerolling spends nothing.</p>
+  <h3>Locking</h3>
+  <p>Right-click an offer to toggle its gold padlock. A locked offer survives rerolls and the next round’s refresh. Right-click it again to unlock it. Buying an offer clears its lock. You can save a desirable offer until you can afford it without preserving the other slots.</p>
+  <h3>Selling</h3>
+  <p>Drag an owned creature onto the shop to sell it. A normal copy refunds its purchase price. Combined copies retain their full combined base-copy value: for example, a three-copy one-star creature with a base price of 2 sells for 6 gold. Selling removes that creature or combined group from your roster.</p>
+</section>
+<section class="content-section" id="gold">
+  <p class="eyebrow">08 · Gold</p>
+  <h2>Income, harvest and compensation</h2>
+  <p>Unspent gold carries between rounds. Normal income is 3 gold for round one, 4 for round two, then 5, 6 and so on. Each round raises normal income by one. Your starting pack’s bonus is a separate, one-time grant.</p>
+  <h3>Peasant harvest</h3>
+  <p>Every Pitchfork Peasant on your board generates gold when combat begins. A reserve peasant generates nothing. Harvest is 1 gold without stars, then 2, 4 and 8 at one, two and three stars. A partial two-copy group has no star bonus. You spend that harvest during a later preparation phase.</p>
+  <p>Harvest requires a field slot that could have held a stronger fighter. The income happens at combat start, so the peasant does not need to survive the fight to have produced it.</p>
+  <h3>Gold after a loss</h3>
+  <p>A losing wizard who survives the result receives 1 gold per whole heart lost, in addition to normal round income. Half-hearts carry over for this calculation: losing half a heart grants no coin yet; another half-heart in a later surviving loss completes one coin. A draw grants no compensation.</p>
+  <p>A lethal result grants no compensation gold for any damage in that result. The same rules apply to both wizards.</p>
+  <p class="callout"><strong>Example:</strong> enter round two with 1 saved gold, receive its 4 normal income and have 1 gold from the previous peasant harvest. You have 6 gold before any additional loss compensation. Saving, harvesting and compensation are separate contributions.</p>
+</section>
+<section class="content-section" id="shapeshifting">
+  <p class="eyebrow">09 · Your first transformation</p>
+  <h2>Choose a target, then accept a weighted result</h2>
+  <p>During combat, left-click or tap a living creature on either team to cast. You need a charge, and the target must not be immune. You cannot transform a reserve creature or a dead creature. Invalid casts spend nothing.</p>
+  <p>Hover first to see the three forms it could become. Their probabilities are 55%, 30% and 15%, in the displayed priority order for that source creature. These are fixed chances, not a promise that a sequence of casts will contain a particular outcome.</p>
+  <p>The result depends on the creature’s <strong>current form</strong>. After it transforms, its next possible results change too. You never choose the resulting form directly. Its team and permanent merge stars stay the same; its body statistics and ability come from the new form.</p>
+  <p class="callout"><strong>First example:</strong> a Shield Guardian can become a Turtle (55%), Deer (30%) or Rabbit (15%). An injured Guardian might benefit from an allied cast, but a Rabbit is much less suited to absorbing attacks. Consider the location as well as the likely result.</p>
+</section>
+<section class="content-section" id="spell-effects">
+  <p class="eyebrow">10 · What a cast changes</p>
+  <h2>The same spell helps allies and disrupts enemies differently</h2>
+  <h3>On your own creature: a blessing</h3>
+  <ol>
+    <li>Its form changes, while its remaining health percentage is preserved.</li>
+    <li>It gains one temporary combat level, increasing maximum health and basic damage.</li>
+    <li>It heals for 10% of the resulting maximum health, capped at full health.</li>
+    <li>Its basic attack is readied and negative statuses are cleared.</li>
+    <li>Any special allied-entry effect of the new form occurs.</li>
+  </ol>
+  <p>For example, a creature at 40% health arrives at 40% of its new maximum, then heals to 50%. This preserves a percentage, not the old number of health points.</p>
+  <h3>On an enemy: a hex</h3>
+  <ol>
+    <li>Its form changes and its temporary level resets to one.</li>
+    <li>It keeps its remaining health percentage, with no blessing heal.</li>
+    <li>It is stunned for three seconds.</li>
+    <li>Its statuses and basic attack cooldown remain; statuses and cooldowns continue during the stun.</li>
+  </ol>
+  <p>A hex does not steal the enemy or remove its permanent merge stars. It may give that enemy a more useful form once the stun ends. Animals are not inherently weaker than fantasy fighters.</p>
+  <h3>Ability timing and interrupts</h3>
+  <p>Basic attacks and creature abilities have different timers. The allied ready-attack effect does not normally reset an ability cooldown. Ability cooldowns carry across transformations, preventing a fresh form from automatically granting an instant ability.</p>
+  <p>Pyromancer and Frost Mage channel their major spells for one second, shown by an orange or blue progress ring. Transforming them during this channel cancels the spell and starts its cooldown. An already launched fireball or already active blizzard continues after the caster changes form.</p>
+  <h3>Special allied-entry effects</h3>
+  <p>An allied transformation into Rabbit makes its backline leap ready immediately. An allied transformation into Skunk fears enemies within 2.5 cells for two seconds. Fear stops attacks and abilities, interrupts channels, charges, dives and shell, and makes affected enemies flee at 130% movement speed in a zigzag. An existing leap or knockback finishes first. A blessing clears fear.</p>
+  <p>These entry benefits occur only when the owner transforms its own creature. Giving an enemy Rabbit or Skunk does not grant that enemy the corresponding allied-entry benefit.</p>
+  <h3>Status effects and defensive reactions</h3>
+  <ul>
+    <li><strong>Poison and burning:</strong> lose health over time. Repeated applications refresh an existing effect, retaining the stronger magnitude and longer remaining duration rather than adding independent stacks.</li>
+    <li><strong>Chill:</strong> reduces movement and basic attack speed by 50%. Frost shots apply it for one second; an active blizzard keeps applying it to enemies inside its fixed area.</li>
+    <li><strong>Exposed:</strong> Skunk spray removes 30 percentage points of armour for four seconds. Armour cannot fall below zero.</li>
+    <li><strong>Dazzled:</strong> Peacock display multiplies the basic attack interval by 1.8 for four seconds. It does not slow movement.</li>
+    <li><strong>Inspired:</strong> Bard beats grant +35% basic attack speed for three seconds to every living ally, including the Bard. Repeated beats refresh the effect; several Bards do not multiply it into separate stacks.</li>
+    <li><strong>Regeneration:</strong> nearby Deer continually refresh a short effect that restores 5 health per second. Matching regeneration effects do not independently stack.</li>
+    <li><strong>Parry:</strong> Duelist cancels one incoming basic melee or ranged attack when ready, then needs four seconds to recharge. It does not block ability, splash, poison, burning or retaliation damage.</li>
+    <li><strong>Shell:</strong> Turtle can pause movement and attacks for two seconds to gain 50 armour points, subject to the armour cap. It activates when ready after recent damage.</li>
+  </ul>
+  <p>Overlapping blizzards use the strongest applicable storm for damage and chill at each instant, instead of stacking. A blessing clears negative statuses, but a creature still inside an enemy effect can receive that effect again.</p>
+</section>
+<section class="content-section" id="timing">
+  <p class="eyebrow">11 · Charges and immunity</p>
+  <h2>A ready spell still needs an available target</h2>
+  <p>Each fight starts with one charge. A charge returns every three combat seconds, with a maximum of three stored. One successful cast uses one charge. Saving charges lets you react to several different targets in quick succession.</p>
+  <p>After a creature transforms, it becomes immune to further transformations for three seconds, regardless of which wizard cast on it. Neither wizard can immediately undo that transformation. This immunity is separate from your recharge timer.</p>
+  <p>The white dashed ring marks target immunity; the purple orbs show your own charges. If you have charges but a target has its ring, choose another eligible target or wait.</p>
+  <h3>The recharge upgrade</h3>
+  <p>During preparation, spend 4 gold on the wand/circular-arrow panel below the combat button. This one-time purchase reduces charge recharge from 3 to 2.4 seconds for the rest of the duel. It does not remove the three-second target immunity, raise the charge cap or carry into a new duel. Both wizards can buy it.</p>
+  <p class="callout"><strong>Choosing when to cast:</strong> a wounded ally, a dangerous enemy or an enemy channel may offer a clear reason. Casting merely because a charge is ready can waste a useful opportunity or create an inconvenient form.</p>
+</section>
+<section class="content-section" id="network">
+  <p class="eyebrow">12 · Transformation routes</p>
+  <h2>Eight groups form a cycle</h2>
+  <p>The 24 forms are organised into eight groups of three. Each form can become any of the three forms in the next group. Group eight leads back to group one. Fantasy and animal groups alternate.</p>
+  @@STAGES@@
+  <p>Groups describe routes, not power tiers or unlock levels. All current forms are available through the network from the beginning. The 55% / 30% / 15% preference order differs by source form: for example, Peasant favours Rabbit, Guardian favours Turtle and Cleric favours Deer.</p>
+  <p>The shortest possible return to a previous form takes eight casts on that creature. With three seconds of immunity after each cast, even a valid eight-cast return needs at least 21 seconds between the first and eighth casts, as well as enough charges. It is not guaranteed: each individual result is random.</p>
+  <p>Every creature card below lists its exact outcomes and chances, with links to the destination forms. Following these links lets you trace a route without opening another document.</p>
+</section>
+<section class="content-section" id="merging">
+  <p class="eyebrow">13 · Merges, stars and temporary levels</p>
+  <h2>Build permanent strength from matching copies</h2>
+  <p>During preparation, drag one creature onto another with the same form and star rank, on the board or in reserve. Compatible recipients glow gold while dragging. The recipient keeps its place and consumed copies free their slots.</p>
+  <p>A single copy shows one of three progress circles. Combining two copies fills two circles but grants no extra health or damage. A third matching copy completes the group and creates one creature of the next star rank. Its progress then starts again at one of three at that new rank.</p>
+  <ul>
+    <li>Three zero-star copies make one one-star creature: 3 original copies.</li>
+    <li>Three one-star creatures make one two-star creature: 9 original copies.</li>
+    <li>Three two-star creatures make one three-star creature: 27 original copies.</li>
+  </ul>
+  <p>Three stars is the cap. A maximum-rank creature cannot combine further. Different forms or star ranks swap positions rather than merging. Combining two partial two-copy groups consumes only what is needed for the upgrade; the unused source copy remains in its original slot at its original rank.</p>
+  <h3>Exact stat scaling</h3>
+  <p>At zero, one, two and three stars, maximum health and basic damage are multiplied by 1, 1.8, 3.24 and 5.832. Each temporary combat level above one multiplies those values by another <strong>1 + 0.2 × (level − 1)</strong>. The two multipliers stack.</p>
+  <p>For example, a form with 100 base health at one star and temporary level three has 100 × 1.8 × 1.4 = 252 maximum health. A blessing’s heal is calculated from that resulting maximum. Temporary levels do not grant permanent stars.</p>
+  <p>Stars remain through transformations and between rounds. Temporary levels reset between fights and are reset to one by enemy hexes. Movement speed, range and armour do not increase merely because of a merge or a temporary level.</p>
+  <p>Ability magnitudes generally remain fixed rather than inheriting all basic-stat bonuses. Gorilla cleave and Rhinoceros charge use basic attack damage and therefore benefit from that scaling. Pyromancer’s heavy fireball and burn damage explicitly scale with both stars and temporary levels. Frost Mage’s blizzard damage, Cleric’s healing and Snake’s poison retain their listed base magnitudes before applicable combat modifiers.</p>
+  <p>The Crossbowman hits up to 1 / 3 / 5 / 5 targets at zero / one / two / three stars. From one star, bolts seek additional unhit enemies within five cells. Each hop keeps 70% of the previous hit’s damage: 100%, 70%, 49%, 34.3%, then 24.01%. A parried hit does not prevent later chain hops.</p>
+  <p>Temporary levels make a creature’s image grow by 15% per level above one, capped at +60%. This visual size does not change its collision size, base ring or combat range.</p>
+</section>
+<section class="content-section" id="creatures">
+  <p class="eyebrow">14 · Creature reference</p>
+  <h2>All twelve fighters and twelve animal forms</h2>
+  <p>Each entry includes its role, base statistics, ability parameters and exact transformation outcomes. Numbers describe a zero-star creature at temporary level one, before statuses and frenzy. An initial ability delay is measured from combat start; an ability may wait longer for a valid target or trigger.</p>
+  <p>A cooldown is time between ability activations, separate from the basic attack interval. A radius is a distance in cell units; Blizzard instead uses a fixed three-by-three-cell area. Fractions such as 0.35 mean 35%. The listed numeric parameters accompany the role explanation; they are not additional upgrades to purchase.</p>
+  <div class="manual-roster">@@CREATURES@@</div>
+</section>
+<section class="content-section" id="example">
+  <p class="eyebrow">15 · A round, step by step</p>
+  <h2>Put the rules together</h2>
+  <ol>
+    <li><strong>Opening:</strong> choose Apprentice, then Fortress if offered. Its Guardian and Frost Mage are free. The first shop starts with 3 normal gold plus Fortress’s 3 bonus gold.</li>
+    <li><strong>Preparation:</strong> put the Guardian toward the enemy and the Frost Mage farther back. Inspect offers. Buying an Archer costs 1 gold; if you buy by clicking, move it from reserve onto your board.</li>
+    <li><strong>Combat:</strong> press the crossed swords. The creatures move and fight without attack commands. Observe which fighter is taking damage.</li>
+    <li><strong>Your first cast:</strong> inspect the injured Guardian. Its possible outcomes are Turtle, Deer and Rabbit. If you cast on it, spend one charge; its new form receives the blessing effects and three seconds of transformation immunity.</li>
+    <li><strong>Next choice:</strong> after your charge recovers, you might hex a dangerous enemy, wait for a channel to interrupt or save the charge. The correct choice depends on the actual board.</li>
+    <li><strong>Result:</strong> suppose you lose with three enemy survivors. You lose 1.5 hearts. If this was your first loss and you survive, you gain 1 compensation gold and retain half a heart toward a later compensation coin.</li>
+    <li><strong>Adapt:</strong> your original purchased forms return for round two. Its regular income is 4 gold, added to saved gold and any other income. Consider another defender, a merge or repositioning before fighting again.</li>
+  </ol>
+  <p>This is an illustrative sequence, not a guaranteed pack, shop or combat outcome. The point is to connect preparation, casting, the result and the next decision.</p>
+</section>
+<section class="content-section" id="controls">
+  <p class="eyebrow">16 · Controls and questions</p>
+  <h2>Find an action quickly</h2>
+  <dl class="manual-controls">
+    <div><dt>Choose difficulty</dt><dd>Left-click an unlocked hat, or press 1 / 2 / 3.</dd></div>
+    <div><dt>Choose a starting pack</dt><dd>Left-click one of its three cards.</dd></div>
+    <div><dt>Inspect</dt><dd>Hover a creature to see stats and possible transformations.</dd></div>
+    <div><dt>Buy</dt><dd>Click and release an offer, or drag it to a valid slot or merge recipient.</dd></div>
+    <div><dt>Move, swap or combine</dt><dd>Drag between board and reserve slots.</dd></div>
+    <div><dt>Sell</dt><dd>Drag an owned creature onto the shop.</dd></div>
+    <div><dt>Lock / unlock an offer</dt><dd>Right-click its shop card.</dd></div>
+    <div><dt>Reroll</dt><dd>Click the circular arrow under the offers; costs 1 gold.</dd></div>
+    <div><dt>Upgrade recharge</dt><dd>Click the wand/circular-arrow panel; costs 4 gold once per duel.</dd></div>
+    <div><dt>Start combat</dt><dd>Click the crossed swords or press Space.</dd></div>
+    <div><dt>Shapeshift</dt><dd>Left-click or tap a valid living combat creature, friend or foe.</dd></div>
+    <div><dt>Fullscreen</dt><dd>Alt+Enter.</dd></div>
+    <div><dt>Switch art style</dt><dd>Ctrl+Shift+P toggles pixel and vector artwork. The choice is saved locally.</dd></div>
+    <div><dt>Performance display</dt><dd>Shift+F8 toggles FPS, frame time and the largest frame interval since enabling the display. In a browser, click the game first.</dd></div>
+  </dl>
+  <h3>Why did my purchase not work?</h3><p>Check gold and space. A click purchase needs a free reserve slot. A direct drag needs a valid destination; an invalid release buys nothing. A full board cannot accept a seventh fighter, even when another cell is empty.</p>
+  <h3>Why did my spell not work?</h3><p>Check that combat is active, you have a charge, the target is alive and on the battlefield, and its immunity has ended. The grey preview indicates an unavailable cast.</p>
+  <h3>Why did two copies not become stronger?</h3><p>A two-copy group is only partial merge progress. Three copies of the same form and star rank complete an upgrade.</p>
+  <h3>Why is my transformed creature back to normal?</h3><p>Transformations last for the current fight. Your original purchased form returns during the next preparation phase.</p>
+  <h3>Do I need to memorise all the routes first?</h3><p>No. Use the hover preview to make an immediate decision. Start by recognising a creature’s job and the three possible outcomes; familiarity with longer routes can develop over repeated fights.</p>
+  <p class="related-links"><a href="#contents">Back to shortcuts ↑</a> · <a href="index.html">Project resources</a></p>
+</section>
+</div></div>
