@@ -42,7 +42,7 @@ func _process(_dt: float) -> void:
 ## Everything the tokens, reserve and drag highlights depend on.
 func _redraw_key() -> Array:
 	var key := [game.phase, game.bench_dock, position, game.drag, game.shop_drag_index, game.shop_drag_active,
-		game.hover_info.get("owned"), game.player.gold, game.bench_visible()]
+		game.hover_info.get("owned"), game.player.gold, game.bench_visible(), snappedf(game.field_full_flash, 0.03)]
 	if game.drag_visual_active():
 		key.append(game.shop_drag_position if game.shop_drag_index >= 0 else get_global_mouse_position())
 	for state in game.states:
@@ -87,12 +87,13 @@ func _draw_board(ci: CanvasItem) -> void:
 	Terrain.draw_board(ci, _terrain, environment)
 
 
-## Highlights the legal drop cell while dragging.
+## Highlights the legal drop cell while dragging. An empty cell stays dark when
+## the board is already full (Rules.FIELD_CAP): only the bench or a merge works.
 func _draw_drop_cell() -> void:
 	if game.drag_visual_active():
 		var mouse: Vector2 = game.shop_drag_position if game.shop_drag_index >= 0 else get_global_mouse_position()
 		var cell: Vector2i = game.board_cell(mouse)
-		if game.player.owns_cell(cell):
+		if game.player.owns_cell(cell) and not (game.board_full_for(game.drag) and game.player.at_cell(cell) == null):
 			draw_rect(Rect2(Vector2(cell) * CELL, Vector2(CELL, CELL)), Color(1, 1, 1, 0.35))
 
 
@@ -118,13 +119,21 @@ func _draw_reserve() -> void:
 			if game.can_drop_merge(c):
 				draw_rect(r.grow(-4), Icons.GOLD, false, 3.0)
 	Shapes.set_transform(self, Vector2.ZERO, 0.0, Vector2.ONE)
-	# Field capacity pips.
+	# Field capacity pips. While a full board refuses the dragged creature they
+	# are ringed in red; a refused drop makes the rings blink.
 	var fielded: int = game.player.field_count()
+	var warn := 0.0
+	if game.field_full_flash > 0.0:
+		warn = absf(sin(game.field_full_flash * 10.5)) # three blinks over the flash
+	elif game.drag_visual_active() and game.board_full_for(game.drag):
+		warn = 0.55
 	for i in Rules.FIELD_CAP:
 		var p := Vector2(Rules.BOARD_SIZE.x + 22, Rules.BOARD_SIZE.y - 14 - i * 22)
 		Shapes.circle(self, p, 7, Color(0.2, 0.14, 0.1))
 		if i < fielded:
 			Shapes.circle(self, p, 5, Icons.team_color(0))
+		if warn > 0.0:
+			Shapes.arc(self, p, 9.5, 0, TAU, 20, Color(0.95, 0.25, 0.2, warn), 2.5, true)
 
 
 func _draw_drag() -> void:

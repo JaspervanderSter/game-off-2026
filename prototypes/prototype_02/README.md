@@ -712,6 +712,13 @@ frenzy starts. Combat slows to a quarter speed while the dimming is full. Shown
 rules are saved under `journey.introduced`; beaten opponents never replay theirs.
 Merge pips and harvest coins appear only in duels where their rule exists.
 
+In the thief's duel a looping demonstration (`main.merge_demo()`, drawn by the
+HUD) shows a translucent copy travelling along a dotted gold arc onto an
+identical creature, whose merge pips fill, until the player's first merge.
+The board holds at most six creatures (`Rules.FIELD_CAP`): when it is full,
+empty cells stay dark under a drag, the capacity pips beside the board are
+ringed in red, and a refused drop makes them blink.
+
 Progress is saved locally in `difficulty_progress.cfg`, under `journey.opponents`.
 The previous seven-stage `journey.completed` saves retain proportional advancement
 inside each zone, including access to the school. Older difficulty-only saves

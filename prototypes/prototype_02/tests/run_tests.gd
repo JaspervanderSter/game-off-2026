@@ -54,6 +54,7 @@ func _ready() -> void:
 	_test_forest_lessons()
 	_test_rule_spotlight()
 	_test_learning_pause()
+	_test_merge_lesson_and_full_board()
 	_test_day_night_cycle()
 	_test_journey_health()
 	_test_journey_discovery()
@@ -2594,6 +2595,60 @@ func _test_journey_rules() -> void:
 	var hunter_player := WizardState.new(0)
 	hunter_player.rules = OpponentDB.ruleset(0)
 	check(not hunter_player.can_cast(), "the player has no wand before the druid")
+
+
+## The thief demonstrates a merge until the player's first one; a full board
+## refuses an empty-cell drop visibly and identical creatures can still be placed.
+func _test_merge_lesson_and_full_board() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.set_physics_process(false)
+	game.difficulty_progress_path = "user://merge_lesson_test_%d.cfg" % OS.get_process_id()
+	game.journey.completed.assign(range(Journey.stage_count()))
+	game.choose_stage(7)
+	game.choose_pack(0)
+	game.enemy_preparing = false
+	game.shop_out = 0.0
+	var form: String = game.player.creatures[0].form_id
+	game.player.gold = 30
+	for c: OwnedCreature in game.player.creatures.duplicate():
+		if c != game.player.creatures[0]:
+			game.player.creatures.erase(c)
+	for i in Rules.SHOP_SIZE:
+		game.player.offers[i] = ""
+	check(game.merge_demo().is_empty(), "no merge demonstration without a copy to merge")
+	game.player.offers[0] = form
+	var demo: Dictionary = game.merge_demo()
+	check(not demo.is_empty() and demo.from == Hud.offer_token_pos(0), "an identical offer is demonstrated onto its copy")
+	# A second identical creature can be placed on an empty cell.
+	var empty := Vector2i(0, 5)
+	game._left_press(Hud.offer_rect(0).get_center())
+	game.shop_drag_position = Rules.BOARD_POS + Rules.cell_center(empty)
+	game.shop_drag_active = true
+	game._left_release(Rules.BOARD_POS + Rules.cell_center(empty))
+	check(game.player.at_cell(empty) != null and game.player.at_cell(empty).form_id == form and game.player.field_count() == 2,
+		"an identical creature can be placed beside its copy")
+	demo = game.merge_demo()
+	check(not demo.is_empty() and demo.target in game.player.creatures, "two copies on the board are demonstrated")
+	game._left_press(demo.from)
+	game._left_release(demo.to)
+	check(game.merge_lesson_done and game.merge_demo().is_empty(), "the first merge ends the demonstration")
+	# Full board: an empty cell refuses a new creature and the pips flash.
+	while game.player.field_count() < Rules.FIELD_CAP:
+		game.player.add_creature("guardian")
+	game.player.offers[1] = "archer"
+	var free := Vector2i(-1, -1)
+	for x in Rules.COLS:
+		if game.player.at_cell(Vector2i(x, 5)) == null:
+			free = Vector2i(x, 5)
+	check(game.board_full_for(OwnedCreature.new("archer")), "a full board refuses a creature from outside it")
+	game._left_press(Hud.offer_rect(1).get_center())
+	game.shop_drag_position = Rules.BOARD_POS + Rules.cell_center(free)
+	game.shop_drag_active = true
+	game._left_release(Rules.BOARD_POS + Rules.cell_center(free))
+	check(game.player.at_cell(free) == null and game.field_full_flash > 0.0, "a refused drop on a full board flashes the capacity pips")
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://merge_lesson_test_%d.cfg" % OS.get_process_id()))
 
 
 ## The druid's and the witch's duels stop until the player tries their cast;

@@ -33,6 +33,12 @@ var opponent := -1
 ## Rules of the current duel: those its journey opponent has introduced so far.
 var ruleset := Ruleset.new()
 var learning_cast_tried := false
+## The thief's merge demonstration stops after the player's first merge.
+var merge_lesson_done := false
+## Seconds left on the full-board warning: the capacity pips flash red after a
+## drop refused because the board already holds Rules.FIELD_CAP creatures.
+var field_full_flash := 0.0
+const FIELD_FULL_FLASH := 0.9
 ## Spotlight on the rule this duel's opponent introduces, the first time it shows.
 var spotlight := RuleSpotlight.new()
 var menu_screen: Node2D
@@ -191,6 +197,8 @@ func choose_difficulty(level: int) -> void:
 
 func _start_duel() -> void:
 	learning_cast_tried = false
+	merge_lesson_done = false
+	field_full_flash = 0.0
 	spotlight.reset(journey.rule_to_introduce(opponent))
 	player.max_hp = Journey.hearts_for_stage(journey.selected)
 	enemy.max_hp = Journey.enemy_hearts_for_stage(journey.selected)
@@ -729,7 +737,10 @@ func _left_release(pos: Vector2) -> void:
 	if slot >= 0:
 		ok = player.move_to_slot(c, slot)
 	elif player.owns_cell(board_cell(pos)):
+		var full := board_full_for(c) and player.at_cell(board_cell(pos)) == null
 		ok = player.move_to_cell(c, board_cell(pos))
+		if not ok and full:
+			field_full_flash = FIELD_FULL_FLASH
 	if not ok:
 		Sfx.play("ui/fail")
 	elif combining:
@@ -755,7 +766,10 @@ func _release_shop_offer(pos: Vector2) -> void:
 	if not moved and Hud.offer_rect(index).has_point(pos):
 		bought = player.buy(index)
 	elif player.owns_cell(board_cell(pos)):
+		var full := player.field_count() >= Rules.FIELD_CAP and player.at_cell(board_cell(pos)) == null
 		bought = player.buy_to_cell(index, board_cell(pos))
+		if bought == null and full:
+			field_full_flash = FIELD_FULL_FLASH
 	else:
 		var slot := _reserve_slot_at(pos)
 		if slot >= 0:
@@ -771,6 +785,7 @@ func _release_shop_offer(pos: Vector2) -> void:
 
 
 func _merge_feedback(recipient: OwnedCreature, previous_stars: int) -> void:
+	merge_lesson_done = true
 	var ranked_up := recipient.stars > previous_stars
 	var centre := Rules.BOARD_POS + Rules.cell_center(recipient.cell) if recipient.is_fielded() else bench_slot_rect(recipient.slot).get_center()
 	fx.add("merge" if ranked_up else "combine", centre - Rules.BOARD_POS)
@@ -803,6 +818,7 @@ func _process(dt: float) -> void:
 	_advance_ui(dt)
 	_watch_rule_spotlight()
 	spotlight.advance(dt)
+	field_full_flash = maxf(0.0, field_full_flash - dt)
 	var mouse := get_global_mouse_position()
 	hover_info = {}
 	match phase:
@@ -887,11 +903,11 @@ func _watch_rule_spotlight() -> void:
 		var row := Rules.WAND_UPGRADES.find(rule.trim_prefix("upgrade_"))
 		_spotlight(Hud.upgrade_rect(row).get_center(), Vector2(Hud.UPGRADE_SIZE.x * 0.58, 32))
 	elif rule == Ruleset.MERGE and shop_shown:
-		var pair := _first_pair()
-		if not pair.is_empty():
-			var a := _owned_screen_position(pair[0])
-			var b := _owned_screen_position(pair[1])
-			_spotlight((a + b) * 0.5, Vector2(absf(a.x - b.x) * 0.5 + 50, absf(a.y - b.y) * 0.5 + 50))
+		var demo := merge_demo()
+		if not demo.is_empty():
+			var a: Vector2 = demo.from
+			var b: Vector2 = demo.to
+			_spotlight((a + b) * 0.5, Vector2(absf(a.x - b.x) * 0.5 + 56, absf(a.y - b.y) * 0.5 + 56))
 	elif phase != Phase.COMBAT or battle == null:
 		return
 	elif rule == Ruleset.WAND and player.can_cast():
@@ -910,19 +926,45 @@ func _watch_rule_spotlight() -> void:
 			Vector2(Rules.BOARD_SIZE.x * 0.5 + 24, 34))
 
 
-## Two of the player's creatures that could merge (same form and stars), or [].
+## Two of the player's creatures that could merge (same form and stars), or [];
+## a benched creature comes first, so it is the one shown moving.
 func _first_pair() -> Array:
 	for a: OwnedCreature in player.creatures:
 		for b: OwnedCreature in player.creatures:
-			if a != b and player.can_merge(a, b):
+			if a != b and player.can_merge(a, b) and (not a.is_fielded() or b.is_fielded()):
 				return [a, b]
 	return []
 
 
 func _owned_screen_position(c: OwnedCreature) -> Vector2:
 	if c.slot >= 0:
-		return Rules.reserve_slot_rect(c.slot).get_center()
+		return bench_slot_rect(c.slot).get_center()
 	return Rules.BOARD_POS + Rules.cell_center(c.cell)
+
+
+## The thief's merge lesson: which drag to demonstrate, until the player's first
+## merge of the duel. {"from", "to" (screen positions), "target": OwnedCreature},
+## from a pair the player owns, else from an affordable identical offer; {} when
+## there is nothing to show.
+func merge_demo() -> Dictionary:
+	if merge_lesson_done or phase != Phase.PREP or opponent < 0 or drag != null or shop_out > 0.0:
+		return {}
+	if OpponentDB.get_opponent(opponent).rule != Ruleset.MERGE or not ruleset.has(Ruleset.MERGE):
+		return {}
+	var pair := _first_pair()
+	if not pair.is_empty():
+		return {"from": _owned_screen_position(pair[0]), "to": _owned_screen_position(pair[1]), "target": pair[1]}
+	for i in Rules.SHOP_SIZE:
+		for c: OwnedCreature in player.creatures:
+			if player.can_merge_offer(i, c):
+				return {"from": Hud.offer_token_pos(i), "to": _owned_screen_position(c), "target": c}
+	return {}
+
+
+## True when dropping a creature that is not on the board onto an empty cell
+## would be refused: the board already holds Rules.FIELD_CAP creatures.
+func board_full_for(c: OwnedCreature) -> bool:
+	return c != null and not c.is_fielded() and player.field_count() >= Rules.FIELD_CAP
 
 
 ## The table background never changes: drawn once (and again only when

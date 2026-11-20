@@ -280,6 +280,23 @@ blocked, and combat slows to a quarter speed while the dimming is full.
 A rule is remembered once shown (`journey.introduced` in the save), and a beaten
 opponent never replays it. The hunter and the archmage introduce nothing.
 
+### Merge lesson — playtest revision, 20 November 2026
+
+The user found the thief's merge instruction unclear. During preparation in the
+thief's duel, a looping demonstration now shows the gesture itself until the
+player's first merge of the duel: a translucent copy of the creature rises from
+one copy (a benched one first, or an identical shop offer) along a dotted gold
+arc with an arrowhead, lands on the identical creature, which pulses in gold
+while its merge pips fill by one. No text; it never blocks.
+
+The same playtest reported that a second identical creature could not be placed
+on an empty cell. The cause was the existing limit of **six creatures on the
+board** (`Rules.FIELD_CAP`): once six were fielded, only a merge or the bench
+could take another creature, and no opponent introduces that limit. Confirmed:
+keep the limit and make it visible. While a full board refuses the dragged
+creature, empty cells no longer light up and the six capacity pips are ringed in
+red; a refused drop makes the rings blink. The bench still accepts the creature.
+
 ## Open questions
 
 - Is the first-pass spotlight clear enough without text? To check in playtest.

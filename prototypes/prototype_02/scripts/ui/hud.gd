@@ -89,6 +89,9 @@ var _ci: CanvasItem = self
 ## rebuilds a layer's draw commands, so the side panels and the shop column
 ## redraw only when what they show changes (their key); the others every frame.
 var _layers := {}
+var _merge_ghost: Node2D
+## One loop of the merge demonstration, in seconds.
+const MERGE_DEMO_PERIOD := 1.8
 
 
 func _ready() -> void:
@@ -101,6 +104,11 @@ func _ready() -> void:
 		layer.draw.connect(_draw_layer.bind(layer_name, layer))
 		add_child(layer)
 		_layers[layer_name] = {"node": layer, "key": null}
+	# The merge lesson's translucent copy needs its own alpha (modulate).
+	_merge_ghost = Node2D.new()
+	_merge_ghost.name = "MergeGhost"
+	_merge_ghost.draw.connect(_draw_merge_ghost)
+	add_child(_merge_ghost)
 	set_process_internal(true)
 
 
@@ -117,6 +125,7 @@ func _process(dt: float) -> void:
 	else:
 		choice_phase = -1
 	_refresh_layers()
+	_merge_ghost.queue_redraw()
 
 
 ## Layers refresh at the end of _process, after this frame's animation steps.
@@ -322,6 +331,11 @@ static func offer_rect(i: int) -> Rect2:
 	return Rect2(Rules.SHOP_RECT.position + Vector2(0, i * OFFER_STEP), OFFER_SIZE)
 
 
+## Centre of the creature token drawn on offer i.
+static func offer_token_pos(i: int) -> Vector2:
+	return offer_rect(i).position + Vector2(48, 38)
+
+
 ## Row of wand upgrade i (Rules.WAND_UPGRADES order) on the unrolled scroll.
 static func upgrade_rect(i: int) -> Rect2:
 	return Rect2(Vector2(SCROLL_X.x + 8, UPGRADE_TOP + i * UPGRADE_STEP), UPGRADE_SIZE)
@@ -442,6 +456,7 @@ func _draw_layer(layer_name: String, layer: CanvasItem) -> void:
 			_draw_shop_column()
 		"overlay":
 			_draw_learning_cast_hint()
+			_draw_merge_lesson()
 			if not game.hover_info.is_empty() and game.drag == null and game.phase != game.Phase.RESOLVE:
 				_draw_hover_card(game.hover_info)
 			_draw_upgrade_tooltip()
@@ -468,6 +483,52 @@ func _draw_learning_cast_hint() -> void:
 	var p: Vector2 = Rules.BOARD_POS + unit.position
 	Icons.shift_reticle(_ci, p, 22, t, unit.team == 0, true)
 	Icons.wand(_ci, p + Vector2(36, -40 + sin(t * 3.0) * 6), 18)
+
+
+## Phase of the merge demonstration loop, 0 to 1, on real time.
+func _merge_demo_phase() -> float:
+	return fmod(Time.get_ticks_msec() / 1000.0, MERGE_DEMO_PERIOD) / MERGE_DEMO_PERIOD
+
+
+## Point along the merge demonstration's arc, k from 0 (source) to 1 (target).
+static func _merge_arc(from: Vector2, to: Vector2, k: float) -> Vector2:
+	var lift := clampf(from.distance_to(to) * 0.3, 48.0, 90.0) # clears neighbouring tokens
+	return from.lerp(to, k) + Vector2(0, -sin(k * PI) * lift)
+
+
+## The thief's lesson: a dotted gold arc from one copy to the identical one,
+## the target pulsing, and its merge pips filling as the ghost copy lands.
+## The translucent copy itself is drawn by _draw_merge_ghost.
+func _draw_merge_lesson() -> void:
+	var demo: Dictionary = game.merge_demo()
+	if demo.is_empty():
+		return
+	var from: Vector2 = demo.from
+	var to: Vector2 = demo.to
+	var target: OwnedCreature = demo.target
+	var t := _merge_demo_phase()
+	for i in range(1, 10):
+		Shapes.circle(_ci, _merge_arc(from, to, i / 10.0), 3.0, Color(Icons.GOLD, 0.55))
+	var tip := _merge_arc(from, to, 0.93)
+	var dir := (to - tip).normalized()
+	_ci.draw_colored_polygon(PackedVector2Array([tip + dir * 10, tip - dir * 4 + dir.orthogonal() * 7,
+		tip - dir * 4 - dir.orthogonal() * 7]), Color(Icons.GOLD, 0.8))
+	var landed := smoothstep(0.68, 0.74, t) * (1.0 - smoothstep(0.92, 1.0, t))
+	Shapes.arc(_ci, to, 28 + landed * 8, 0, TAU, 32, Color(Icons.GOLD, 0.5 + landed * 0.5), 3.0, true)
+	Icons.merge_progress(_ci, to + Vector2(0, 30), target.merge_copies + (1 if t > 0.7 else 0), target.stars)
+
+
+func _draw_merge_ghost() -> void:
+	var demo: Dictionary = game.merge_demo() if game != null else {}
+	if demo.is_empty():
+		return
+	var t := _merge_demo_phase()
+	var k := smoothstep(0.15, 0.7, t)
+	_merge_ghost.modulate = Color(1, 1, 1, 0.75 * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.7, 0.8, t)))
+	var p := _merge_arc(demo.from, demo.to, k)
+	var target: OwnedCreature = demo.target
+	Shapes.circle(_merge_ghost, p + Vector2(4, 12), 20, Color(0, 0, 0, 0.3))
+	Icons.token(_merge_ghost, target.form_id, p, Rules.BODY_RADIUS * Rules.CELL, 0, true)
 
 
 func _panel(r: Rect2, col := Color(0.12, 0.09, 0.08, 0.85)) -> void:
