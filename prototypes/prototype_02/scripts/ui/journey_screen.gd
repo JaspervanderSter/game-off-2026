@@ -8,16 +8,15 @@ const INK := Color(0.27, 0.18, 0.15)
 const PAPER := Color(0.73, 0.65, 0.47)
 
 func _ready() -> void:
-	_button(Rect2(546, 443, 188, 100), "Journey · Enter", 0)
+	_button(Rect2(546, 443, 188, 100), 0)
 	if not OS.has_feature("web"):
-		_button(Rect2(1190, 628, 58, 58), "Quit", -2)
+		_button(Rect2(1190, 628, 58, 58), -2)
 
-func _button(rect: Rect2, hint: String, index: int) -> void:
+func _button(rect: Rect2, index: int) -> void:
 	var button := Button.new()
 	button.position = rect.position
 	button.size = rect.size
 	button.flat = true
-	button.tooltip_text = hint
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	for style in ["normal", "hover", "pressed", "focus", "disabled"]:
 		button.add_theme_stylebox_override(style, StyleBoxEmpty.new())
@@ -66,10 +65,6 @@ func _draw_menu() -> void:
 	for i in 12:
 		var p := Vector2(640, 314) + Vector2.from_angle(age * 0.2 + i * TAU / 12) * Vector2(470, 174)
 		Icons.star(self, p, 3 + sin(age * 2 + i), Color(0.95, 0.8, 0.4, 0.7))
-	# The title is the only lettering; all actions and map states use icons.
-	var font := ThemeDB.fallback_font
-	var title := "SHAPESHIFTERS DUEL"
-	draw_string(font, Vector2(640 - font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 38).x / 2, 89), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 38, GOLD)
 	var glow := _hot(0)
 	_panel(Rect2(546, 443, 188, 100), glow)
 	Icons.world_map(self, Vector2(610, 493), 27)

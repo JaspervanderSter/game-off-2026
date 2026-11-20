@@ -19,8 +19,7 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 | --- | --- |
 | Open the journey | Click the map-and-arrow button in the menu (or Enter) |
 | Pick a stage | Click an unlocked opponent on an island; Tab / arrow keys and Enter also work |
-| Explore the map | Mouse wheel, scrollbar, touch swipe, or Page Up / Page Down; Home / End jump to either end |
-| Return to the menu | Map back arrow (or Esc on the map) |
+| Return to the menu | Esc on the map |
 | Pick a starting composition | Left-click one of the three cards |
 | Buy a creature | Click and release a shop card for the bench, or drag it directly to a board cell / reserve slot |
 | Reroll shop | Click the circular-arrow button below the offers, inside the stall (1 gold) |
@@ -56,7 +55,9 @@ capped at +60%); no number or extra star is shown. Team bases, health bars,
 collision sizes and combat stats are unaffected by this visual scale.
 A white dashed ring = shapeshift immunity. Small pips beside a creature = status
 effects (green rim positive, red rim negative). Hearts = wizard health.
-A half-filled heart represents 0.5 health; the starting total remains 10 hearts.
+A half-filled heart represents 0.5 health. Each wizard starts with 3 hearts on
+the forest, 6 in the town and 10 at the magic school. Only that duel's heart
+capacity is drawn, including empty and half-filled hearts after damage.
 The round frieze above the board shows the current round as a numbered gold
 medallion, the last seven finished rounds as pips in the winner's colour (grey
 for a draw) and the next rounds as fading dashed rings. When a round resolves,
@@ -68,7 +69,7 @@ frieze slides one step left.
 All confirmed rules and delegated defaults of the design note, notably:
 
 - Duel loop: free starting pack, then every round shop + preparation, real-time
-  combat, resolution; until a wizard has 0 of 10 health.
+  combat, resolution; until either wizard has no health left.
 - Twelve themed starting compositions (`CreatureDB.PACKS`) of two to four
   creatures. Each duel offers three cards, each showing a themed crest, the
   creatures and one coin per gold available in the first shop. Both sides receive
@@ -267,9 +268,9 @@ player half, and a thin line marks the middle. The game has three environments:
 | `school` | 10 | Slate slab with a chamfered double gold fillet and gold corner studs | Quiet slate slab with an engraved square and gold studs |
 
 In the forest, rarer tiles carry clover or two tiny flowers. The town and the
-school have no decoration beyond each tile's faint tone. The game does not yet
-choose an environment; the hidden **Ctrl+Shift+T** switch cycles forest, town
-and school to compare them (not remembered).
+school keep details quiet. A stage selects the environment of its island when
+the duel starts. The hidden **Ctrl+Shift+T** switch still cycles forest, town
+and school for comparison; starting the next duel restores its island's terrain.
 
 `scripts/ui/terrain.gd` (`Terrain`) defines the environments. Each one is a
 folder `tiles/<environment>/` of 72 x 72 PNG tiles named
@@ -406,6 +407,7 @@ are copied back into the project's `sfx/` and `music/` folders.
 
 | Event | Group | Played when |
 |---|---|---|
+| `ui/map_step` | ui | Soft, muffled tap as a new journey-path point appears |
 | `ui/click` | ui | Interface click: difficulty, picking up or reselecting a creature, offer lock, enemy reroll, restart |
 | `ui/fail` | ui | Unavailable or invalid action, such as a locked difficulty, fizzled cast or invalid drop |
 | `ui/buy` | ui | Starting composition, player sale, enemy purchase or wand upgrade |
@@ -613,30 +615,53 @@ interrupting enemy casts.
 
 ## Journey map and difficulty levels (20 November 2026)
 
-The game opens on `menu.tscn`, a procedural duel diorama. Its map button opens
-`world_map.tscn`, a vertically scrolling journey through floating forest, village
-and mage islands. The map fills portrait screens and keeps its menu button fixed
-at the top. Selecting an opponent starts the duel; completed stages are marked
-with gold stars, and future stages carry small padlocks. Keyboard focus scrolls
-the relevant encounter into view. Islands, scenery and opponents are drawn in
-code using the existing vector shapes, without generated image assets.
+The game opens directly on `world_map.tscn`. The entire journey fits on one
+screen, with no scrolling, banner or progress HUD. The islands form a triangle:
+forest and town below, magic school above, with clear sky between their silhouettes.
+Portrait uses a taller triangle and scales the whole map to fit. A wooden
+suspension bridge links forest to town, and a violet bridge with gold handrails
+links town to the school courtyard. Both bridges land on the shores, clear of
+the encounters. Routes follow curved trails and the bridge decks.
+The existing `menu.tscn` diorama is retained for later work and can still be
+reached with Esc. Selecting an opponent starts the duel; completed stages are
+marked with gold stars. Unknown opponents and routes have no visible markers,
+silhouettes or padlocks. The protagonist does not appear on the map. Controls use
+icons and animation only, including hover feedback: no labels or textual tooltips.
+
+The three floating territories are a forest, a fortified medieval town and a
+magic school. The town has curtain walls, crenellated towers, a keep, dense
+pitched-roof houses and paved streets. Islands and scenery are drawn in code.
+Each stage selects its island's existing battlefield tiles when the duel starts:
+stages 1-3 use `tiles/forest/` grass, stages 4-6 use `tiles/town/` stone paving,
+and stage 7 uses `tiles/school/` violet slabs with gold inlays. The terrain remains
+through preparation, combat and subsequent rounds. Starting a different island's
+duel replaces the cached board; direct developer/test duels use the forest default.
+The mapping lives in `Journey.ISLANDS` and `Journey.ENVIRONMENTS`. Each side starts
+with 3, 6 or 10 full hearts respectively (`Journey.HEARTS`); hearts reset for every
+duel. AI health-dependent decisions use the fraction of that duel's capacity.
+These are confirmed design decisions, recorded with their rationale and remaining
+implementation work in [Prototype 02 — Journey roadmap and progression](../../docs/design/Prototype%2002.md#journey-roadmap-and-progression--confirmed-20-november-2026).
 
 The sky runs a 160-second local cycle: clear blue daylight, golden mist,
 rose-and-mauve dusk, starry night, then back to daylight. Colours blend smoothly,
-clouds drift with a little scrolling parallax, and the moon and stars fade in at
+clouds drift slowly, and the moon and stars fade in at
 night. Island colours and interaction markers remain readable throughout. The
 clock pauses while the map is hidden and resumes on return; it is decorative
 and does not alter combat. `scripts/ui/day_night_sky.gd` exposes `cycle_seconds`
 for adjusting the duration. `scripts/ui/world_map.gd` owns navigation and layout;
 `scripts/ui/map_island.gd` draws the floating land masses.
 
-The roads follow `1 -> (2 or 3) -> 4 -> (5 or 6) -> 7`. Winning a full duel
-completes its seal and opens all outgoing roads. Either incoming road is enough
-to unlock a merge. Defeats do not advance progress. Completed stages and side
-branches remain replayable, and the end-of-duel map button returns to the map.
-Gold stars mark completed stages; padlocks mark inaccessible ones. The seven
-header pips track completion. Every stage starts a fresh duel with the
-existing pack decks, economy and rules; there are no branch-specific modifiers yet.
+The linear journey follows `1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7`. A fresh map shows
+only the first opponent. Winning a full duel completes that stage and discovers
+its immediate successor. On return to the map, the curved route draws itself
+point by point in about four seconds, with soft taps (`ui/map_step`) as the dots
+appear. Both complete bridges are always present from startup; only the dots
+animate across their decks. The next opponent appears at the
+end of the route, then becomes selectable after its short appearance animation.
+Revisiting the map keeps known paths in place; leaving pauses an unfinished trace.
+A defeat discovers nothing. Completed stages remain replayable. Old branching
+saves are migrated to preserve their furthest earned stage. Every stage starts a
+fresh duel with the existing pack decks, economy and rules.
 
 Stages 1–3 use Apprentice AI, 4–6 use Adept, and 7 uses Archmage. The opponent's
 hat stays visible during the duel. Unlock rules live in

@@ -3,8 +3,9 @@ extends Node2D
 ## Draws the game board, the preparation tokens and the player's reserve.
 ## Positioned at Rules.BOARD_POS; combat units are drawn by the Battle node.
 ##
-## The frame and terrain never change: a child layer draws them once, behind
-## this node. The terrain is composed from the environment's tiles (Terrain). This node redraws only when what it shows changes (see
+## A child layer draws the frame and terrain once, behind this node, then
+## refreshes when a new duel selects its island's environment (Terrain).
+## This node redraws only when what it shows changes (see
 ## _redraw_key), since every redraw rebuilds its draw commands.
 
 const CELL := Rules.CELL

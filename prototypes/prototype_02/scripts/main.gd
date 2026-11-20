@@ -1,6 +1,6 @@
 extends Node2D
 ## Prototype 02 game controller: the duel loop
-## menu -> journey map -> pack choice -> (preparation -> combat -> resolution)
+## journey map -> pack choice -> (preparation -> combat -> resolution)
 ## -> game over -> journey map.
 
 enum Phase { DIFFICULTY, PACK, PREP, COMBAT, RESOLVE, OVER }
@@ -102,7 +102,6 @@ func _ready() -> void:
 		screen.z_index = 30
 		add_child(screen)
 	new_duel()
-	show_menu()
 
 
 func show_menu() -> void:
@@ -159,7 +158,8 @@ func new_duel() -> void:
 	hud.clear_victory()
 	phase = Phase.DIFFICULTY
 	journey.selected = -1
-	hud.begin_difficulty_unlock(newly_unlocked_difficulty)
+	# Discovery is presented by the map, without the obsolete hidden hat reveal.
+	hud.begin_difficulty_unlock(-1)
 	newly_unlocked_difficulty = -1
 	if map_screen != null:
 		show_map()
@@ -174,10 +174,16 @@ func choose_difficulty(level: int) -> void:
 		Sfx.play("ui/fail")
 		return
 	difficulty = level
+	journey.selected = -1
 	_start_duel()
 
 
 func _start_duel() -> void:
+	var hearts := Journey.hearts_for_stage(journey.selected)
+	for state in states:
+		state.max_hp = hearts
+		state.hp = float(hearts)
+	board_view.set_environment(Journey.environment_for_stage(journey.selected))
 	music.transition_to("prep")
 	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
 	menu_screen.hide()

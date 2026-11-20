@@ -6,7 +6,10 @@ Design draft started on 3 November 2026. The complete duel loop is confirmed for
 this prototype; detailed rules remain under discussion.
 This document records prototype-specific decisions; the general design notes remain
 the source for the broader game direction. A proposal here is not a confirmed
-requirement for either this prototype or the final game.
+requirement for either this prototype or the final game. The confirmed journey
+roadmap below records the decisions made on 20 November 2026 and takes precedence
+where earlier prototype scope or delegated defaults conflict with that roadmap.
+These decisions are the design baseline, not temporary implementation placeholders.
 
 Prototype 01 explores attribute swapping. Prototype 02 is intended to explore the
 new auto-battler direction with single-target shapeshifting. Prototype 01's
@@ -66,6 +69,133 @@ requirement to discard the auto-battler foundation after this experiment.
 - Creature merging and wizard upgrades are excluded from Prototype 02. The
   separate progression-resource economy is not needed for those upgrades here;
   the broader game's two-resource direction remains separate from this scope.
+
+## Journey roadmap and progression — confirmed 20 November 2026
+
+### Design status and intent
+
+The following choices were explicitly selected in the design discussion. They
+are confirmed product decisions, not throwaway prototype scaffolding. Record
+subsequent changes as new decisions rather than silently treating these choices
+as temporary. Implementation status is separate from design approval: an approved
+encounter progression remains a requirement even before encounter rosters are
+restricted in code.
+
+The player is a wizard on a journey. The world, opponents and the wizard's
+presentation should communicate increasing mastery. Early duels introduce the
+mechanics through short, approachable encounters; later islands support longer,
+more demanding duels. No separate experience-point system, permanent wizard
+statistics or upgrade-unlock economy is specified by this decision.
+
+### The three islands
+
+| Order | Territory and encounters | Duel terrain | Starting hearts, each side | Pacing intent |
+| --- | --- | --- | --- | --- |
+| 1 | Forest: begin against woodland animals. | Existing grass tiles, `forest`. | **3** | Short learning duels. |
+| 2 | Fortified medieval town: meet human opponents. | Existing stone paving, `town`. | **6** | Intermediate duels. |
+| 3 | Magic school: sorcerers enter the journey and become increasingly powerful. | Existing violet slabs with gold inlays, `school`. | **10** | Longer, demanding late-game duels. |
+
+**3 -> 6 -> 10 is the selected heart progression.** The earlier suggestions of
+four starting hearts and the 4/6/10 alternative were not selected. Both the player
+and the opponent start every duel with their island's full heart capacity. A new
+duel resets hearts; it does not carry damage from the preceding encounter. The
+HUD must show that capacity, rather than ten slots with the unused hearts empty.
+The existing half-heart damage per surviving enemy creature remains unchanged.
+Increasing capacity is intended to lengthen duels across the journey; exact
+round counts are not fixed or guaranteed by this decision.
+
+### World-map composition and connections
+
+- The progression map is a dedicated screen built from floating islands. Preserve
+  the existing procedural art, palette, shape vocabulary and animation. Do not
+  generate images for the map.
+- **Selected composition: the triangle (proposal 3).** Forest and town occupy the
+  lower corners; the magic school sits above them. Keep clear sky between the
+  complete island silhouettes, including cliffs and detached rocks.
+- Use **two continuous suspended bridges**: forest to town, then town to the magic
+  school. Bridges meet the shores and keep landings clear of opponents and key
+  buildings. Curved dotted trails connect discovered encounters and follow the
+  bridge decks between islands. **Both complete bridges are visible from the
+  start** as permanent scenery. Discovery animates only the small route points;
+  it must never build, shorten, fade in or hide a bridge.
+- The entire map is visible on **one screen, without scrolling**. Fit it to both
+  landscape and portrait layouts. This supersedes the earlier vertically
+  scrolling roadmap idea for the current design baseline.
+- Remove the upper UI banner. The map communicates through its islands, bridges,
+  discovered opponent icons, completion stars and animation. No textual labels or
+  textual tooltips; numbers are allowed where they express game values.
+- The medieval territory must read as a **town**, with dense houses, stone
+  streets, curtain walls, towers and a keep, rather than three isolated cottages.
+- Opening a stage selects its island's battlefield tile family. Keep that terrain
+  through preparation, combat and later rounds of the same duel.
+
+### Progression structure and replay
+
+**Confirmed refinement, 20 November 2026: use a linear journey.** This supersedes
+the earlier two-fork route. The seven stages now follow:
+
+`1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7`
+
+Stages 1-3 belong to the forest, stages 4-6 to the town, and stage 7 to the magic
+school. Winning a full duel discovers only its immediate successor. A defeat
+never discovers a new encounter. Completed stages remain replayable. Save progress
+locally; old branching saves retain their furthest earned access by crediting the
+intermediate stages that now precede it. Return to the map after each duel.
+
+On a fresh journey, show only the first opponent. **Unknown opponents have no
+representation at all**: no silhouette, mystery point, padlock, hover target or
+future path. Do not depict the protagonist on the world map. Remove decorative
+sorcerer figures that could expose future opponents as well. The landscape itself
+remains visible, including both complete bridges; only the route dots and
+opponents are subject to discovery.
+
+After a victory, the next route is drawn **point by point over about four seconds**,
+following a curved path through the island and across the relevant bridge. Play a
+small **muffled footstep or soft tap** as each new point appears. The next opponent
+appears at the end of the trace, then becomes selectable once its brief appearance
+animation finishes. Known paths remain drawn and are not replayed on every visit.
+Pause a reveal while the map is hidden and resume it on return. Catch up after a
+slow frame without playing a stack of simultaneous sounds. No music is added.
+
+The previous three-hat difficulty overlay is replaced by this journey; the hidden
+hat-unlock presentation must not play behind the map. Difficulty becomes part of
+progression rather than the player's only choice of destination.
+
+Current AI tiers are Apprentice on the forest, Adept on the town and Archmage on
+the school. The animals -> humans -> sorcerers encounter progression is a confirmed
+design requirement. The current implementation still shares opponent decks and
+shop pools; restricting those by territory is remaining implementation work,
+not an unapproved design proposal. Exact encounter compositions and the precise
+visual milestones of the travelling wizard remain to be specified.
+
+### Sky, sound and entry point
+
+The map has a continuous **day -> golden mist -> dusk -> starry night -> day**
+cycle based on the four selected sky palettes. Blend transitions smoothly;
+clouds drift, and the moon and stars fade in and out. Keep the islands and
+interaction markers legible throughout. The implemented cycle lasts 160 seconds
+and pauses while the map is hidden; its duration is a presentation parameter,
+not a rule that changes combat.
+
+The menu and map have **no music**. Music belongs to duel scenes, starting with
+pack selection and preparation, with the existing combat and resolution
+transitions. Start the project **directly on the world map**. Retain the menu
+scene for later work: deferring menu work does not make the journey decisions
+in this section temporary.
+
+### Implementation roadmap
+
+| Workstream | Status |
+| --- | --- |
+| Dedicated map, linear island progression, saving and replay | Implemented. |
+| Hidden unknown opponents, four-second curved path discovery and muffled point taps | Implemented; protagonist removed from the map. |
+| Triangle layout, separated floating islands and two bridges | Implemented. |
+| Fortified town, island-specific battlefield tiles, full-screen layouts and icon-only interface | Implemented. |
+| Four-state sky cycle, direct map entry and music limited to duels | Implemented. |
+| Three / six / ten starting hearts and matching heart capacity in the HUD | Implemented with this decision. |
+| Animal / human / sorcerer encounter decks and shop restrictions by territory | Required; not yet implemented. |
+| Wizard appearance milestones outside the map | Still to be defined; the protagonist is not represented on the world map. |
+| Menu development | Deferred while work focuses on the world map. |
 
 ## Roster and transformation design
 

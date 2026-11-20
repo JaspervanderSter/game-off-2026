@@ -382,7 +382,7 @@ func _layer_key(layer_name: String) -> Variant:
 
 
 func _wizard_key(state: WizardState) -> Array:
-	var key := [displayed_hp(state), displayed_gold(state), _wizard_pulse(state.team), state.harvest_total(),
+	var key := [state.max_hp, displayed_hp(state), displayed_gold(state), _wizard_pulse(state.team), state.harvest_total(),
 		state.start_charges()]
 	if game.battle != null:
 		var spell: ShiftSpell = game.battle.spells[state.team]
@@ -516,7 +516,7 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 	else:
 		Icons.wizard_hat(_ci, hat_pos, 26 * (1.0 + impact * 0.12), team)
 	var shown_hp := displayed_hp(state)
-	for i in Rules.WIZARD_HP:
+	for i in state.max_hp:
 		var p := block.position + Vector2(92 + i * 20.5, 36)
 		Icons.wizard_heart(_ci, p, 9, clampf(shown_hp - i, 0.0, 1.0))
 	# Spell charges (live in combat; the starting charges otherwise).

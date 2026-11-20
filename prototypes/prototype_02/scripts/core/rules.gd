@@ -15,7 +15,7 @@ const FIELD_CAP := 6
 const RESERVE_CAP := 6
 
 # Duel.
-const WIZARD_HP := 10
+const WIZARD_HP := 10 # default for direct duels; journey islands use 3 / 6 / 10
 const DAMAGE_PER_SURVIVOR := 0.5
 const FIRST_INCOME := 3 # +1 gold each subsequent round
 const SHOP_SIZE := 3

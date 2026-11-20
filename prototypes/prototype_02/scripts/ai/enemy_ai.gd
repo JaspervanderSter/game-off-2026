@@ -105,7 +105,7 @@ static func form_value(id: String, stars: int = 0, profile: Dictionary = DEFAULT
 ## begins, plus the wizard's whim for that creature (whimsical levels only).
 static func field_value(state: WizardState, form_id: String, stars: int, profile: Dictionary) -> float:
 	# Early harvests pay for more rounds; a wizard low on hearts has fewer left.
-	var weight: float = profile.get("harvest_value", 0.0) * pow(state.hp / Rules.WIZARD_HP, profile.get("harvest_hp_power", 0.0))
+	var weight: float = profile.get("harvest_value", 0.0) * pow(state.hp / maxf(state.max_hp, 1.0), profile.get("harvest_hp_power", 0.0))
 	return form_value(form_id, stars, profile) + weight * Rules.harvest_gold(form_id, stars) + state.ai_whims.get(form_id, 0.0)
 
 

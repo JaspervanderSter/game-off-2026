@@ -1,6 +1,20 @@
 # Economy and Progression
 
-## Direction from the discussion
+## Confirmed journey progression — 20 November 2026
+
+[[Prototype 02#Journey roadmap and progression — confirmed 20 November 2026]]
+records the confirmed across-duel design: a wizard travels through forest,
+medieval town and magic-school islands; encounters progress from animals to
+humans to sorcerers, and each side starts its duels with **3, 6, then 10 hearts**.
+The map uses a triangle layout and suspended bridges, fits one screen without
+scrolling, and has no textual interface or upper UI banner. These are selected
+design decisions, separate from the older resource-economy experiments below.
+The route is linear: each victory discovers the next opponent through a
+four-second animated trace with muffled taps. Unknown opponents and paths are
+fully hidden; the protagonist is not shown on the map. That section also records
+implementation status and the unresolved details.
+
+## Direction from the earlier discussion
 
 Use two separate resources for two progression axes:
 
@@ -69,6 +83,6 @@ Unlocking additional shapeshift types belongs to the broader progression directi
 
 Observe whether an early loser can recover, whether saving versus spending is interesting, whether either resource accumulates without useful purchases, and whether progression incentivizes dragging out combat.
 
-All progression described here is within a duel unless a later decision says otherwise. Progression across separate runs has not been specified.
+The resource experiments above concern progression within a duel. Across-duel journey progression is now specified by the confirmed 20 November roadmap linked above; it does not by itself approve a second currency or permanent wizard statistics.
 
 See [[Gameplay Loop]], [[Ideas to Explore]] and [[Shapeshifting]].

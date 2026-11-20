@@ -3,6 +3,7 @@ extends RefCounted
 ## Persistent state of one wizard across the duel: health, gold, roster, shop.
 
 var team: int
+var max_hp := Rules.WIZARD_HP # starting heart capacity for this duel
 var hp := float(Rules.WIZARD_HP)
 var loss_gold_progress := 0.0 # half-heart compensation carries across rounds
 var upgrades := {} # wand upgrade id -> purchased level (see Rules.WAND_UPGRADES)

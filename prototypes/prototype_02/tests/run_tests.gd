@@ -51,6 +51,8 @@ func _ready() -> void:
 	_test_ai_strategy()
 	_test_difficulty()
 	_test_day_night_cycle()
+	_test_journey_health()
+	_test_journey_discovery()
 	await _test_journey_navigation()
 	_simulate_duels()
 	DirAccess.remove_absolute(PackDeck.save_path)
@@ -1060,7 +1062,7 @@ func _test_phase_music() -> void:
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
 	check(game.music.current == "" and not game.music.players.prep.playing,
-		"the menu starts without music")
+		"the startup map begins without music")
 	game.show_map()
 	check(game.music.current == "", "the world map stays without music")
 	game.choose_difficulty(Difficulty.APPRENTICE)
@@ -2049,8 +2051,14 @@ func _test_difficulty() -> void:
 	var game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = progress_path
 	add_child(game)
-	check(game.menu_screen.visible and not game.map_screen.visible and not game.hud.visible,
-		"startup shows the dedicated menu")
+	check(game.map_screen.visible and not game.menu_screen.visible and not game.hud.visible,
+		"startup opens directly on the world map")
+	for screen in [game.menu_screen, game.map_screen]:
+		var no_text := true
+		for button: Button in screen.buttons:
+			no_text = no_text and button.text.is_empty() and button.tooltip_text.is_empty()
+		check(no_text, "%s controls show neither text nor textual tooltips" % screen.name)
+	game.show_menu()
 	game.menu_screen._activate(0)
 	check(game.map_screen.visible and not game.menu_screen.visible and game.journey.available(0),
 		"the menu opens the map with its first stage available")
@@ -2068,20 +2076,20 @@ func _test_difficulty() -> void:
 	check(game.journey.completed.is_empty(), "a defeat never completes a stage")
 	game._left_press(Hud.RESTART_POS)
 	check(game.map_screen.visible, "the end-of-duel button returns to the map")
-	for index in [0, 2, 3, 5, 6]:
+	for index in [0, 1, 2, 3, 4, 5, 6]:
 		game.choose_stage(index)
 		check(game.enemy.ai_level == Journey.LEVELS[index], "stage %d selects its AI tier" % index)
 		game.choose_pack(0)
 		_finish_test_difficulty_win(game)
 		check(index in game.journey.completed, "winning stage %d saves completion" % index)
 		game._left_press(Hud.RESTART_POS)
-	check(game.journey.available(1) and game.journey.available(4), "unplayed side branches remain available")
+	check(game.journey.available(1) and game.journey.available(4), "completed intermediate stages remain replayable")
 	check(game.journey.available(6), "the final seal remains replayable")
 	game.free()
 	game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = progress_path
 	add_child(game)
-	check(game.journey.completed == [0, 2, 3, 5, 6], "map progress survives reloading")
+	check(game.journey.completed == [0, 1, 2, 3, 4, 5, 6], "map progress survives reloading")
 	game._reset_difficulty_progress()
 	check(game.journey.completed.is_empty() and not game.journey.available(1), "reset clears the map")
 	game.free()
@@ -2238,32 +2246,31 @@ func _test_day_night_cycle() -> void:
 
 
 func _test_journey_navigation() -> void:
-	# Headless Godot otherwise uses a 64 x 64 window, which changes GUI picking.
+	# Give injected pointer events the same window coordinates as the viewport.
 	var previous_size := get_window().size
 	get_window().size = Vector2i(1280, 720)
 	var game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = "user://journey_ui_test_%d.cfg" % OS.get_process_id()
 	add_child(game)
 	game.set_physics_process(false)
-	game.show_map()
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var map = game.map_screen
-	check(map.scroll.scroll_vertical > 0, "map opens near the first forest encounter")
-	check(map.content.custom_minimum_size.y > map.scroll.size.y, "map extends vertically beyond the viewport")
-	var initial_scroll: int = map.scroll.scroll_vertical
+	check(map.find_children("*", "ScrollContainer", true, false).is_empty(), "map has no scrolling container")
+	check(map.get_child_count() == 2, "map contains only the sky and islands, without a UI banner")
+	_check_whole_map_visible(map, "landscape")
+	var initial_transform: Transform2D = map.world.transform
 	var motion := InputEventMouseMotion.new()
 	motion.position = Vector2(640, 400)
 	Input.parse_input_event(motion)
 	await get_tree().process_frame
 	var wheel := InputEventMouseButton.new()
-	wheel.position = Vector2(640, 400)
+	wheel.position = motion.position
 	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
 	wheel.pressed = true
 	Input.parse_input_event(wheel)
 	await get_tree().process_frame
-	check(map.scroll.scroll_vertical < initial_scroll, "mouse wheel moves the journey toward the upper islands")
-	var before_swipe: int = map.scroll.scroll_vertical
+	check(map.world.transform == initial_transform, "mouse wheel does not move the fitted map")
 	var touch := InputEventScreenTouch.new()
 	touch.index = 0
 	touch.position = Vector2(640, 400)
@@ -2281,11 +2288,9 @@ func _test_journey_navigation() -> void:
 	touch.pressed = false
 	Input.parse_input_event(touch)
 	await get_tree().process_frame
-	check(map.scroll.scroll_vertical < before_swipe and game.phase == game.Phase.DIFFICULTY,
-		"a touch swipe scrolls without launching a duel")
-	map._reveal_stage(0)
-	await get_tree().process_frame
-	var pos: Vector2 = map.buttons[1].get_global_transform_with_canvas() * (map.buttons[1].size * 0.5)
+	check(map.world.transform == initial_transform and game.phase == game.Phase.DIFFICULTY,
+		"swipes neither move the map nor launch a duel")
+	var pos: Vector2 = map.buttons[0].get_global_transform_with_canvas() * (map.buttons[0].size * 0.5)
 	motion = InputEventMouseMotion.new()
 	motion.position = pos
 	Input.parse_input_event(motion)
@@ -2300,23 +2305,194 @@ func _test_journey_navigation() -> void:
 	click.pressed = false
 	Input.parse_input_event(click)
 	await get_tree().process_frame
-	check(game.phase == game.Phase.PACK and game.hud.visible, "a scrolled map button launches the correct duel")
+	check(game.phase == game.Phase.PACK and game.hud.visible, "a fitted map button launches its duel")
 	check(get_window().content_scale_aspect == Window.CONTENT_SCALE_ASPECT_KEEP, "duel restores its original viewport layout")
 	var sky_time: float = map.sky.elapsed
 	map.sky._process(15.0)
 	check(is_equal_approx(map.sky.elapsed, sky_time), "hidden map pauses its sky clock")
 	game.new_duel()
 	check(is_equal_approx(map.sky.elapsed, sky_time), "returning to the map retains its time of day")
+	# Every selectable stage must choose its own board, even after a school duel.
+	game.journey.completed.assign([0, 1, 2, 3, 4, 5, 6])
+	for index in [6, 3, 0, 1, 2, 4, 5]:
+		game.new_duel()
+		game.choose_stage(index)
+		var expected: String = ["forest", "forest", "forest", "town", "town", "town", "school"][index]
+		check(game.board_view.environment == expected, "stage %d selects %s tiles" % [index, expected])
+		var hearts: int = [3, 3, 3, 6, 6, 6, 10][index]
+		check(game.player.hp == hearts and game.enemy.hp == hearts
+			and game.player.max_hp == hearts and game.enemy.max_hp == hearts,
+			"stage %d gives both wizards %d full hearts" % [index, hearts])
+		game.choose_pack(0)
+		check(game.board_view.environment == expected, "stage %d keeps its terrain during preparation" % index)
+		if index in [0, 3, 6]:
+			_finish_enemy_preparation(game)
+			game.start_combat()
+			check(game.phase == game.Phase.COMBAT and game.board_view.environment == expected,
+				"%s terrain persists during combat" % expected)
+	game.new_duel()
+	game.choose_difficulty(Difficulty.APPRENTICE)
+	check(game.board_view.environment == Terrain.DEFAULT, "direct test duels restore the default forest terrain")
+	check(game.player.hp == Rules.WIZARD_HP and game.enemy.hp == Rules.WIZARD_HP,
+		"direct developer duels retain the default ten hearts")
+	game.new_duel()
 	get_window().size = Vector2i(390, 844)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	await get_tree().process_frame
-	check(map.content.custom_minimum_size.y > map.scroll.size.y, "portrait map keeps vertical scrolling")
-	check(map.scroll.scroll_vertical > 0, "rotating to portrait keeps the current island in view")
-	check(map.buttons[0].size.x * 390.0 / map.get_viewport_rect().size.x >= 44.0, "portrait menu target remains touch sized")
-	for index in map.STAGE_OFFSETS.size():
-		var target: Vector2 = map.buttons[index + 1].get_global_transform_with_canvas() * (map.buttons[index + 1].size * 0.5)
-		check(target.x >= 20 and target.x <= map.get_viewport_rect().size.x - 20,
-			"portrait encounter %d remains within the map width" % index)
+	_check_whole_map_visible(map, "portrait")
+	# A touch tap on the portrait map must use the same transformed hit target.
+	pos = map.buttons[0].get_global_transform_with_canvas() * (map.buttons[0].size * 0.5)
+	touch = InputEventScreenTouch.new()
+	touch.index = 0
+	touch.position = pos
+	touch.pressed = true
+	map._input(touch)
+	touch = touch.duplicate()
+	touch.pressed = false
+	map._input(touch)
+	check(game.phase == game.Phase.PACK, "portrait map opponents can be selected by touch")
 	game.free()
 	get_window().size = previous_size
+
+
+func _check_whole_map_visible(map: Node2D, orientation: String) -> void:
+	var viewport := map.get_viewport_rect()
+	for index in map.buttons.size():
+		check(viewport.encloses(map.buttons[index].get_global_rect()), "%s stage %d fits on screen" % [orientation, index])
+	# Includes treetops, tower roofs, cliffs and detached rock fragments.
+	var art_bounds := Rect2(-245, -185, 490, 475)
+	var island_bounds: Array[Rect2] = []
+	for index in map.islands.size():
+		var bounds: Rect2 = map.islands[index].get_global_transform_with_canvas() * art_bounds
+		island_bounds.append(bounds)
+		check(viewport.encloses(bounds), "%s island %d fits entirely on screen" % [orientation, index])
+	for first in island_bounds.size():
+		for second in range(first + 1, island_bounds.size()):
+			check(not island_bounds[first].intersects(island_bounds[second]),
+				"%s islands %d and %d never overlap" % [orientation, first, second])
+	check(map.bridges.size() == 2, "%s map has two continuous bridges" % orientation)
+	for index in map.bridges.size():
+		var bridge = map.bridges[index]
+		var start: Vector2 = map.islands[index].transform.affine_inverse() * bridge.from_point
+		var finish: Vector2 = map.islands[index + 1].transform.affine_inverse() * bridge.to_point
+		var shore := Rect2(-240, -96, 480, 192)
+		check(shore.has_point(start) and shore.has_point(finish),
+			"%s bridge %d joins the islands at their shores" % [orientation, index])
+
+
+func _test_journey_health() -> void:
+	var game = load("res://main.tscn").instantiate()
+	var progress_path := "user://journey_health_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
+	game.difficulty_progress_path = progress_path
+	add_child(game)
+	game.set_physics_process(false)
+	game.journey.completed.assign([0, 1, 2, 3, 4, 5, 6])
+	for index in [0, 3, 6, 0]:
+		game.new_duel()
+		game.choose_stage(index)
+		game.choose_pack(0)
+		var hearts: int = {0: 3, 3: 6, 6: 10}[index]
+		var lost: float = game.player.take_round_damage(1)
+		check(lost == 0.5 and game.player.hp == hearts - 0.5 and game.player.max_hp == hearts,
+			"%d-heart duels preserve half-heart damage and capacity" % hearts)
+		var previous: Array = game.hud._wizard_key(game.player)
+		game.player.max_hp += 1
+		check(previous != game.hud._wizard_key(game.player), "changing heart capacity invalidates the cached HUD")
+		game.player.max_hp = hearts
+		game.battle = Battle.new()
+		game.add_child(game.battle)
+		game._on_battle_ended({"winner": 0, "survivors": hearts * 2 + 2})
+		check(game.enemy.hp == 0 and game.last_damage == hearts,
+			"lethal damage is capped at %d remaining hearts" % hearts)
+		game._finish_round()
+		check(game.phase == game.Phase.OVER and index in game.journey.completed,
+			"a %d-heart duel ends and records the stage victory" % hearts)
+	game.free()
+	DirAccess.remove_absolute(progress_path)
+
+
+func _test_journey_discovery() -> void:
+	var game = load("res://main.tscn").instantiate()
+	var path := "user://discovery_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
+	game.difficulty_progress_path = path
+	add_child(game)
+	game.set_physics_process(false)
+	var map = game.map_screen
+	map.set_process(false)
+	check(map.discovered == [0] and map.buttons[0].visible,
+		"a new journey shows only the first encounter")
+	for index in range(1, 7):
+		check(not map.buttons[index].visible and map.visible_path_points(index) == 0,
+			"undiscovered stage %d has no opponent, lock or path" % index)
+	check(map.bridges[0].visible and map.bridges[1].visible,
+		"both complete bridges are visible from the beginning")
+	map._activate(1)
+	check(game.phase == game.Phase.DIFFICULTY, "hidden encounter cannot be activated")
+	game.choose_stage(0)
+	game.choose_pack(0)
+	_finish_test_difficulty_win(game)
+	game.new_duel()
+	check(game.journey.available(1) and not game.journey.available(2),
+		"winning reveals only the immediate successor in the linear journey")
+	check(map.revealing == 1 and not map.buttons[1].visible and map.visible_path_points(1) == 0,
+		"returning from victory starts a path before showing its opponent")
+	var ticks: Array[int] = []
+	map.path_point_appeared.connect(func(stage: int, point: int):
+		if stage == 1:
+			ticks.append(point))
+	Sfx._last_played.erase("ui/map_step")
+	map.advance_discovery(1.0)
+	var count: int = map.visible_path_points(1)
+	check(count > 0 and count < map._paths[1].size() and ticks.size() == count,
+		"the trace emits points progressively and in order")
+	check(not Sfx.enabled or Sfx._last_played.has("ui/map_step"), "new points play a muffled tap")
+	map._activate(1)
+	check(game.phase == game.Phase.DIFFICULTY, "the successor cannot launch during its reveal")
+	var elapsed: float = map.reveal_elapsed
+	game.show_menu()
+	map._process(2.0)
+	check(map.reveal_elapsed == elapsed, "leaving the map pauses its reveal")
+	game.show_map()
+	check(map.reveal_elapsed == elapsed and map.revealing == 1,
+		"returning resumes the same reveal without replaying its beginning")
+	map.advance_discovery(map.TRACE_DURATION - elapsed + 0.001)
+	check(map.buttons[1].visible and map.buttons[1].disabled,
+		"the opponent appears only when the path reaches it")
+	map.advance_discovery(0.5)
+	check(map.revealing == -1 and not map.buttons[1].disabled,
+		"the four-second reveal finishes with a playable opponent")
+	var old_ticks := ticks.size()
+	game.new_duel()
+	check(map.revealing == -1 and ticks.size() == old_ticks,
+		"known paths are not redrawn on later visits")
+	for index in range(1, 6):
+		game.choose_stage(index)
+		game.choose_pack(0)
+		_finish_test_difficulty_win(game)
+		game.new_duel()
+		check(map.revealing == index + 1, "stage %d discovers its successor" % index)
+		if index == 2:
+			var start: Vector2 = map.bridges[0].from_point
+			var finish: Vector2 = map.bridges[0].to_point
+			map.advance_discovery(2.0)
+			check(map.bridges[0].visible and map.bridges[1].visible
+				and map.bridges[0].from_point == start and map.bridges[0].to_point == finish
+				and not map.buttons[3].visible,
+				"points advance while both bridges stay complete and the next opponent remains hidden")
+		map.advance_discovery(map.REVEAL_DURATION + 0.1)
+		check(map.buttons[index + 1].visible and not map.buttons[index + 1].disabled,
+			"the next stage becomes available after its animation")
+	check(map.bridges[0].visible and map.bridges[1].visible,
+		"discovery never changes bridge visibility")
+	game._reset_difficulty_progress()
+	check(map.discovered == [0] and map.revealing == -1
+		and map.bridges[0].visible and map.bridges[1].visible,
+		"reset removes discoveries while keeping the complete bridges")
+	game.free()
+	DirAccess.remove_absolute(path)
+	var legacy := ConfigFile.new()
+	legacy.set_value("journey", "completed", [0, 2, 3, 5])
+	var journey := Journey.new()
+	journey.restore(legacy, Difficulty.APPRENTICE)
+	check(journey.completed == [0, 1, 2, 3, 4, 5] and journey.available(6),
+		"branching saves retain their furthest earned access on the linear route")
