@@ -219,8 +219,12 @@ defaults and can be revised.
   shapeshift, with their normal behaviour.
 - **Before frenzy (opponents 1–9):** combat keeps normal speed until the
   60-second timeout.
-- **Wand scroll (opponents 11–14):** the scroll appears with the apprentice; an
-  upgrade not yet introduced shows a padlock in its row and cannot be bought.
+- **Wand scroll (opponents 11–14):** the scroll appears with the apprentice. An
+  upgrade not yet introduced has no row at all (confirmed after playtest, 20
+  November 2026, replacing the former padlocked rows): the introduced upgrades
+  close up from the top, in their usual order, and the parchment unrolls only as
+  far as they need (one row with the apprentice, four from the transmutation
+  teacher onwards).
 - **Openings:** forest uses the learning armies and choices above. Later opponents
   start with the listed composition; the archmage draws from its deck. Outside
   forest, player cards contain only creatures already allowed.

@@ -337,8 +337,27 @@ static func offer_token_pos(i: int) -> Vector2:
 
 
 ## Row of wand upgrade i (Rules.WAND_UPGRADES order) on the unrolled scroll.
-static func upgrade_rect(i: int) -> Rect2:
-	return Rect2(Vector2(SCROLL_X.x + 8, UPGRADE_TOP + i * UPGRADE_STEP), UPGRADE_SIZE)
+## With `rules`, upgrades the journey has not introduced take no row: the
+## introduced ones close up from the top.
+static func upgrade_rect(i: int, rules: Ruleset = null) -> Rect2:
+	var row := i
+	if rules != null:
+		row = 0
+		for j in i:
+			if rules.allows_upgrade(Rules.WAND_UPGRADES[j]):
+				row += 1
+	return Rect2(Vector2(SCROLL_X.x + 8, UPGRADE_TOP + row * UPGRADE_STEP), UPGRADE_SIZE)
+
+
+## Rod-to-rod length of the unrolled scroll: just enough for the introduced
+## upgrades (SCROLL_LENGTH holds all four).
+static func scroll_length(rules: Ruleset = null) -> float:
+	var hidden := 0
+	if rules != null:
+		for id in Rules.WAND_UPGRADES:
+			if not rules.allows_upgrade(id):
+				hidden += 1
+	return SCROLL_LENGTH - hidden * UPGRADE_STEP
 
 
 static func pack_rect(i: int) -> Rect2:
@@ -415,7 +434,7 @@ func _shop_key() -> Array:
 	for i in Rules.SHOP_SIZE:
 		key.append(offer_rect(i).has_point(mouse))
 	for i in Rules.WAND_UPGRADES.size():
-		key.append(upgrade_rect(i).has_point(mouse))
+		key.append(upgrade_rect(i, game.ruleset).has_point(mouse))
 	key.append(Rules.FIGHT_CENTER.distance_to(mouse) < Rules.FIGHT_RADIUS)
 	key.append(Rules.SHOP_RECT.has_point(mouse))
 	if game.enemy_preparing:
@@ -910,14 +929,16 @@ func _draw_fight_glint(c: Vector2, r: float, sweep: float) -> void:
 ## Purple scroll of wand upgrades between two rods. The bottom rod travels down
 ## as it unrolls; each row appears once the parchment has passed it.
 func _draw_wand_scroll() -> void:
-	var length := SCROLL_LENGTH * smoothstep(0.0, 1.0, float(game.scroll_open))
+	var length := scroll_length(game.ruleset) * smoothstep(0.0, 1.0, float(game.scroll_open))
 	var bottom := SCROLL_TOP + length
 	if length > 0.0:
 		var body := Rect2(SCROLL_X.x, SCROLL_TOP, SCROLL_X.y - SCROLL_X.x, length)
 		_ci.draw_rect(body, Color(0.21, 0.12, 0.29))
 		_ci.draw_rect(body.grow_individual(-6, 0, -6, 0), Color(0.33, 0.22, 0.45), false, 1.5)
 	for i in Rules.WAND_UPGRADES.size():
-		var r := upgrade_rect(i)
+		if not game.ruleset.allows_upgrade(Rules.WAND_UPGRADES[i]):
+			continue # not yet introduced: no row at all
+		var r := upgrade_rect(i, game.ruleset)
 		if r.end.y + 6.0 <= bottom:
 			_draw_upgrade_row(Rules.WAND_UPGRADES[i], r)
 	_draw_scroll_rod(bottom)
@@ -940,7 +961,7 @@ func hovered_upgrade() -> int:
 		return -1
 	var mouse := get_global_mouse_position()
 	for i in Rules.WAND_UPGRADES.size():
-		if game.ruleset.allows_upgrade(Rules.WAND_UPGRADES[i]) and upgrade_rect(i).has_point(mouse):
+		if game.ruleset.allows_upgrade(Rules.WAND_UPGRADES[i]) and upgrade_rect(i, game.ruleset).has_point(mouse):
 			return i
 	return -1
 
@@ -958,7 +979,7 @@ func _draw_upgrade_tooltip() -> void:
 	if i < 0:
 		return
 	var id := Rules.WAND_UPGRADES[i]
-	var row := upgrade_rect(i)
+	var row := upgrade_rect(i, game.ruleset)
 	var card := Rect2(Vector2(SCROLL_X.x - 24 - TOOLTIP_SIZE.x, row.get_center().y - TOOLTIP_SIZE.y * 0.5), TOOLTIP_SIZE)
 	var tip := PackedVector2Array([Vector2(card.end.x - 1, row.get_center().y - 9), Vector2(row.position.x - 2, row.get_center().y),
 		Vector2(card.end.x - 1, row.get_center().y + 9)])
@@ -1037,12 +1058,6 @@ func _draw_wand_zap(p: Vector2, phase: float) -> void:
 ## charges), then the next level's price in coins or a check once maxed.
 func _draw_upgrade_row(id: String, r: Rect2) -> void:
 	var player: WizardState = game.player
-	if not player.rules.allows_upgrade(id):
-		# A page of the scroll not yet learned on the journey.
-		_ci.draw_rect(r, Color(0.16, 0.1, 0.22))
-		_ci.draw_rect(r, Color(0.35, 0.24, 0.48), false, 1.5)
-		Icons.padlock(_ci, r.get_center(), 0.0, 0.8, 0.7)
-		return
 	var maxed := player.upgrade_maxed(id)
 	var affordable: bool = game.phase == game.Phase.PREP and player.can_buy_upgrade(id)
 	var hovered := r.has_point(get_global_mouse_position()) and game.drag == null

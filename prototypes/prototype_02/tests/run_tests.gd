@@ -55,6 +55,7 @@ func _ready() -> void:
 	_test_rule_spotlight()
 	_test_learning_pause()
 	_test_merge_lesson_and_full_board()
+	_test_scroll_shows_introduced_upgrades()
 	_test_day_night_cycle()
 	_test_journey_health()
 	_test_journey_discovery()
@@ -2595,6 +2596,34 @@ func _test_journey_rules() -> void:
 	var hunter_player := WizardState.new(0)
 	hunter_player.rules = OpponentDB.ruleset(0)
 	check(not hunter_player.can_cast(), "the player has no wand before the druid")
+
+
+## The wand scroll holds only the upgrades the journey has introduced: no locked
+## rows, and the parchment is just long enough for them.
+func _test_scroll_shows_introduced_upgrades() -> void:
+	var full := Ruleset.new()
+	check(Hud.scroll_length(full) == Hud.SCROLL_LENGTH and Hud.upgrade_rect(3, full) == Hud.upgrade_rect(3),
+		"the complete rules keep the four-row scroll")
+	var apprentice := OpponentDB.ruleset(10)
+	check(Hud.scroll_length(apprentice) == Hud.SCROLL_LENGTH - 3 * Hud.UPGRADE_STEP,
+		"the apprentice's scroll holds a single row")
+	var caretaker := OpponentDB.ruleset(11)
+	var hex := Rules.WAND_UPGRADES.find("hex")
+	check(Hud.upgrade_rect(hex, caretaker) == Hud.upgrade_rect(1), "the long hex closes up under the fast recharge")
+	check(Hud.upgrade_rect(hex, caretaker).end.y <= Hud.SCROLL_TOP + Hud.scroll_length(caretaker),
+		"introduced rows fit the shortened scroll")
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.set_physics_process(false)
+	game.difficulty_progress_path = "user://scroll_rows_test_%d.cfg" % OS.get_process_id()
+	game.journey.completed.assign(range(Journey.stage_count()))
+	game.choose_stage(11)
+	game.choose_pack(0)
+	game.player.gold = 50
+	game._left_press(Hud.upgrade_rect(hex, game.ruleset).get_center())
+	check(game.player.upgrade_level("hex") == 1, "clicking the closed-up row buys the long hex")
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://scroll_rows_test_%d.cfg" % OS.get_process_id()))
 
 
 ## The thief demonstrates a merge until the player's first one; a full board

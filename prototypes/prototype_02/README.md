@@ -120,7 +120,9 @@ All confirmed rules and delegated defaults of the design note, notably:
   the screen, where hovering it still shows the creature card. Both stay away
   during the result and slide back when the next shop opens (0.45 s each way).
   The scroll then unrolls downward over 0.5 s, each upgrade row appearing as the
-  bottom rod passes it, and rolls back up as the column leaves.
+  bottom rod passes it, and rolls back up as the column leaves. In the journey
+  it holds only the upgrades already introduced (`Hud.upgrade_rect(i, rules)`,
+  `Hud.scroll_length(rules)`): no row for the others, and a shorter parchment.
 - A shop click buys onto the bench on mouse release. Dragging an offer instead
   buys directly onto a free board cell, free bench slot, or compatible merge
   recipient. Mouse-down only previews the offer. Invalid drops consume no gold

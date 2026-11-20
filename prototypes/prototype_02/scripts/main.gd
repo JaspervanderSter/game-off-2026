@@ -671,7 +671,7 @@ func _left_press(pos: Vector2) -> void:
 					return
 		Phase.PREP:
 			for i in Rules.WAND_UPGRADES.size():
-				if ruleset.any_upgrade() and Hud.upgrade_rect(i).has_point(pos):
+				if ruleset.allows_upgrade(Rules.WAND_UPGRADES[i]) and Hud.upgrade_rect(i, ruleset).has_point(pos):
 					var id := Rules.WAND_UPGRADES[i]
 					if player.buy_upgrade(id):
 						Sfx.play("ui/purchase_confirmed")
@@ -901,7 +901,7 @@ func _watch_rule_spotlight() -> void:
 		_spotlight(Hud.REROLL_RECT.get_center(), Vector2(Hud.REROLL_RECT.size.x * 0.56, 34))
 	elif rule.begins_with("upgrade_") and shop_shown and scroll_open >= 1.0:
 		var row := Rules.WAND_UPGRADES.find(rule.trim_prefix("upgrade_"))
-		_spotlight(Hud.upgrade_rect(row).get_center(), Vector2(Hud.UPGRADE_SIZE.x * 0.58, 32))
+		_spotlight(Hud.upgrade_rect(row, ruleset).get_center(), Vector2(Hud.UPGRADE_SIZE.x * 0.58, 32))
 	elif rule == Ruleset.MERGE and shop_shown:
 		var demo := merge_demo()
 		if not demo.is_empty():
