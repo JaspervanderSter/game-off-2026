@@ -28,8 +28,15 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 | Sell | Drag a creature onto the shop panel (refund = price) |
 | Start combat | Crossed-swords button (or Space) |
 | Toggle fullscreen | Alt+Enter |
+| Toggle performance counter | Shift+F8 (click the game first in a browser) |
 | Shapeshift | Left-click (or tap) any living creature during combat, friend or foe |
 | Inspect | Hover a creature: its three possible outcomes with their chances, plus stat bars. In combat, a reticle previews the cast: cyan blessing circle on your creatures, violet hex fangs on enemies, grey when no charge is ready or the target is immune |
+
+The optional performance counter updates four times per second. It shows FPS,
+the latest frame interval, and the longest frame interval since it was enabled
+(Peak, in milliseconds). Toggle it off and on to reset the peak; switching tabs
+can itself produce a large interval. It does no sampling while hidden and does
+not intercept mouse input.
 
 Reading the board: blue ring = yours, red ring = the AI's. The opponent's panel
 shows the hat of the chosen difficulty. Purple orbs = spell

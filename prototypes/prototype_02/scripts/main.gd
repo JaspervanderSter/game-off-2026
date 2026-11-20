@@ -59,6 +59,7 @@ var fx: FxLayer
 var hud: Hud
 var music: PhaseMusic
 var switch_flash: SwitchFlash
+var fps_counter: Control
 
 
 func _ready() -> void:
@@ -84,6 +85,8 @@ func _ready() -> void:
 	add_child(top)
 	switch_flash = SwitchFlash.new()
 	top.add_child(switch_flash)
+	fps_counter = preload("res://scripts/ui/fps_counter.gd").new()
+	top.add_child(fps_counter)
 	_load_difficulty_progress()
 	player_deck.load_state()
 	enemy_deck.load_state()
@@ -422,6 +425,10 @@ func _owned_at(pos: Vector2) -> OwnedCreature:
 
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	if event.keycode == KEY_F8 and event.shift_pressed:
+		fps_counter.visible = not fps_counter.visible
+		get_viewport().set_input_as_handled()
 		return
 	if event.keycode == KEY_P and event.ctrl_pressed and event.shift_pressed:
 		toggle_art_style()
