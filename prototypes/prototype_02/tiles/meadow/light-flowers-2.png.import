@@ -1,0 +1,14 @@
+[remap]
+
+importer="image"
+type="Image"
+uid="uid://dohytb28j4ono"
+path="res://.godot/imported/light-flowers-2.png-30d9b6e9c2225e23eb581fed2022e90b.image"
+
+[deps]
+
+source_file="res://tiles/meadow/light-flowers-2.png"
+dest_files=["res://.godot/imported/light-flowers-2.png-30d9b6e9c2225e23eb581fed2022e90b.image"]
+
+[params]
+

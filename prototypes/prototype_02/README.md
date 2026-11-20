@@ -249,6 +249,50 @@ interface icons stay vector in both styles. `res://tests/capture.tscn` takes
 the visual smoke screenshots in the pixel style; add `-- --vector-art` for the
 vector style.
 
+## Battlefield terrain (20 November 2026)
+
+The board is an outdoor field assembled cell by cell from whole-zone tiles: each
+tile shows one kind of ground, with no transition inside it. The terrain is
+scenery only and never affects the rules, so it stays quiet: an even light and
+dark grass checker, a few grass blades, and rarer tiles with clover or two tiny
+flowers. Details keep clear of the cell centre, where tokens stand, and of the
+tile edges. The enemy half is very slightly warmer than the player half, and a
+thin dark green line marks the middle.
+
+`scripts/ui/terrain.gd` (`Terrain`) defines the environments. Each one is a
+folder `tiles/<environment>/` of 72 x 72 PNG tiles named
+`<family>-<kind>-<n>.png`:
+
+- **family**: `light` on cells where x + y is even, `dark` on the others (the
+  checker). An environment without `dark` tiles uses its `light` tiles everywhere.
+- **kind**: how often the tile appears, from the relative weights in
+  `Terrain.ENVIRONMENTS` (meadow: grass 0.72, clover 0.2, flowers 0.08). The
+  commonest kind is the plain ground; touching cells never share a rarer kind.
+- **n**: interchangeable drawings of a kind. Touching cells of the same family
+  never repeat a drawing, as long as the plain kind has at least five drawings
+  per family.
+
+`Terrain.ENVIRONMENTS` also gives each environment its team tints (each half is
+multiplied by its tint, so the tiles hold the brightest colours) and its midline
+colour. The layout is seeded (`BoardView.terrain_seed`, fixed so the field looks
+the same every game) and composed once into a single image, drawn with one call
+per half. The tiles are imported as **Image** resources, not textures, so the
+board can be composed from their pixels; set this importer on hand-painted tiles.
+
+`tools/make_terrain_tiles.gd` draws the generated tiles (18 for the meadow: per
+family, five grass, two clover, two flowers). Every drawing is seeded, so a new
+run rewrites identical files. It needs a rendering window; import afterwards:
+
+```
+godot --path . --minimized --script res://tools/make_terrain_tiles.gd
+godot --path . --headless --import
+```
+
+To add an environment, add its recipe to the tool (or paint the tiles), drop
+them in `tiles/<environment>/` and add its entry to `Terrain.ENVIRONMENTS`. The
+tests check that every tile loads as a cell-sized image, that every kind has a
+weight, and the layout rules.
+
 ## Music
 
 `scripts/audio/phase_music.gd` plays the supplied looping OGG tracks in `music/`:
@@ -730,7 +774,7 @@ How the game keeps frames cheap:
   `godot --headless --path . --script res://tools/make_shapes_atlas.gd`. The tests
   fail while the file and the code differ.
 - **Static and slow-changing layers redraw only on change.** The table background
-  is drawn once; the board squares sit in a child layer drawn once; the tokens and
+  is drawn once; the board terrain sits in a child layer drawn once; the tokens and
   bench (`BoardView`), the side panels and the shop column (`Hud` layers) redraw
   only when the values they show change (their `_redraw_key`, `_layer_key`). The
   round frieze, phase screens, hover card, rewards, combat units and effects still

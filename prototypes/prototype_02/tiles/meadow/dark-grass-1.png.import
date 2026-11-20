@@ -1,0 +1,14 @@
+[remap]
+
+importer="image"
+type="Image"
+uid="uid://bnjd1tq8rldjj"
+path="res://.godot/imported/dark-grass-1.png-a757edb695ebd2b1e42b1fe3ae7d4ae9.image"
+
+[deps]
+
+source_file="res://tiles/meadow/dark-grass-1.png"
+dest_files=["res://.godot/imported/dark-grass-1.png-a757edb695ebd2b1e42b1fe3ae7d4ae9.image"]
+
+[params]
+

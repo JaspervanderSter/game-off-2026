@@ -20,6 +20,7 @@ func _ready() -> void:
 	SoundSet.apply()
 	_test_sound_set()
 	_test_shape_atlas()
+	_test_terrain()
 	_test_network()
 	_test_charges()
 	_test_transformation_rules()
@@ -83,6 +84,56 @@ func _test_shape_atlas() -> void:
 	for i in range(3, a.size(), 4):
 		worst = maxi(worst, absi(a[i] - b[i]))
 	check(worst <= 1, "shape atlas file matches Shapes.build_image (max alpha difference %d)" % worst)
+
+
+## Every environment's tiles load as cell-sized images and compose a board in
+## which touching cells of a family never repeat a drawing or a rare detail.
+func _test_terrain() -> void:
+	for environment: String in Terrain.ENVIRONMENTS:
+		var set := Terrain.tiles(environment)
+		check(set.has("light"), "%s has light tiles" % environment)
+		var plain := ""
+		for family: String in set:
+			for kind: String in set[family]:
+				check(Terrain.ENVIRONMENTS[environment].kinds.has(kind), "%s tile kind %s has a weight" % [environment, kind])
+				for path: String in set[family][kind]:
+					var image = load(path)
+					check(image is Image, "%s is imported as an Image" % path)
+					if image is Image:
+						check(image.get_size() == Vector2i(Rules.CELL, Rules.CELL), "%s is one cell in size" % path)
+		var grid := Terrain.layout(environment, 7)
+		check(grid == Terrain.layout(environment, 7), "%s layout is deterministic" % environment)
+		check(grid != Terrain.layout(environment, 8), "%s layout changes with the seed" % environment)
+		check(grid.size() == Rules.ROWS and grid[0].size() == Rules.COLS, "%s layout covers the board" % environment)
+		var repeats := 0
+		var rare_neighbours := 0
+		var kinds := {}
+		for y in Rules.ROWS:
+			for x in Rules.COLS:
+				var path: String = grid[y][x]
+				var family := "light" if (x + y) % 2 == 0 or not set.has("dark") else "dark"
+				check(path.get_file().begins_with(family + "-"), "%s cell %d,%d follows the checker" % [environment, x, y])
+				var kind := path.get_file().split("-")[1]
+				kinds[kind] = kinds.get(kind, 0) + 1
+				for n: Vector2i in [Vector2i(x + 1, y + 1), Vector2i(x - 1, y + 1), Vector2i(x + 2, y), Vector2i(x, y + 2)]:
+					if n.x >= 0 and n.x < Rules.COLS and n.y < Rules.ROWS and grid[n.y][n.x] == path:
+						repeats += 1
+				for n: Vector2i in [Vector2i(x + 1, y), Vector2i(x, y + 1), Vector2i(x + 1, y + 1), Vector2i(x - 1, y + 1)]:
+					if n.x >= 0 and n.x < Rules.COLS and n.y < Rules.ROWS:
+						var other: String = grid[n.y][n.x].get_file().split("-")[1]
+						if other == kind and kind != "grass":
+							rare_neighbours += 1
+		check(repeats == 0, "%s never repeats a drawing on touching cells (%d)" % [environment, repeats])
+		check(rare_neighbours == 0, "%s never puts rare details side by side (%d)" % [environment, rare_neighbours])
+		if environment == "meadow":
+			check(kinds.get("grass", 0) > Rules.ROWS * Rules.COLS / 2 and kinds.has("clover"),
+				"the meadow is mostly plain grass with some clover %s" % kinds)
+		var board := Terrain.board_image(environment, 7)
+		check(board.get_size() == Vector2i(Rules.BOARD_SIZE), "%s board image has the board size" % environment)
+		check(board.get_pixel(1, 1).a == 1.0 and board.get_pixelv(Vector2i(Rules.BOARD_SIZE) - Vector2i.ONE).a == 1.0,
+			"%s board image is fully covered" % environment)
+	for tint: Color in Terrain.ENVIRONMENTS.meadow.tints:
+		check(tint.r <= 1.0 and tint.g <= 1.0 and tint.b <= 1.0, "terrain tints only darken")
 
 
 func _test_art_style() -> void:

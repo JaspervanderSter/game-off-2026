@@ -3,14 +3,17 @@ extends Node2D
 ## Draws the game board, the preparation tokens and the player's reserve.
 ## Positioned at Rules.BOARD_POS; combat units are drawn by the Battle node.
 ##
-## The frame and squares never change: a child layer draws them once, behind
-## this node. This node redraws only when what it shows changes (see
+## The frame and terrain never change: a child layer draws them once, behind
+## this node. The terrain is composed from the environment's tiles (Terrain). This node redraws only when what it shows changes (see
 ## _redraw_key), since every redraw rebuilds its draw commands.
 
 const CELL := Rules.CELL
 
 var game # main.gd
+var environment := Terrain.DEFAULT
+var terrain_seed := 7 # same layout every game: the field stays calm and familiar
 var _key := []
+var _terrain: Texture2D
 
 
 func _ready() -> void:
@@ -71,13 +74,9 @@ func _draw_board(ci: CanvasItem) -> void:
 	var frame := Rect2(Vector2(-10, -10), Rules.BOARD_SIZE + Vector2(20, 20))
 	ci.draw_rect(frame, Color(0.35, 0.22, 0.14))
 	ci.draw_rect(frame.grow(-4), Color(0.45, 0.3, 0.18))
-	for y in Rules.ROWS:
-		for x in Rules.COLS:
-			var light := (x + y) % 2 == 0
-			var base := Color(0.86, 0.8, 0.66) if light else Color(0.78, 0.71, 0.56)
-			var tint := Icons.team_color(0 if y >= 3 else 1)
-			ci.draw_rect(Rect2(x * CELL, y * CELL, CELL, CELL), base.lerp(tint, 0.1))
-	Shapes.line(ci, Vector2(0, 3 * CELL), Vector2(Rules.BOARD_SIZE.x, 3 * CELL), Color(0.3, 0.2, 0.12, 0.6), 3.0)
+	if _terrain == null:
+		_terrain = ImageTexture.create_from_image(Terrain.board_image(environment, terrain_seed))
+	Terrain.draw_board(ci, _terrain, environment)
 
 
 ## Highlights the legal drop cell while dragging.
