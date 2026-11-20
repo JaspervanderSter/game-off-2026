@@ -5,7 +5,12 @@ extends RefCounted
 var team: int
 var hp := float(Rules.WIZARD_HP)
 var loss_gold_progress := 0.0 # half-heart compensation carries across rounds
-var shift_recharge_upgraded := false
+var upgrades := {} # wand upgrade id -> purchased level (see Rules.WAND_UPGRADES)
+var shift_recharge_upgraded: bool:
+	get:
+		return upgrade_level("recharge") > 0
+	set(value):
+		upgrades["recharge"] = 1 if value else 0
 var ai_level := Difficulty.ARCHMAGE # opponent strength; the player ignores it
 var ai_rerolls := 0
 var ai_whims := {} # form id -> taste drawn once per duel by whimsical AI levels
@@ -62,20 +67,45 @@ func harvest() -> Array[Dictionary]:
 	return yields
 
 
-func can_upgrade_shift_recharge() -> bool:
-	return not shift_recharge_upgraded and gold >= Rules.SHIFT_RECHARGE_COST
+func upgrade_level(id: String) -> int:
+	return upgrades.get(id, 0)
 
 
-func upgrade_shift_recharge() -> bool:
-	if not can_upgrade_shift_recharge():
+func upgrade_maxed(id: String) -> bool:
+	return upgrade_level(id) >= Rules.WAND_UPGRADE_COSTS[id].size()
+
+
+## Gold cost of the next level of a wand upgrade; -1 once it is maxed.
+func upgrade_cost(id: String) -> int:
+	return -1 if upgrade_maxed(id) else Rules.WAND_UPGRADE_COSTS[id][upgrade_level(id)]
+
+
+func can_buy_upgrade(id: String) -> bool:
+	return not upgrade_maxed(id) and gold >= upgrade_cost(id)
+
+
+func buy_upgrade(id: String) -> bool:
+	if not can_buy_upgrade(id):
 		return false
-	gold -= Rules.SHIFT_RECHARGE_COST
-	shift_recharge_upgraded = true
+	gold -= upgrade_cost(id)
+	upgrades[id] = upgrade_level(id) + 1
 	return true
 
 
 func shift_recharge_time() -> float:
 	return Rules.UPGRADED_RECHARGE_TIME if shift_recharge_upgraded else Rules.RECHARGE_TIME
+
+
+func start_charges() -> int:
+	return mini(Rules.START_CHARGES + upgrade_level("charges"), Rules.MAX_CHARGES)
+
+
+func shift_heal() -> float:
+	return Rules.UPGRADED_SHIFT_HEAL if upgrade_level("heal") > 0 else Rules.SHIFT_HEAL
+
+
+func hex_stun() -> float:
+	return Rules.UPGRADED_ENEMY_SHIFT_STUN if upgrade_level("hex") > 0 else Rules.ENEMY_SHIFT_STUN
 
 
 func fielded() -> Array[OwnedCreature]:

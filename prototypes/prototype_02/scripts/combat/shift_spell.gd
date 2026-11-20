@@ -1,8 +1,9 @@
 class_name ShiftSpell
 extends RefCounted
 ## Charges of one wizard's shapeshift spell during a combat.
-## One charge at start, three at most. Default recharge is three seconds;
-## the purchased upgrade reduces it to 2.4. Casting never resets the timer.
+## One charge at start (more with the charges upgrade), three at most. Default
+## recharge is three seconds; the recharge upgrade reduces it to 2.4. Casting
+## never resets the timer.
 
 var charges := Rules.START_CHARGES
 var recharge := 0.0 # seconds accumulated toward the next charge

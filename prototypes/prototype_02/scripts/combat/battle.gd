@@ -17,6 +17,9 @@ var units: Array[Unit] = []
 var projectiles: Array[Dictionary] = []
 var blizzards: Array[Dictionary] = []
 var spells: Array[ShiftSpell] = [ShiftSpell.new(), ShiftSpell.new()]
+# Wand upgrade effects per casting team, copied from WizardState in setup().
+var shift_heal: Array[float] = [Rules.SHIFT_HEAL, Rules.SHIFT_HEAL]
+var hex_stun: Array[float] = [Rules.ENEMY_SHIFT_STUN, Rules.ENEMY_SHIFT_STUN]
 var ai_casting: Array[bool] = [false, true]
 var ai_profiles: Array[Dictionary] = [EnemyAI.DEFAULT_PROFILE, EnemyAI.DEFAULT_PROFILE]
 # Casting difficulty per team, copied from WizardState.ai_level in setup().
@@ -59,6 +62,9 @@ func setup(teams: Array[WizardState], seed_value: int = -1) -> void:
 		ai_levels[state.team] = state.ai_level
 		ai_profiles[state.team] = EnemyAI.profile_for(state.ai_level)
 		spells[state.team].recharge_time = state.shift_recharge_time()
+		spells[state.team].charges = state.start_charges()
+		shift_heal[state.team] = state.shift_heal()
+		hex_stun[state.team] = state.hex_stun()
 		for c in state.fielded():
 			spawn(state.team, c.form_id, Rules.cell_center(c.cell), c.uid, c.stars, c.merge_copies)
 	for t in 2:
@@ -142,7 +148,7 @@ func cast(team: int, u: Unit) -> bool:
 		return false
 	var from := u.form_id
 	spells[team].consume()
-	u.transform_to(CreatureDB.roll_outcome(from, rng), u.team == team)
+	u.transform_to(CreatureDB.roll_outcome(from, rng), u.team == team, shift_heal[team], hex_stun[team])
 	casts[team] += 1
 	unit_transformed.emit(u, team, from)
 	return true

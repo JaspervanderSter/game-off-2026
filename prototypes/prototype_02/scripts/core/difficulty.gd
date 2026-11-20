@@ -15,7 +15,7 @@ const SPARRING := 3
 ## Shop keys:
 ##   shop_noise     random bonus added to each offer score (archmage: tie-break only)
 ##   max_rerolls    rerolls per preparation (-1 = no difficulty cap)
-##   upgrade_gold   gold needed besides a purchase to buy the recharge upgrade
+##   upgrade_gold   gold needed besides a purchase to buy a wand upgrade
 ##                  (-1 = never buys it, absent = use the strategy's setting)
 ##   replace        sells its weakest fielded creature for a better offer
 ##   lock           locks valuable unaffordable duplicates for the next round

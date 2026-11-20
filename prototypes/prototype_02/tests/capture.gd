@@ -64,7 +64,11 @@ func _ready() -> void:
 	game._left_release(Hud.offer_rect(0).get_center())
 	game._right_press(Hud.offer_rect(1).get_center())
 	game._left_press(Hud.REROLL_RECT.get_center())
-	await _frames(5)
+	game.shop_out = 0.0
+	game.scroll_open = 0.0
+	await _seconds(game.SCROLL_UNROLL_TIME * 0.5) # wand scroll halfway unrolled
+	await _shot("02c_scroll_unrolling")
+	await _seconds(game.SCROLL_UNROLL_TIME)
 	game.hover_info = {}
 	await _shot("02_prep")
 	if "--merges-only" in OS.get_cmdline_user_args():
@@ -130,7 +134,7 @@ func _capture_balance() -> void:
 	get_viewport().warp_mouse(Vector2(340, 650))
 	await _frames(3)
 	await _shot("20_half_hearts_and_upgrade_offer")
-	game._left_press(Hud.SHIFT_UPGRADE_RECT.get_center())
+	game._left_press(Hud.upgrade_rect(0).get_center())
 	await _shot("21_recharge_upgrade_owned")
 	game.start_combat()
 	for u in game.battle.living(0):

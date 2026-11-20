@@ -20,9 +20,21 @@ const UNLOCK_CLICK := 0.48
 const UNLOCK_OPEN_TIME := 0.24
 const UNLOCK_DURATION := 1.40
 const VictoryFx := preload("res://scripts/ui/victory_fx.gd")
-const OFFER_SIZE := Vector2(288, 112)
-const REROLL_RECT := Rect2(1000, 458, 224, 42)
-const SHIFT_UPGRADE_RECT := Rect2(976, 636, 272, 54)
+# Shop column: a merchant stall for the creature offers and reroll (Rules.SHOP_RECT),
+# then a purple scroll of wand upgrades, then the fight button (Rules.FIGHT_CENTER).
+const STALL_RECT := Rect2(956, 62, 312, 308)
+const AWNING_TOP := 42.0
+const AWNING_STRIPES := 8
+const AWNING_SCALLOP := 9.0
+const OFFER_SIZE := Vector2(288, 76)
+const OFFER_STEP := 82.0
+const REROLL_RECT := Rect2(968, 322, 288, 36)
+const SCROLL_TOP := 386.0 # centre of the top rod
+const SCROLL_LENGTH := 198.0 # rod-to-rod distance once unrolled
+const SCROLL_X := Vector2(976, 1252) # parchment left and right edges, clear of the field pips
+const UPGRADE_TOP := 400.0
+const UPGRADE_SIZE := Vector2(260, 38)
+const UPGRADE_STEP := 44.0
 const PACK_TOP := 222.0
 const PACK_CARD_SIZE := Vector2i(176, 168)
 const DIFFICULTY_CARD_SIZE := Vector2i(168, 260)
@@ -298,7 +310,12 @@ static func gold_pos(team: int) -> Vector2:
 # --- Geometry used for hit tests -------------------------------------------------
 
 static func offer_rect(i: int) -> Rect2:
-	return Rect2(Rules.SHOP_RECT.position + Vector2(0, i * 124), OFFER_SIZE)
+	return Rect2(Rules.SHOP_RECT.position + Vector2(0, i * OFFER_STEP), OFFER_SIZE)
+
+
+## Row of wand upgrade i (Rules.WAND_UPGRADES order) on the unrolled scroll.
+static func upgrade_rect(i: int) -> Rect2:
+	return Rect2(Vector2(SCROLL_X.x + 8, UPGRADE_TOP + i * UPGRADE_STEP), UPGRADE_SIZE)
 
 
 static func pack_rect(i: int) -> Rect2:
@@ -356,7 +373,8 @@ func _layer_key(layer_name: String) -> Variant:
 
 
 func _wizard_key(state: WizardState) -> Array:
-	var key := [displayed_hp(state), displayed_gold(state), _wizard_pulse(state.team), state.harvest_total()]
+	var key := [displayed_hp(state), displayed_gold(state), _wizard_pulse(state.team), state.harvest_total(),
+		state.start_charges()]
 	if game.battle != null:
 		var spell: ShiftSpell = game.battle.spells[state.team]
 		key.append_array([spell.charges, spell.progress()])
@@ -367,14 +385,16 @@ func _shop_key() -> Array:
 	var player: WizardState = game.player
 	var key := [game.shop_out, game.phase, player.gold, player.offers.duplicate(), player.locked.duplicate(),
 		game.drag != null, game.shop_drag_index, player.can_reroll(), player.field_count(), game.enemy_preparing,
-		player.shift_recharge_upgraded, player.can_upgrade_shift_recharge()]
+		player.upgrades.duplicate(), game.scroll_open]
 	if smoothstep(0.0, 1.0, float(game.shop_out)) >= 1.0:
 		return key # off screen: nothing else shows
 	var mouse := get_global_mouse_position()
 	for i in Rules.SHOP_SIZE:
 		key.append(offer_rect(i).has_point(mouse))
+	for i in Rules.WAND_UPGRADES.size():
+		key.append(upgrade_rect(i).has_point(mouse))
 	key.append(Rules.FIGHT_CENTER.distance_to(mouse) < Rules.FIGHT_RADIUS)
-	key.append(Rect2(Rules.SHOP_RECT.position, Vector2(OFFER_SIZE.x, 124 * Rules.SHOP_SIZE - 12)).has_point(mouse))
+	key.append(Rules.SHOP_RECT.has_point(mouse))
 	if game.enemy_preparing:
 		key.append(Time.get_ticks_msec()) # the spinner around the fight button turns
 	return key
@@ -485,13 +505,13 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 	for i in Rules.WIZARD_HP:
 		var p := block.position + Vector2(92 + i * 20.5, 36)
 		Icons.wizard_heart(_ci, p, 9, clampf(shown_hp - i, 0.0, 1.0))
-	# Spell charges (live in combat; the starting charge otherwise).
+	# Spell charges (live in combat; the starting charges otherwise).
 	var spell: ShiftSpell = null
 	if game.battle != null:
 		spell = game.battle.spells[team]
 	for i in Rules.MAX_CHARGES:
 		var p := block.position + Vector2(100 + i * 34, 84)
-		var count: int = spell.charges if spell else Rules.START_CHARGES
+		var count: int = spell.charges if spell else state.start_charges()
 		var filled: bool = count > i
 		var prog := 0.0
 		if spell and i == spell.charges:
@@ -657,17 +677,40 @@ func _dashed_ring(p: Vector2, radius: float, color: Color) -> void:
 		Shapes.arc(_ci, p, radius, a, a + TAU / DASHES * 0.55, 4, color, 2.0, true)
 
 
-## Offers, reroll, fight button and spell upgrade slide together off the right
-## edge when the fight begins and back in when the next shop opens.
+## The creature stall, the wand scroll and the fight button slide together off
+## the right edge when the fight begins and back in when the next shop opens.
 func _draw_shop_column() -> void:
 	var k := smoothstep(0.0, 1.0, float(game.shop_out))
 	if k >= 1.0:
 		return
 	Shapes.set_transform(_ci, Vector2(SHOP_SLIDE * k, 0), 0.0, Vector2.ONE)
+	_draw_stall()
 	_draw_shop()
+	_draw_wand_scroll()
 	_draw_fight_button()
-	_draw_shift_upgrade()
 	Shapes.set_transform(_ci, Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Merchant stall around the creature offers: wooden frame under a striped,
+## scalloped awning.
+func _draw_stall() -> void:
+	_ci.draw_rect(STALL_RECT, Color(0.17, 0.115, 0.08))
+	_ci.draw_rect(STALL_RECT, Color(0.54, 0.38, 0.22), false, 5.0)
+	_ci.draw_rect(STALL_RECT.grow(-5), Color(0.29, 0.19, 0.125), false, 2.0)
+	var left := STALL_RECT.position.x - 6
+	var width := STALL_RECT.size.x + 12
+	var bottom := STALL_RECT.position.y
+	var stripe := width / AWNING_STRIPES
+	for i in AWNING_STRIPES:
+		var col := Color(0.79, 0.64, 0.29) if i % 2 else Color(0.48, 0.29, 0.16)
+		var x := left + i * stripe
+		_ci.draw_rect(Rect2(x, AWNING_TOP, stripe, bottom - AWNING_TOP), col)
+		var scallop := PackedVector2Array()
+		for j in 9:
+			var a := PI * j / 8.0
+			scallop.append(Vector2(x + stripe * 0.5 + cos(a) * stripe * 0.5, bottom + sin(a) * AWNING_SCALLOP))
+		_ci.draw_colored_polygon(scallop, col)
+	Shapes.line(_ci, Vector2(left - 4, AWNING_TOP), Vector2(left + width + 4, AWNING_TOP), Color(0.35, 0.23, 0.13), 6.0)
 
 
 func _draw_shop() -> void:
@@ -683,24 +726,24 @@ func _draw_shop() -> void:
 		# Shown read-only during the fight: no purchase highlight.
 		var hovered: bool = r.has_point(get_global_mouse_position()) and not selling and game.phase == game.Phase.PREP
 		_panel(r, Color(0.2, 0.14, 0.1) if hovered and affordable else Color(0.14, 0.1, 0.08))
-		Icons.token(_ci, id, r.position + Vector2(60, 56), 38, 0, hovered and affordable)
+		Icons.token(_ci, id, r.position + Vector2(48, 38), 30, 0, hovered and affordable)
 		var price: int = CreatureDB.get_form(id).price
 		for j in price:
-			Icons.coin(_ci, r.position + Vector2(140 + j * 36, 56), 14)
+			Icons.coin(_ci, r.position + Vector2(112 + j * 32, 38), 13)
 		if not affordable:
 			_ci.draw_rect(r, Color(0, 0, 0, 0.55))
 		if game.player.locked[i]:
 			_ci.draw_rect(r.grow(-2), Icons.GOLD, false, 3.0)
-			Icons.padlock(_ci, r.position + Vector2(264, 22))
+			Icons.padlock(_ci, r.position + Vector2(266, 19))
 	var reroll_ok: bool = game.player.can_reroll()
 	_panel(REROLL_RECT, Color(0.23, 0.18, 0.12) if reroll_ok else Color(0.1, 0.09, 0.08))
-	Icons.restart(_ci, REROLL_RECT.position + Vector2(30, 21), 12, Icons.GOLD if reroll_ok else Color.DIM_GRAY)
-	Icons.coin(_ci, REROLL_RECT.position + Vector2(116, 21), 11)
-	_ci.draw_string(font, REROLL_RECT.position + Vector2(136, 28), str(Rules.REROLL_COST), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Icons.GOLD)
+	Icons.restart(_ci, REROLL_RECT.position + Vector2(30, 18), 11, Icons.GOLD if reroll_ok else Color.DIM_GRAY)
+	Icons.coin(_ci, REROLL_RECT.position + Vector2(116, 18), 10)
+	_ci.draw_string(font, REROLL_RECT.position + Vector2(134, 25), str(Rules.REROLL_COST), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Icons.GOLD)
 	if not reroll_ok:
 		_ci.draw_rect(REROLL_RECT, Color(0, 0, 0, 0.35))
 	if selling:
-		var r := Rect2(Rules.SHOP_RECT.position, Vector2(OFFER_SIZE.x, 124 * Rules.SHOP_SIZE - 12))
+		var r := Rules.SHOP_RECT
 		var over := r.has_point(get_global_mouse_position())
 		_ci.draw_rect(r, Color(0.9, 0.7, 0.1, 0.35 if over else 0.18))
 		_ci.draw_rect(r, Icons.GOLD, false, 3.0)
@@ -716,35 +759,66 @@ func _draw_fight_button() -> void:
 		base = base.lightened(0.2)
 	Shapes.circle(_ci, Rules.FIGHT_CENTER, Rules.FIGHT_RADIUS, base)
 	Shapes.arc(_ci, Rules.FIGHT_CENTER, Rules.FIGHT_RADIUS, 0, TAU, 40, Icons.GOLD if ok else Color(0.4, 0.35, 0.3), 4.0, true)
-	Icons.swords(_ci, Rules.FIGHT_CENTER, 30, Color(0.95, 0.92, 0.85) if ok else Color(0.5, 0.45, 0.4))
+	Icons.swords(_ci, Rules.FIGHT_CENTER, Rules.FIGHT_RADIUS * 0.52, Color(0.95, 0.92, 0.85) if ok else Color(0.5, 0.45, 0.4))
 	if game.enemy_preparing:
 		var t := Time.get_ticks_msec() / 1000.0
 		Shapes.arc(_ci, Rules.FIGHT_CENTER, Rules.FIGHT_RADIUS + 8, t * 3, t * 3 + PI * 1.4, 32, Icons.GOLD, 3, true)
 
 
-func _draw_shift_upgrade() -> void:
-	var owned: bool = game.player.shift_recharge_upgraded
-	var available: bool = game.phase == game.Phase.PREP and game.player.can_upgrade_shift_recharge()
-	var fill := Color(0.18, 0.11, 0.24)
-	if owned:
-		fill = Color(0.12, 0.23, 0.16)
-	elif available:
-		fill = Color(0.35, 0.19, 0.48)
-	_panel(SHIFT_UPGRADE_RECT, fill)
-	if available:
-		_ci.draw_rect(SHIFT_UPGRADE_RECT, Icons.GOLD, false, 3.0)
-	var p := SHIFT_UPGRADE_RECT.position
-	Icons.wand(_ci, p + Vector2(28, 27), 16)
-	Icons.restart(_ci, p + Vector2(67, 27), 12, Icons.MAGIC.lightened(0.4) if available else Icons.MAGIC)
-	if owned:
-		var check := p + Vector2(175, 27)
+## Purple scroll of wand upgrades between two rods. The bottom rod travels down
+## as it unrolls; each row appears once the parchment has passed it.
+func _draw_wand_scroll() -> void:
+	var length := SCROLL_LENGTH * smoothstep(0.0, 1.0, float(game.scroll_open))
+	var bottom := SCROLL_TOP + length
+	if length > 0.0:
+		var body := Rect2(SCROLL_X.x, SCROLL_TOP, SCROLL_X.y - SCROLL_X.x, length)
+		_ci.draw_rect(body, Color(0.21, 0.12, 0.29))
+		_ci.draw_rect(body.grow_individual(-6, 0, -6, 0), Color(0.33, 0.22, 0.45), false, 1.5)
+	for i in Rules.WAND_UPGRADES.size():
+		var r := upgrade_rect(i)
+		if r.end.y + 6.0 <= bottom:
+			_draw_upgrade_row(Rules.WAND_UPGRADES[i], r)
+	_draw_scroll_rod(bottom)
+	_draw_scroll_rod(SCROLL_TOP)
+
+
+func _draw_scroll_rod(y: float) -> void:
+	var wood := Color(0.36, 0.23, 0.13)
+	_ci.draw_rect(Rect2(SCROLL_X.x - 8, y - 8, SCROLL_X.y - SCROLL_X.x + 16, 16), wood)
+	_ci.draw_rect(Rect2(SCROLL_X.x - 4, y - 7, SCROLL_X.y - SCROLL_X.x + 8, 14), Color(0.45, 0.29, 0.62))
+	Shapes.line(_ci, Vector2(SCROLL_X.x - 2, y - 3), Vector2(SCROLL_X.y + 2, y - 3), Color(0.62, 0.47, 0.8), 2.0)
+	for x in [SCROLL_X.x - 10, SCROLL_X.y + 10]:
+		Shapes.circle(_ci, Vector2(x, y), 8, Color(0.75, 0.55, 0.1))
+		Shapes.circle(_ci, Vector2(x, y), 6, Icons.GOLD)
+
+
+## One wand upgrade: its icon, its starting-charge pips for the charges
+## upgrade, then the next level's price in coins or a check once maxed.
+func _draw_upgrade_row(id: String, r: Rect2) -> void:
+	var player: WizardState = game.player
+	var maxed := player.upgrade_maxed(id)
+	var affordable: bool = game.phase == game.Phase.PREP and player.can_buy_upgrade(id)
+	var hovered := r.has_point(get_global_mouse_position()) and game.drag == null
+	var fill := Color(0.11, 0.23, 0.15) if maxed else Color(0.29, 0.16, 0.4)
+	if hovered and affordable:
+		fill = fill.lightened(0.12)
+	_ci.draw_rect(r, fill)
+	_ci.draw_rect(r, Icons.GOLD if affordable else Color(0.48, 0.31, 0.66), false, 2.5 if affordable else 1.5)
+	var mid := r.position.y + r.size.y * 0.5
+	Icons.wand_upgrade(_ci, id, Vector2(r.position.x + 26, mid), 13)
+	if id == "charges":
+		for k in Rules.MAX_CHARGES:
+			Icons.charge_orb(_ci, Vector2(r.position.x + 60 + k * 20, mid), 7, k < player.start_charges())
+	if maxed:
+		var check := Vector2(r.end.x - 30, mid)
 		Shapes.line(_ci, check + Vector2(-10, 0), check + Vector2(-2, 8), Color(0.5, 1, 0.65), 3, true)
 		Shapes.line(_ci, check + Vector2(-2, 8), check + Vector2(13, -10), Color(0.5, 1, 0.65), 3, true)
-	else:
-		for i in Rules.SHIFT_RECHARGE_COST:
-			Icons.coin(_ci, p + Vector2(120 + i * 31, 27), 11)
-	if not owned and not available:
-		_ci.draw_rect(SHIFT_UPGRADE_RECT, Color(0, 0, 0, 0.4))
+		return
+	var cost := player.upgrade_cost(id)
+	for j in cost:
+		Icons.coin(_ci, Vector2(r.end.x - 18 - (cost - 1 - j) * 19, mid), 8)
+	if not affordable:
+		_ci.draw_rect(r, Color(0, 0, 0, 0.45))
 
 
 func _draw_enemy_preparation() -> void:

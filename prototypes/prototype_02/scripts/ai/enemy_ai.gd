@@ -46,6 +46,9 @@ const ARCHMAGE_PROFILE := {
 	"low_health_bonus": 0.12, "stun_value": 0.3, "interrupt_value": 1.1,
 	"hex_level_reset": true,
 }
+# Wand upgrades the AI saves for, first unmaxed one first: faster recharge, then
+# both starting charges, then the longer hex and the stronger heal.
+const UPGRADE_ORDER: Array[String] = ["recharge", "charges", "hex", "heal"]
 
 
 ## Strategy of a difficulty level. Easier levels keep DEFAULT_PROFILE and decide
@@ -205,12 +208,15 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 		if score > best_score:
 			best_score = score
 			best = i
-	# One permanent investment, paid from the same gold as the player's.
+	# Permanent wand investments, paid from the same gold as the player's, one
+	# level at a time in UPGRADE_ORDER.
 	var upgrade_gold: int = difficulty.get("upgrade_gold", profile.upgrade_gold)
 	var upgrade_ok: bool = upgrade_gold >= 0 and (best < 0 or state.gold >= upgrade_gold)
-	if upgrade_ok and state.field_count() >= profile.upgrade_field and state.can_upgrade_shift_recharge():
-		state.upgrade_shift_recharge()
-		return {"kind": "upgrade", "cost": Rules.SHIFT_RECHARGE_COST}
+	var upgrade := next_upgrade(state)
+	if upgrade_ok and state.field_count() >= profile.upgrade_field and upgrade != "" and state.can_buy_upgrade(upgrade):
+		var cost := state.upgrade_cost(upgrade)
+		state.buy_upgrade(upgrade)
+		return {"kind": "upgrade", "id": upgrade, "cost": cost}
 	if best >= 0:
 		var plan: Dictionary = plans[state.offers[best]]
 		if plan.replace:
@@ -297,6 +303,14 @@ static func _role_need(state: WizardState, role: String) -> float:
 	return ROLE_TARGET[role] - share
 
 
+## The wand upgrade the AI buys next, or "" once all are maxed.
+static func next_upgrade(state: WizardState) -> String:
+	for id in UPGRADE_ORDER:
+		if not state.upgrade_maxed(id):
+			return id
+	return ""
+
+
 static func _cheapest(state: WizardState) -> OwnedCreature:
 	var best: OwnedCreature = null
 	for c in state.creatures:
@@ -318,7 +332,7 @@ static func choose_cast(battle: Battle, team: int, profile: Dictionary = DEFAULT
 		if allied and (u.jump_t > 0 or u.dive_target != null or u.charging or u.channel_t > 0.0):
 			continue
 		var ratio := u.hp / u.max_hp
-		var shifted_ratio := minf(1.0, ratio + Rules.SHIFT_HEAL) if allied else ratio
+		var shifted_ratio := minf(1.0, ratio + battle.shift_heal[team]) if allied else ratio
 		var power := form_value(u.form_id, u.stars, profile) * Rules.level_mult(u.level)
 		var current := power * sqrt(maxf(ratio, 0.05))
 		var expected := 0.0

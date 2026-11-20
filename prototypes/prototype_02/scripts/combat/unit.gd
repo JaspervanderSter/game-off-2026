@@ -86,7 +86,7 @@ func _set_form(form: String) -> void:
 ## Applies the shared transformation rules of Prototype 02. ally_cast is true
 ## when the creature's own wizard cast the spell: it grants +1 level and
 ## triggers the new form's positive post-transformation effect, if any.
-func transform_to(new_form: String, ally_cast: bool) -> void:
+func transform_to(new_form: String, ally_cast: bool, heal := Rules.SHIFT_HEAL, stun := Rules.ENEMY_SHIFT_STUN) -> void:
 	var ratio := hp / max_hp
 	_interrupt_channel()
 	singing = false
@@ -95,13 +95,13 @@ func transform_to(new_form: String, ally_cast: bool) -> void:
 	max_hp = data.hp * stat_mult()
 	hp = ratio * max_hp
 	if ally_cast:
-		hp = minf(max_hp, hp + Rules.SHIFT_HEAL * max_hp)
+		hp = minf(max_hp, hp + heal * max_hp)
 		attack_timer = 0.0
 		for key in statuses.keys():
 			if not statuses[key].positive:
 				statuses.erase(key)
 	else:
-		stun_t = Rules.ENEMY_SHIFT_STUN
+		stun_t = stun
 	# The remaining cooldown carries over; entering a form never grants an
 	# immediately ready ability.
 	if ability_timer <= 0.0:

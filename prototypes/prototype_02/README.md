@@ -20,13 +20,13 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 | Pick the opponent's difficulty | Left-click an unlocked hat or press its number (1 / 2 / 3) |
 | Pick a starting composition | Left-click one of the three cards |
 | Buy a creature | Click and release a shop card for the bench, or drag it directly to a board cell / reserve slot |
-| Reroll shop | Click the circular-arrow button below the offers (1 gold) |
-| Upgrade shapeshift recharge | Click the wand / circular-arrow panel below the combat button (4 gold, once per duel) |
+| Reroll shop | Click the circular-arrow button below the offers, inside the stall (1 gold) |
+| Buy a wand upgrade | Click a row of the purple scroll below the stall; its coins show the next level's price, a green check marks a maxed upgrade |
 | Lock / unlock an offer | Right-click its shop card; a gold padlock marks a lock |
 | Place / move / swap | Drag between your half of the board (bottom) and the reserve slots |
 | Combine / merge | Drag onto an identical creature of the same star rank; gold highlights show compatible targets |
-| Sell | Drag a creature onto the shop panel (refund = price) |
-| Start combat | Crossed-swords button (or Space) |
+| Sell | Drag a creature onto the creature stall (refund = price) |
+| Start combat | Round crossed-swords button in the bottom-right corner (or Space) |
 | Toggle fullscreen | Alt+Enter |
 | Toggle performance counter | Shift+F8 (click the game first in a browser) |
 | Shapeshift | Left-click (or tap) any living creature during combat, friend or foe |
@@ -98,11 +98,17 @@ All confirmed rules and delegated defaults of the design note, notably:
   The gold is spent in the next shop phase. The hover card shows one small coin
   per harvested gold, and during preparation the next-income hint includes the
   current board's harvest.
-- When the fight begins, the shop column (offers, reroll, fight button, spell
-  upgrade) slides off the right edge and the bench shrinks to half size and docks
-  at the bottom of the screen, where hovering it still shows the creature card.
-  Both stay away during the result and slide back when the next shop opens
-  (0.45 s each way).
+- The shop column has two sections told apart by their frames, without labels:
+  a merchant stall (striped scalloped awning, wooden frame) holds the three
+  creature offers and the reroll; below it, a purple scroll between two
+  gold-knobbed rods holds the wand upgrades. The round fight button sits alone in
+  the bottom-right corner.
+- When the fight begins, the shop column (stall, scroll, fight button) slides off
+  the right edge and the bench shrinks to half size and docks at the bottom of
+  the screen, where hovering it still shows the creature card. Both stay away
+  during the result and slide back when the next shop opens (0.45 s each way).
+  The scroll then unrolls downward over 0.5 s, each upgrade row appearing as the
+  bottom rod passes it, and rolls back up as the column leaves.
 - A shop click buys onto the bench on mouse release. Dragging an offer instead
   buys directly onto a free board cell, free bench slot, or compatible merge
   recipient. Mouse-down only previews the offer. Invalid drops consume no gold
@@ -153,17 +159,28 @@ All confirmed rules and delegated defaults of the design note, notably:
   impact sparkles and a counter bounce, with separate break and coin sounds.
   Health and gold settle once in the rules; the HUD reveals them in sync with
   each burst and arrival. Long sequences finish before the next round/game over.
-- Shapeshift: one starting charge, max three, one recharged every 3 s; a one-time
-  4-gold upgrade reduces recharge to 2.4 s for the rest of this duel. The upgrade
-  resets in a new duel, applies to future combats, and is available to both sides.
-  3 s target
+- Shapeshift: one starting charge, max three, one recharged every 3 s.
+- Wand upgrades (`Rules.WAND_UPGRADES`), bought with gold in the scroll and kept
+  for the rest of the duel; they reset in a new duel, apply to future combats and
+  are available to both sides:
+
+  | Upgrade | Icon | Effect | Cost |
+  | --- | --- | --- | ---: |
+  | Fast recharge | Wand + circular arrow | Recharge 3 s → 2.4 s | 4 |
+  | Starting charges | Orb + gold plus, three charge pips | Combat starts with 2, then 3 charges | 3, then 5 |
+  | Healing shift | Green cross | Allied casts heal 25% of new max HP instead of 10% | 4 |
+  | Long hex | Hourglass | Enemy casts stun for 4.5 s instead of 3 s | 4 |
+
+- Shapeshift casts give a 3 s target
   immunity for both wizards; invalid casts consume nothing. Result drawn from the
   eight-stage network, with fixed 55% / 30% / 15% outcome priorities per source
   form (dominant outcome follows its tactical identity). Both casts preserve health
-  percentage. Allied casts then heal 10% of new max HP, ready the basic attack,
+  percentage. Allied casts then heal 10% of new max HP (25% with the healing
+  shift upgrade), ready the basic attack,
   cleanse negative statuses and grant +1 level (+20% base HP and damage per level).
   Enemy casts reset the target to temporary level 1, keep its statuses and
-  basic-attack cooldown, and stun it for three seconds. Status effects and
+  basic-attack cooldown, and stun it for three seconds (4.5 with the long hex
+  upgrade). Status effects and
   cooldowns continue during the stun.
   Combat forms, temporary levels and statuses reset at the end of combat;
   permanent merge stars remain.
@@ -315,11 +332,11 @@ are copied back into the project's `sfx/` and `music/` folders.
 |---|---|---|
 | `ui/click` | ui | Interface click: difficulty, picking up or reselecting a creature, offer lock, enemy reroll, restart |
 | `ui/fail` | ui | Unavailable or invalid action, such as a locked difficulty, fizzled cast or invalid drop |
-| `ui/buy` | ui | Starting composition, player sale, enemy purchase or recharge upgrade |
+| `ui/buy` | ui | Starting composition, player sale, enemy purchase or wand upgrade |
 | `ui/battle_start` | ui | A fight successfully starts |
 | `ui/place` | ui | The player drops a creature into a new board cell or reserve slot |
-| `ui/purchase_confirmed` | ui | The player spends gold on a creature, shop reroll or recharge upgrade |
-| `ui/insufficient_gold` | ui | The player cannot afford a creature, shop reroll or recharge upgrade |
+| `ui/purchase_confirmed` | ui | The player spends gold on a creature, shop reroll or wand upgrade |
+| `ui/insufficient_gold` | ui | The player cannot afford a creature, shop reroll or wand upgrade |
 | `ui/combine` | ui | Merge without a new star |
 | `ui/merge` | ui | Merge that grants a star |
 | `ui/difficulty_unlock` | ui | The lock of a newly unlocked difficulty opens |
@@ -474,7 +491,8 @@ playtesting is still needed to judge each form's situational value.
   matching group when the bench is full and collect copies for fielded units
   that already have stars. Valuable unaffordable duplicates can be locked for
   the next round.
-  It can buy the recharge upgrade from its own gold. It avoids sacrificing a
+  It buys wand upgrades from its own gold, one level at a time, in the order
+  fast recharge, both starting-charge levels, long hex, healing shift. It avoids sacrificing a
   fielded body just to create an unfinished 2/3 group.
 - Placement ranks actual combat power, not resale value (partial groups give no
   extra strength). Supports stay near the frontline; ranged units spread out to
@@ -539,7 +557,7 @@ difficulty, its padlock opens on the difficulty screen.
   counts the level reset when choosing hex targets, and rerolls on budget.
 - **Adept** and **Apprentice** follow the same rules, gold and spell charges as
   the player. They only decide worse: noisier shop scoring, fewer rerolls, a later
-  (adept) or no (apprentice) recharge upgrade, no locks, no selling to replace
+  (adept) or no (apprentice) wand upgrades, no locks, no selling to replace
   (apprentice), naive field selection (apprentice), and slower, less selective
   casting that sometimes targets a random creature (15% adept, 40% apprentice).
 - The **Apprentice** also has whims: at its first shop of a duel it draws a

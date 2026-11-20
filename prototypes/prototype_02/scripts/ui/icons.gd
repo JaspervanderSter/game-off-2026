@@ -520,6 +520,33 @@ static func wand(ci: CanvasItem, p: Vector2, r: float) -> void:
 	star(ci, p + Vector2(r * 0.5, -r * 0.5), r * 0.42, MAGIC.lightened(0.3))
 
 
+## Icon of a wand upgrade (Rules.WAND_UPGRADES): wand and circular arrow for the
+## recharge, an orb with a plus for the starting charges, a green cross for the
+## allied heal and an hourglass for the enemy hex stun.
+static func wand_upgrade(ci: CanvasItem, id: String, p: Vector2, r: float) -> void:
+	match id:
+		"recharge":
+			wand(ci, p + Vector2(-r * 0.45, r * 0.05), r * 0.95)
+			restart(ci, p + Vector2(r * 0.6, 0), r * 0.5, MAGIC.lightened(0.4))
+		"charges":
+			charge_orb(ci, p + Vector2(-r * 0.15, r * 0.15), r * 0.75, true)
+			var plus := p + Vector2(r * 0.72, -r * 0.62)
+			Shapes.line(ci, plus + Vector2(-r * 0.32, 0), plus + Vector2(r * 0.32, 0), GOLD, r * 0.2)
+			Shapes.line(ci, plus + Vector2(0, -r * 0.32), plus + Vector2(0, r * 0.32), GOLD, r * 0.2)
+		"heal", "hex":
+			Shapes.circle(ci, p, r, Color(0.1, 0.07, 0.15))
+			Shapes.arc(ci, p, r, 0, TAU, 20, MAGIC, 2.0, true)
+			if id == "heal":
+				var green := Color(0.5, 1, 0.65)
+				Shapes.line(ci, p + Vector2(-r * 0.55, 0), p + Vector2(r * 0.55, 0), green, r * 0.3)
+				Shapes.line(ci, p + Vector2(0, -r * 0.55), p + Vector2(0, r * 0.55), green, r * 0.3)
+			else:
+				var sand := MAGIC.lightened(0.45)
+				ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r * 0.45, -r * 0.55), p + Vector2(r * 0.45, -r * 0.55), p]), sand)
+				ci.draw_colored_polygon(PackedVector2Array([p, p + Vector2(r * 0.45, r * 0.55), p + Vector2(-r * 0.45, r * 0.55)]), sand)
+				star(ci, p + Vector2(r * 0.8, -r * 0.8), r * 0.35, GOLD)
+
+
 static func crown(ci: CanvasItem, p: Vector2, r: float) -> void:
 	ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r, r * 0.5), p + Vector2(-r, -r * 0.5), p + Vector2(-r * 0.5, 0), p + Vector2(0, -r * 0.8), p + Vector2(r * 0.5, 0), p + Vector2(r, -r * 0.5), p + Vector2(r, r * 0.5)]), GOLD)
 	for x in [-r, 0.0, r]:

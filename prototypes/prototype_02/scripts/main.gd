@@ -12,6 +12,7 @@ const SHOP_DRAG_DISTANCE := 8.0
 # Fight layout: the shop column slides off the right edge and the bench shrinks
 # and docks at the bottom of the screen, then both come back for the next shop.
 const UI_SLIDE_TIME := 0.45
+const SCROLL_UNROLL_TIME := 0.5
 const BENCH_DOCK_SCALE := 0.5
 const BENCH_DOCK_POS := Vector2(640 - Rules.CELL * Rules.RESERVE_CAP * BENCH_DOCK_SCALE * 0.5, 720 - Rules.CELL * BENCH_DOCK_SCALE - 8)
 
@@ -52,6 +53,7 @@ var _shake_t := 0.0
 var _shake_len := 0.0
 var _shake_mag := 0.0
 var shop_out := 1.0 # 0 = shop column on screen, 1 = slid off the right edge
+var scroll_open := 0.0 # 0 = wand upgrade scroll rolled up, 1 = fully unrolled
 var bench_dock := 0.0 # 0 = bench under the board, 1 = half size at the bottom
 
 var board_view: BoardView
@@ -388,9 +390,12 @@ func board_cell(screen_pos: Vector2) -> Vector2i:
 
 ## Moves the shop and bench toward their place for the current phase: the shop
 ## is out except while shopping; the bench docks from the fight to the next shop.
+## The wand scroll unrolls once the shop has slid in and rolls up as it leaves.
 func _advance_ui(dt: float) -> void:
 	var step := dt / UI_SLIDE_TIME
 	shop_out = move_toward(shop_out, 0.0 if phase == Phase.PREP else 1.0, step)
+	var unrolled := phase == Phase.PREP and shop_out <= 0.0
+	scroll_open = move_toward(scroll_open, 1.0 if unrolled else 0.0, dt / SCROLL_UNROLL_TIME)
 	var docked := phase == Phase.COMBAT or phase == Phase.RESOLVE or phase == Phase.OVER
 	bench_dock = move_toward(bench_dock, 1.0 if docked else 0.0, step)
 
@@ -502,14 +507,16 @@ func _left_press(pos: Vector2) -> void:
 					choose_pack(i)
 					return
 		Phase.PREP:
-			if Hud.SHIFT_UPGRADE_RECT.has_point(pos):
-				if player.upgrade_shift_recharge():
-					Sfx.play("ui/purchase_confirmed")
-				elif not player.shift_recharge_upgraded and player.gold < Rules.SHIFT_RECHARGE_COST:
-					Sfx.play("ui/insufficient_gold")
-				else:
-					Sfx.play("ui/fail")
-				return
+			for i in Rules.WAND_UPGRADES.size():
+				if Hud.upgrade_rect(i).has_point(pos):
+					var id := Rules.WAND_UPGRADES[i]
+					if player.buy_upgrade(id):
+						Sfx.play("ui/purchase_confirmed")
+					elif not player.upgrade_maxed(id) and player.gold < player.upgrade_cost(id):
+						Sfx.play("ui/insufficient_gold")
+					else:
+						Sfx.play("ui/fail")
+					return
 			if Hud.REROLL_RECT.has_point(pos):
 				if player.reroll(rng):
 					Sfx.play("ui/purchase_confirmed")

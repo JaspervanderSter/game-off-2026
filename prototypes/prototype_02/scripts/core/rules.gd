@@ -31,11 +31,26 @@ const FRENZY_MAX_LEVEL := 5
 const START_CHARGES := 1
 const MAX_CHARGES := 3
 const RECHARGE_TIME := 3.0
-const SHIFT_RECHARGE_COST := 4
 const UPGRADED_RECHARGE_TIME := 2.4
 const TARGET_IMMUNITY := 3.0
 const SHIFT_HEAL := 0.10 # fraction of the new max HP
+const UPGRADED_SHIFT_HEAL := 0.25
 const ENEMY_SHIFT_STUN := 3.0
+const UPGRADED_ENEMY_SHIFT_STUN := 4.5
+
+# Wand upgrades, bought in the preparation shop and kept for the whole duel, in
+# shop order. Each lists the gold cost of its successive levels:
+#   recharge  recharge time RECHARGE_TIME -> UPGRADED_RECHARGE_TIME
+#   charges   +1 starting charge per level (1 -> 2 -> 3)
+#   heal      allied shapeshift heal SHIFT_HEAL -> UPGRADED_SHIFT_HEAL
+#   hex       enemy shapeshift stun ENEMY_SHIFT_STUN -> UPGRADED_ENEMY_SHIFT_STUN
+const WAND_UPGRADES: Array[String] = ["recharge", "charges", "heal", "hex"]
+const WAND_UPGRADE_COSTS := {
+	"recharge": [4],
+	"charges": [3, 5],
+	"heal": [4],
+	"hex": [4],
+}
 const LEVEL_VISUAL_GROWTH := 0.15 # additive image scale per temporary level
 const MAX_LEVEL_VISUAL_SCALE := 1.6 # keep crowded fights readable
 const LEVEL_SCALE := 0.20 # max HP and basic damage per level above 1
@@ -43,9 +58,9 @@ const LEVEL_SCALE := 0.20 # max HP and basic damage per level above 1
 # Screen layout (1280 x 720).
 const BOARD_POS := Vector2(352, 84)
 const RESERVE_POS := Vector2(424, 548)
-const SHOP_RECT := Rect2(968, 84, 288, 372)
-const FIGHT_CENTER := Vector2(1112, 560)
-const FIGHT_RADIUS := 58.0
+const SHOP_RECT := Rect2(968, 74, 288, 284) # creature offers and reroll; sell drop zone
+const FIGHT_CENTER := Vector2(1188, 652)
+const FIGHT_RADIUS := 46.0
 
 
 static func income(round_num: int) -> int:

@@ -174,6 +174,12 @@ func _test_sound_set() -> void:
 	SoundSet.reload()
 
 
+## Buys every wand upgrade level for free, so AI shop tests see no upgrade left.
+func _max_upgrades(state: WizardState) -> void:
+	for id in Rules.WAND_UPGRADES:
+		state.upgrades[id] = Rules.WAND_UPGRADE_COSTS[id].size()
+
+
 func _new_battle() -> Battle:
 	var b := Battle.new()
 	add_child(b)
@@ -1751,12 +1757,27 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 
 	var p := WizardState.new(0)
 	var e := WizardState.new(1)
-	p.gold = Rules.SHIFT_RECHARGE_COST - 1
-	check(not p.upgrade_shift_recharge(), "recharge upgrade requires its gold cost")
-	p.gold = Rules.SHIFT_RECHARGE_COST
-	check(p.upgrade_shift_recharge() and p.gold == 0, "recharge upgrade consumes exactly its cost")
+	var recharge_cost: int = Rules.WAND_UPGRADE_COSTS.recharge[0]
+	p.gold = recharge_cost - 1
+	check(not p.buy_upgrade("recharge"), "recharge upgrade requires its gold cost")
+	p.gold = recharge_cost
+	check(p.buy_upgrade("recharge") and p.gold == 0, "recharge upgrade consumes exactly its cost")
 	p.gold = 100
-	check(not p.upgrade_shift_recharge() and p.gold == 100, "single recharge upgrade cannot be bought twice")
+	check(not p.buy_upgrade("recharge") and p.gold == 100, "single recharge upgrade cannot be bought twice")
+	check(Rules.WAND_UPGRADES == ["recharge", "charges", "heal", "hex"]
+		and Rules.WAND_UPGRADE_COSTS.charges == [3, 5],
+		"four wand upgrades in shop order, starting charges in two levels")
+	check(p.start_charges() == 1 and p.upgrade_cost("charges") == 3, "one starting charge before upgrades")
+	p.gold = 8
+	check(p.buy_upgrade("charges") and p.start_charges() == 2 and p.gold == 5 and p.upgrade_cost("charges") == 5,
+		"first charges level grants a second starting charge")
+	check(p.buy_upgrade("charges") and p.start_charges() == 3 and p.gold == 0 and p.upgrade_maxed("charges")
+		and p.upgrade_cost("charges") == -1, "second charges level starts combat with three charges")
+	p.gold = 100
+	check(not p.buy_upgrade("charges") and p.gold == 100, "maxed charges upgrade cannot be bought again")
+	check(p.shift_heal() == Rules.SHIFT_HEAL and p.hex_stun() == Rules.ENEMY_SHIFT_STUN, "heal and hex start at base")
+	check(p.buy_upgrade("heal") and p.buy_upgrade("hex") and p.shift_heal() == Rules.UPGRADED_SHIFT_HEAL
+		and p.hex_stun() == Rules.UPGRADED_ENEMY_SHIFT_STUN and p.gold == 92, "heal and hex upgrades apply their values")
 	p.add_creature("guardian")
 	e.add_creature("guardian")
 	b = _new_battle()
@@ -1764,21 +1785,53 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 	b.setup(teams, 3)
 	check(b.spells[0].recharge_time == 2.4 and b.spells[1].recharge_time == 3.0,
 		"recharge upgrade applies only to owning wizard")
+	check(b.spells[0].charges == 3 and b.spells[1].charges == 1, "starting charges upgrade applies only to its owner")
+	check(b.shift_heal == [Rules.UPGRADED_SHIFT_HEAL, Rules.SHIFT_HEAL]
+		and b.hex_stun == [Rules.UPGRADED_ENEMY_SHIFT_STUN, Rules.ENEMY_SHIFT_STUN],
+		"heal and hex upgrades apply only to the casting wizard")
+	b.spells[0].charges = 1
 	b.spells[0].tick(2.39)
 	check(b.spells[0].charges == 1, "upgraded charge is not granted early")
 	b.spells[0].tick(0.02)
 	check(b.spells[0].charges == 2 and b.spells[1].charges == 1,
 		"upgraded charge recharges at 2.4 seconds")
+	var own: Unit = b.living(0)[0]
+	own.hp = own.max_hp * 0.5
+	b.cast(0, own)
+	check(absf(own.hp / own.max_hp - 0.75) < 0.001, "upgraded allied shapeshift heals a quarter of max HP")
+	var foe: Unit = b.living(1)[0]
+	b.cast(0, foe)
+	check(foe.stun_t == Rules.UPGRADED_ENEMY_SHIFT_STUN, "upgraded hex stuns the enemy longer")
+	var mine: Unit = b.living(0)[0]
+	mine.immune_t = 0.0
+	b.spells[1].charges = 1
+	b.cast(1, mine)
+	check(mine.stun_t == Rules.ENEMY_SHIFT_STUN, "enemy without the hex upgrade stuns for the base time")
 	b.free()
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
 	game.choose_difficulty(Difficulty.APPRENTICE)
 	game.choose_pack(0)
-	game.player.gold = Rules.SHIFT_RECHARGE_COST
-	game._left_press(Hud.SHIFT_UPGRADE_RECT.get_center())
-	check(game.player.shift_recharge_upgraded and game.player.gold == 0, "recharge upgrade shop button works")
+	game.player.gold = recharge_cost
+	game._left_press(Hud.upgrade_rect(0).get_center())
+	check(game.player.shift_recharge_upgraded and game.player.gold == 0, "recharge upgrade shop row works")
+	game.player.gold = 3
+	game._left_press(Hud.upgrade_rect(1).get_center())
+	check(game.player.upgrade_level("charges") == 1 and game.player.gold == 0, "charges upgrade shop row works")
+	game.player.gold = 8
+	game._left_press(Hud.upgrade_rect(2).get_center())
+	game._left_press(Hud.upgrade_rect(3).get_center())
+	check(game.player.upgrade_level("heal") == 1 and game.player.upgrade_level("hex") == 1 and game.player.gold == 0,
+		"heal and hex upgrade shop rows work")
+	for i in Rules.WAND_UPGRADES.size():
+		var row := Hud.upgrade_rect(i)
+		check(not row.intersects(Rules.SHOP_RECT) and row.end.y < Rules.FIGHT_CENTER.y - Rules.FIGHT_RADIUS
+			and row.end.y <= Hud.SCROLL_TOP + Hud.SCROLL_LENGTH, "wand upgrade row %d sits on the scroll" % i)
+	check(Rules.FIGHT_CENTER.x + Rules.FIGHT_RADIUS + 8 <= 1280 and Rules.FIGHT_CENTER.y + Rules.FIGHT_RADIUS + 8 <= 720,
+		"fight button fits in the bottom-right corner")
 	game.new_duel()
-	check(not game.player.shift_recharge_upgraded, "new duel resets permanent duel upgrade")
+	check(not game.player.shift_recharge_upgraded and game.player.upgrades.is_empty(),
+		"new duel resets permanent duel upgrades")
 	game.free()
 	check(CreatureDB.get_form("assassin").price == 2, "assassin costs two gold")
 	var guardian_outcomes := CreatureDB.outcomes("guardian")
@@ -1813,7 +1866,7 @@ func _test_ai_strategy() -> void:
 	action = EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE)
 	check(action.get("kind") == "merge" and guard.stars == 1 and state.field_count() == 6,
 		"AI upgrades a full team without removing a fielded body")
-	state.shift_recharge_upgraded = true
+	_max_upgrades(state)
 	state.gold = 4
 	state.offers = ["peasant", "", ""]
 	action = EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE)
@@ -1824,6 +1877,16 @@ func _test_ai_strategy() -> void:
 	action = EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE)
 	check(action.get("kind") == "upgrade" and state.shift_recharge_upgraded and state.gold == 0,
 		"AI buys recharge upgrade from its own gold")
+	var saver := WizardState.new(1)
+	for id in ["guardian", "berserker", "spearman", "archer", "cleric"]:
+		saver.add_creature(id)
+	saver.offers = ["", "", ""]
+	var bought := []
+	for i in 5:
+		saver.gold = 5
+		bought.append(EnemyAI.shop_step(saver, rng, EnemyAI.DEFAULT_PROFILE).get("id", ""))
+	check(bought == ["recharge", "charges", "charges", "hex", "heal"] and saver.start_charges() == 3,
+		"AI buys wand upgrade levels in its saving order")
 	state.gold = 10
 	state.ai_rerolls = 2
 	state.offers = ["peasant", "", ""]
@@ -1855,7 +1918,7 @@ func _test_ai_strategy() -> void:
 	state = WizardState.new(1)
 	for id in ["guardian", "berserker", "spearman", "archer", "cleric", "frost_mage"]:
 		state.add_creature(id).stars = Rules.MAX_STARS
-	state.shift_recharge_upgraded = true
+	_max_upgrades(state)
 	state.gold = 10
 	state.offers = ["guardian", "pyromancer", ""]
 	check(EnemyAI.shop_step(state, rng, EnemyAI.DEFAULT_PROFILE).is_empty() and state.gold == 10,
@@ -1877,7 +1940,7 @@ func _test_ai_strategy() -> void:
 	state = WizardState.new(1)
 	for id in ["guardian", "berserker", "archer"]:
 		state.add_creature(id)
-	state.shift_recharge_upgraded = true
+	_max_upgrades(state)
 	state.gold = 1
 	state.offers = ["peasant", "", ""]
 	action = EnemyAI.shop_step(state, rng)
@@ -1999,7 +2062,7 @@ func _test_difficulty() -> void:
 	state.gold = 12
 	state.offers = ["", "", ""]
 	EnemyAI.shop(state, rng)
-	check(not state.shift_recharge_upgraded, "apprentice never buys the recharge upgrade")
+	check(state.upgrades.is_empty(), "apprentice never buys wand upgrades")
 	state.offers = ["pyromancer", "", ""]
 	state.gold = 3
 	state.ai_rerolls = 1
