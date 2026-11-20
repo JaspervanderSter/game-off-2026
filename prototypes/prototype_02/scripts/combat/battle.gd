@@ -27,6 +27,7 @@ var ai_levels: Array[int] = [Difficulty.ARCHMAGE, Difficulty.ARCHMAGE]
 # Calibration only: per-team Difficulty casting key overrides (training/arena.gd).
 var cast_overrides: Array[Dictionary] = [{}, {}]
 var casting_enabled := true
+var learning_duel := false
 # Rules of the duel and which teams may cast, copied from WizardState in setup().
 var ruleset := Ruleset.new()
 var can_cast: Array[bool] = [true, true]
@@ -63,6 +64,7 @@ func setup(teams: Array[WizardState], seed_value: int = -1) -> void:
 		rng.randomize()
 	for state in teams:
 		ruleset = state.rules
+		learning_duel = state.learning_duel
 		can_cast[state.team] = state.can_cast()
 		ai_levels[state.team] = state.ai_level
 		ai_profiles[state.team] = EnemyAI.profile_for(state.ai_level)
@@ -75,6 +77,8 @@ func setup(teams: Array[WizardState], seed_value: int = -1) -> void:
 	for t in 2:
 		var first: Vector2 = _cast_profile(t).first_delay
 		_ai_delay[t] = rng.randf_range(first.x, first.y)
+		if learning_duel and t == 1:
+			_ai_delay[t] = 6.0
 
 
 func spawn(team: int, form: String, pos: Vector2, uid: int = 0, stars: int = 0, copies: int = 1) -> Unit:
@@ -157,7 +161,7 @@ func cast(team: int, u: Unit) -> bool:
 		return false
 	var from := u.form_id
 	spells[team].consume()
-	u.transform_to(CreatureDB.roll_outcome(from, rng), u.team == team, shift_heal[team], hex_stun[team])
+	u.transform_to(ruleset.roll_outcome(from, rng), u.team == team, shift_heal[team], hex_stun[team])
 	casts[team] += 1
 	unit_transformed.emit(u, team, from)
 	return true
@@ -174,6 +178,15 @@ func _ai_cast(team: int, dt: float) -> void:
 		return
 	_ai_delay[team] -= dt
 	if _ai_delay[team] > 0.0:
+		return
+	if learning_duel and team == 1:
+		# One slow, readable demonstration; never optimise or chain casts.
+		var targets := living(0 if ruleset.has(Ruleset.HEX) else 1)
+		for target in targets:
+			if cast(team, target):
+				_ai_delay[team] = INF # one demonstration leaves the learner room to act
+				return
+		_ai_delay[team] = 1.0
 		return
 	var profile := _cast_profile(team)
 	var choice := EnemyAI.choose_cast(self, team, ai_profiles[team], profile.threshold)
@@ -237,6 +250,10 @@ func damage(src: Unit, dst: Unit, amount: float, kind: String, pierce := false) 
 		return false
 	var reduction := 0.0 if pierce else dst.armour() / 100.0
 	var dealt := amount * frenzy_multiplier() * (1.0 - reduction)
+	# Let creatures fall normally, but keep the learner's last creature alive.
+	# This applies to every damage source, including poison and reflected damage.
+	if learning_duel and dst.team == 0 and living(0).size() == 1:
+		dealt = minf(dealt, maxf(0.0, dst.hp - 1.0))
 	damage_taken[dst.team] += clampf(dealt, 0.0, dst.hp)
 	dst.hp -= dealt
 	dst.last_hurt = time

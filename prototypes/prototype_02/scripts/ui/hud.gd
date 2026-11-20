@@ -441,6 +441,7 @@ func _draw_layer(layer_name: String, layer: CanvasItem) -> void:
 		"shop":
 			_draw_shop_column()
 		"overlay":
+			_draw_learning_cast_hint()
 			if not game.hover_info.is_empty() and game.drag == null and game.phase != game.Phase.RESOLVE:
 				_draw_hover_card(game.hover_info)
 			_draw_upgrade_tooltip()
@@ -454,6 +455,23 @@ func _draw_layer(layer_name: String, layer: CanvasItem) -> void:
 				Shapes.circle(_ci, p + Vector2(4, 10), 22, Color(0, 0, 0, 0.3))
 				Icons.token(_ci, game.drag.form_id, p, Rules.BODY_RADIUS * Rules.CELL * 1.1, 0, true)
 	_ci = self
+
+
+## Invite an allied cast, then an enemy cast, without blocking the duel.
+func _draw_learning_cast_hint() -> void:
+	if not game.player.learning_duel or game.phase != game.Phase.COMBAT:
+		return
+	var battle: Battle = game.battle
+	if not game.player.can_cast() or not battle.spells[0].can_cast() or game.learning_cast_tried:
+		return
+	var target_team := 0 if not game.ruleset.has(Ruleset.HEX) else 1
+	for unit in battle.living(target_team):
+		if unit.immune_t > 0.0:
+			continue
+		var p: Vector2 = Rules.BOARD_POS + unit.position
+		Icons.shift_reticle(_ci, p, 22, battle.time, target_team == 0, true)
+		Icons.wand(_ci, p + Vector2(36, -40 + sin(battle.time * 3.0) * 6), 18)
+		return
 
 
 func _panel(r: Rect2, col := Color(0.12, 0.09, 0.08, 0.85)) -> void:
@@ -1138,7 +1156,7 @@ func _draw_difficulty_unlock(card: Rect2, lock_pos: Vector2, opening: float, age
 func _draw_pack_choice() -> void:
 	var mouse := get_global_mouse_position()
 	for i in game.offered_packs.size():
-		var pack: Dictionary = CreatureDB.PACKS[game.offered_packs[i]]
+		var pack: Dictionary = game.pack_at(i)
 		var r := pack_rect(i)
 		var hovered := r.has_point(mouse)
 		_draw_choice_halo(r, pack_halo, i)
@@ -1192,7 +1210,7 @@ func _draw_hover_card(info: Dictionary) -> void:
 		if u.immune_t > 0.0:
 			Icons.immunity_ring(_ci, main, 31, u.immune_t / Rules.TARGET_IMMUNITY, u.anim_t)
 	# Shapeshift outcomes, once the player has a wand.
-	var outs := CreatureDB.outcomes(form) if game.player.can_cast() else []
+	var outs: Array = game.ruleset.outcomes(form) if game.player.can_cast() else []
 	if not outs.is_empty():
 		Icons.arrow_right(_ci, pos + Vector2(78, 40), 9, Icons.MAGIC)
 	for i in outs.size():

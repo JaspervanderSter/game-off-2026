@@ -661,18 +661,33 @@ end of the route, then becomes selectable after its short appearance animation.
 Revisiting the map keeps known paths in place; leaving pauses an unfinished trace.
 A defeat discovers nothing. Completed stages remain replayable. Old branching
 saves are migrated to preserve their furthest earned stage. Every stage starts a
-fresh duel with the existing pack decks, economy and rules.
+fresh duel; forest uses the small learning compositions described below.
 
-Stages 1-5 use Apprentice AI, 6-10 use Adept, and 11-15 use Archmage. The
+Stages 1-5 use guided learning behaviour, 6-10 use Adept, and 11-15 use Archmage. The
 full-length characters in `OpponentDB` replace the old creature markers. Each
 introduces one existing rule; `Ruleset` applies the cumulative rules to both
 sides, limits creature offers and openings, and hides unavailable controls.
-Characters without magic never cast. The first two duels have no wand; the Druid
-introduces it, and the Swamp witch introduces hexes. The town introduces trading,
+Characters without magic never cast. The Hunter teaches placement; the Druid
+introduces the wand in encounter 2, the Lumberjack introduces the shop in encounter
+3, and the Swamp witch introduces hexes. The town introduces trading,
 harvest, merging, casters and frenzy; the school introduces the wand upgrades.
 The enemy panel uses the selected opponent's portrait. See [Journey and
 Opponents](../../docs/design/prototype_02/Journey%20and%20Opponents.md) for all
-fifteen characters and their existing starting compositions.
+fifteen characters and their starting compositions.
+
+Forest is a safe introduction, not a challenge. Only archer, shield guardian and
+spearman humans, and rabbit, wolf and deer animals may appear there. This covers
+starting teams, shop offers and both wizards' transformations. Three small player
+teams use these humans; enemies field fixed armies of one or two creatures and
+never shop. Magical enemies demonstrate one cast after six seconds per round.
+Damage cannot kill the player's last creature in forest; normal battles retain
+lethal damage. The empty bench and its drop targets stay hidden until shopping.
+An animated wand invites the first allied cast, then the first enemy cast.
+
+`Ruleset.FOREST_OUTCOMES` is an explicit closed six-form practice graph, using the
+normal 55/30/15 priorities. Rolls, hover previews and AI evaluations use the duel's
+graph. The full eight-stage graph returns in town; forest routes are deliberately
+different and can return to a form in two casts. This transition needs playtesting.
 
 Progress is saved locally in `difficulty_progress.cfg`, under `journey.opponents`.
 The previous seven-stage `journey.completed` saves retain proportional advancement

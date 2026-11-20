@@ -32,6 +32,7 @@ var journey := Journey.new()
 var opponent := -1
 ## Rules of the current duel: those its journey opponent has introduced so far.
 var ruleset := Ruleset.new()
+var learning_cast_tried := false
 var menu_screen: Node2D
 var map_screen: Node2D
 const PACK_CHOICES := 3
@@ -187,6 +188,7 @@ func choose_difficulty(level: int) -> void:
 
 
 func _start_duel() -> void:
+	learning_cast_tried = false
 	var hearts := Journey.hearts_for_stage(journey.selected)
 	for state in states:
 		state.max_hp = hearts
@@ -201,8 +203,11 @@ func _start_duel() -> void:
 	enemy.ai_level = difficulty
 	for state in states:
 		state.rules = ruleset
+		state.learning_duel = OpponentDB.is_learning_encounter(opponent)
 	enemy.magic = opponent < 0 or OpponentDB.get_opponent(opponent).magic
-	if ruleset.is_complete():
+	if OpponentDB.is_learning_encounter(opponent):
+		offered_packs = OpponentDB.learning_packs()
+	elif ruleset.is_complete():
 		offered_packs = player_deck.deal(PACK_CHOICES, rng)
 		player_deck.save_state()
 	else:
@@ -272,17 +277,27 @@ func _reset_difficulty_progress() -> void:
 
 
 ## `slot` is the card position (0 to 2) among the offered compositions.
+func pack_at(slot: int) -> Dictionary:
+	if OpponentDB.is_learning_encounter(opponent):
+		return OpponentDB.LEARNING_PACKS[offered_packs[slot]]
+	return CreatureDB.PACKS[offered_packs[slot]]
+
+
 func choose_pack(slot: int) -> void:
 	if phase != Phase.PACK or slot < 0 or slot >= offered_packs.size():
 		return
-	player.take_starting_pack(CreatureDB.PACKS[offered_packs[slot]])
+	player.take_starting_pack(pack_at(slot))
 	# A journey opponent opens with its own composition; the archmage and duels
 	# outside the journey deal from the opponent's deck.
 	var enemy_pack := OpponentDB.pack_index(opponent) if opponent >= 0 else -1
-	if enemy_pack < 0:
+	if OpponentDB.is_learning_encounter(opponent):
+		for form: String in OpponentDB.learning_army(opponent):
+			enemy.add_creature(form)
+	elif enemy_pack < 0:
 		enemy_pack = enemy_deck.deal(1, rng)[0]
 		enemy_deck.save_state()
-	enemy.take_starting_pack(CreatureDB.PACKS[enemy_pack])
+	if not OpponentDB.is_learning_encounter(opponent):
+		enemy.take_starting_pack(CreatureDB.PACKS[enemy_pack])
 	Sfx.play("ui/buy")
 	start_round()
 
@@ -387,6 +402,8 @@ func _on_unit_died(u: Unit) -> void:
 ## Blessing (own creature) and hex (enemy creature) have distinct effects and
 ## sounds; both flash the creature and shake the board briefly.
 func _on_unit_transformed(u: Unit, caster: int, _from: String) -> void:
+	if caster == 0 and u.team == (1 if ruleset.has(Ruleset.HEX) else 0):
+		learning_cast_tried = true
 	var blessing := u.team == caster
 	fx.add("shift_bless" if blessing else "shift_hex", u.position)
 	Sfx.play("shapeshift/bless" if blessing else "shapeshift/hex")
@@ -510,10 +527,16 @@ func bench_slot_rect(slot: int) -> Rect2:
 
 
 func _reserve_slot_at(pos: Vector2) -> int:
+	if not bench_visible():
+		return -1
 	for s in Rules.RESERVE_CAP:
 		if bench_slot_rect(s).has_point(pos):
 			return s
 	return -1
+
+
+func bench_visible() -> bool:
+	return ruleset.has(Ruleset.SHOP) or not player.benched().is_empty()
 
 
 func _owned_at(pos: Vector2) -> OwnedCreature:
@@ -798,7 +821,7 @@ func _process(dt: float) -> void:
 							hover_info = {"form": player.offers[i], "team": 0, "pos": mouse}
 		Phase.PACK:
 			for i in offered_packs.size():
-				var forms: Array = CreatureDB.PACKS[offered_packs[i]].forms
+				var forms: Array = pack_at(i).forms
 				for j in forms.size():
 					if Hud.pack_token_pos(i, j, forms.size()).distance_to(mouse) < Hud.pack_token_radius(forms.size()):
 						hover_info = {"form": forms[j], "team": 0, "pos": mouse}

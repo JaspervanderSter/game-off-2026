@@ -92,7 +92,7 @@ statistics or upgrade-unlock economy is specified by this decision.
 
 | Order | Territory and encounters | Duel terrain | Starting hearts, each side | Pacing intent |
 | --- | --- | --- | --- | --- |
-| 1 | Forest: Hunter, Lumberjack, Druid, Swamp witch and Archdruid. | Existing grass tiles, `forest`. | **3** | Short learning duels. |
+| 1 | Forest: Hunter, Druid, Lumberjack, Swamp witch and Archdruid. | Existing grass tiles, `forest`. | **3** | Safe learning duels without challenge. |
 | 2 | Town: Merchant, Innkeeper, Thief, Court mage and King. | Existing stone paving, `town`. | **6** | Intermediate duels. |
 | 3 | School: Apprentice, Caretaker, Adept, Transmutation teacher and Archmage. | Existing violet slabs with gold inlays, `school`. | **10** | Longer, demanding late-game duels. |
 
@@ -428,6 +428,14 @@ grant, and explicitly excluded creature merging and wizard upgrades. Cheap
 creatures with transformation potential remain an exploratory hypothesis.
 
 ### 20 November 2026 — journey opponents
+
+**Later playtest revision:** the forest order is now Hunter, Druid, Lumberjack,
+Swamp witch, Archdruid, bringing transformations before the shop. The entire
+island is an easy, protected introduction, with a dedicated passive enemy
+behaviour. Its only human forms are Archer, Shield Guardian and Spearman; its
+only animal forms are Rabbit, Wolf and Deer, including transformation outcomes.
+See [[Journey and Opponents]] for the current openings, safety net and explicit
+forest practice graph. This supersedes the original forest order below.
 
 The user decided that the journey map teaches the existing rules gradually through
 fifteen opponents, five per zone (forest, town, school of magic). Opponents are

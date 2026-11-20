@@ -4,6 +4,12 @@
 forms and 12 animal forms. Individual candidates, abilities, statistics and links
 remain proposals for review.
 
+**Forest exception, 20 November 2026:** the first island now contains only Archer,
+Shield Guardian, Spearman, Rabbit, Wolf and Deer. It uses a closed practice graph
+for both wizards, including hover previews. See [[Journey and Opponents#Closed forest transformation graph]].
+The complete graph and maps below resume outside forest; they do not describe
+forest transformation routes.
+
 ## Open the maps in Obsidian
 
 Open the repository root as the vault so file paths resolve correctly. Enable

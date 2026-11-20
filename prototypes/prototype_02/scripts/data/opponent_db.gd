@@ -10,13 +10,13 @@ const ZONE_SIZE := 5
 const ZONE_LEVELS := [Difficulty.APPRENTICE, Difficulty.ADEPT, Difficulty.ARCHMAGE]
 ## id: drawing in Icons.opponent; magic: casts the shapeshift once the wand is
 ## introduced; rule: the Ruleset rule it introduces ("" for none); pack: the
-## CreatureDB.PACKS name of its opening ("" = dealt from its deck).
+## CreatureDB.PACKS name of its opening ("" = forest army or archmage deck).
 const OPPONENTS := [
-	{"id": "hunter", "name": "Hunter", "magic": false, "rule": "", "pack": "Hunt"},
-	{"id": "lumberjack", "name": "Lumberjack", "magic": false, "rule": Ruleset.SHOP, "pack": "Raid"},
-	{"id": "druid", "name": "Druid", "magic": true, "rule": Ruleset.WAND, "pack": "Temple"},
-	{"id": "swamp_witch", "name": "Swamp witch", "magic": true, "rule": Ruleset.HEX, "pack": "Shadows"},
-	{"id": "archdruid", "name": "Archdruid", "magic": true, "rule": Ruleset.ANIMAL_BONUS, "pack": "Hunt"},
+	{"id": "hunter", "name": "Hunter", "magic": false, "rule": "", "pack": ""},
+	{"id": "druid", "name": "Druid", "magic": true, "rule": Ruleset.WAND, "pack": ""},
+	{"id": "lumberjack", "name": "Lumberjack", "magic": false, "rule": Ruleset.SHOP, "pack": ""},
+	{"id": "swamp_witch", "name": "Swamp witch", "magic": true, "rule": Ruleset.HEX, "pack": ""},
+	{"id": "archdruid", "name": "Archdruid", "magic": true, "rule": Ruleset.ANIMAL_BONUS, "pack": ""},
 	{"id": "merchant", "name": "Merchant", "magic": false, "rule": Ruleset.TRADE, "pack": "Troupe"},
 	{"id": "innkeeper", "name": "Innkeeper", "magic": false, "rule": Ruleset.HARVEST, "pack": "Tavern"},
 	{"id": "thief", "name": "Thief", "magic": false, "rule": Ruleset.MERGE, "pack": "Shadows"},
@@ -28,6 +28,35 @@ const OPPONENTS := [
 	{"id": "transmutation_teacher", "name": "Transmutation teacher", "magic": true, "rule": "upgrade_heal", "pack": "Inferno"},
 	{"id": "archmage", "name": "Archmage", "magic": true, "rule": "", "pack": ""},
 ]
+
+## Forest encounters are demonstrations, not competitive duels. Their small,
+## fixed armies never grow; ordinary creature stats and abilities still apply.
+const FOREST_ARMIES := [
+	["wolf"],
+	["deer"],
+	["spearman"],
+	["wolf"],
+	["wolf", "rabbit"],
+]
+
+
+static func is_learning_encounter(index: int) -> bool:
+	return index >= 0 and index < ZONE_SIZE
+
+
+static func learning_army(index: int) -> Array:
+	return FOREST_ARMIES[index].duplicate() if is_learning_encounter(index) else []
+
+
+const LEARNING_PACKS := [
+	{"name": "Forest guard", "emblem": "bow", "forms": ["guardian", "archer", "archer"], "bonus_gold": 0},
+	{"name": "Forest patrol", "emblem": "spear", "forms": ["guardian", "spearman", "spearman"], "bonus_gold": 0},
+	{"name": "Forest scouts", "emblem": "spear_wall", "forms": ["guardian", "spearman", "archer"], "bonus_gold": 0},
+]
+
+## Small thematic choices, separate from the hidden full-roster deck.
+static func learning_packs() -> Array[int]:
+	return [0, 1, 2]
 
 
 static func count() -> int:
@@ -58,7 +87,9 @@ static func ruleset(index: int) -> Ruleset:
 		var rule: String = OPPONENTS[i].rule
 		if rule != "":
 			rules.append(rule)
-	return Ruleset.new(rules)
+	var result := Ruleset.new(rules)
+	result.forest_roster = is_learning_encounter(index)
+	return result
 
 
 ## CreatureDB.PACKS index of the opponent's opening, or -1 to deal from its deck.

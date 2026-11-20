@@ -17,6 +17,8 @@ var ai_level := Difficulty.ARCHMAGE # opponent strength; the player ignores it
 var rules := Ruleset.new()
 ## False for journey opponents without magic: they never cast.
 var magic := true
+## Forest-only guided encounters: fixed enemy army and a last-creature safety net.
+var learning_duel := false
 var ai_rerolls := 0
 var ai_whims := {} # form id -> taste drawn once per duel by whimsical AI levels
 var gold := 0

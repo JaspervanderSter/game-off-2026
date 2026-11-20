@@ -42,7 +42,7 @@ func _process(_dt: float) -> void:
 ## Everything the tokens, reserve and drag highlights depend on.
 func _redraw_key() -> Array:
 	var key := [game.phase, game.bench_dock, position, game.drag, game.shop_drag_index, game.shop_drag_active,
-		game.hover_info.get("owned"), game.player.gold]
+		game.hover_info.get("owned"), game.player.gold, game.bench_visible()]
 	if game.drag_visual_active():
 		key.append(game.shop_drag_position if game.shop_drag_index >= 0 else get_global_mouse_position())
 	for state in game.states:
@@ -97,6 +97,8 @@ func _draw_drop_cell() -> void:
 
 
 func _draw_reserve() -> void:
+	if not game.bench_visible():
+		return
 	# Each slot is drawn at full size around its centre, then scaled with the
 	# dock animation; the bench does not shake with the board.
 	var scale_k: float = game.bench_scale()

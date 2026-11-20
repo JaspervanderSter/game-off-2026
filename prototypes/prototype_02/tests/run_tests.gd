@@ -51,6 +51,7 @@ func _ready() -> void:
 	_test_ai_strategy()
 	_test_difficulty()
 	_test_journey_rules()
+	_test_forest_lessons()
 	_test_day_night_cycle()
 	_test_journey_health()
 	_test_journey_discovery()
@@ -2586,5 +2587,70 @@ func _test_journey_rules() -> void:
 	check(is_equal_approx(blessed.ability_timer, CreatureDB.get_form("rabbit").cd), "no animal bonus before the archdruid")
 	battle.free()
 	var hunter_player := WizardState.new(0)
-	hunter_player.rules = OpponentDB.ruleset(1)
+	hunter_player.rules = OpponentDB.ruleset(0)
 	check(not hunter_player.can_cast(), "the player has no wand before the druid")
+
+
+func _test_forest_lessons() -> void:
+	check(OpponentDB.get_opponent(1).id == "druid" and OpponentDB.get_opponent(2).id == "lumberjack",
+		"the wand is introduced before the shop")
+	check(OpponentDB.ruleset(1).has(Ruleset.WAND) and not OpponentDB.ruleset(1).has(Ruleset.SHOP),
+		"the druid teaches casting without shopping")
+	for form: String in OpponentDB.learning_army(0):
+		check(CreatureDB.get_form(form).family == "animal", "the hunter fields animals only")
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.difficulty_progress_path = "user://forest_lesson_test_%d.cfg" % OS.get_process_id()
+	game.journey.completed.assign(range(Journey.stage_count()))
+	for lesson in 15:
+		var index := lesson / 3
+		var choice := lesson % 3
+		game.choose_stage(index)
+		check(game.offered_packs == OpponentDB.learning_packs(), "forest %d offers small thematic teams" % index)
+		game.choose_pack(choice)
+		for creature: OwnedCreature in game.player.creatures:
+			check(creature.form_id in Ruleset.FOREST_HUMANS, "forest openings use only the three humans")
+		check(game.enemy.creatures.size() == OpponentDB.learning_army(index).size(), "forest %d uses its small army" % index)
+		check(game.bench_visible() == (index >= 2), "the bench appears with the shop")
+		check(EnemyAI.shop_step(game.enemy, game.rng).is_empty(), "forest enemies never expand their army")
+		for offer: String in game.player.offers:
+			check(offer == "" or offer in Ruleset.FOREST_HUMANS, "forest offers stay inside the thematic roster")
+		game._advance_enemy_preparation(1.0)
+		game.start_combat()
+		check(game.battle.learning_duel, "forest battles enable the learning safety net")
+		# Observe an ordinary opening without shopping or casting. This is a
+		# bounded lesson smoke test, not a balance or win-rate investigation.
+		for tick in 3600:
+			game.battle.step(1.0 / 60.0)
+			if game.battle.finished:
+				break
+		check(game.battle.finished and game.battle.result.winner == 0,
+			"forest %d can be won without buying or casting" % index)
+		game.new_duel()
+	game.free()
+	var forest := OpponentDB.ruleset(1)
+	for form: String in Ruleset.FOREST_OUTCOMES:
+		var options := forest.outcomes(form)
+		check(options.size() == 3, "every forest form has three outcomes")
+		for option: Dictionary in options:
+			check(forest.allows_form(option.id), "forest transformations cannot escape the six-form roster")
+			check((form in Ruleset.FOREST_HUMANS) != (option.id in Ruleset.FOREST_HUMANS),
+				"forest transformations cross between humans and animals")
+	check(not forest.allows_form("turtle") and not forest.allows_form("crossbowman"),
+		"forest excludes other animals and humans")
+	check(OpponentDB.ruleset(5).outcomes("archer") == CreatureDB.outcomes("archer"),
+		"the town restores the full transformation graph")
+	var battle := Battle.new()
+	add_child(battle)
+	battle.learning_duel = true
+	var first := battle.spawn(0, "archer", Vector2(100, 300))
+	var last := battle.spawn(0, "archer", Vector2(200, 300))
+	var foe := battle.spawn(1, "wolf", Vector2(100, 100))
+	battle.damage(foe, first, 10000, "dot", true)
+	battle.damage(foe, last, 10000, "dot", true)
+	check(not first.alive and last.alive and last.hp == 1.0,
+		"creatures can fall but poison cannot kill the learner's last creature")
+	battle.learning_duel = false
+	battle.damage(foe, last, 10000, "dot", true)
+	check(not last.alive, "ordinary battles retain lethal damage")
+	battle.free()

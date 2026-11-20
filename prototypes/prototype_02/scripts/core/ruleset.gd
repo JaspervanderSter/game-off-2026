@@ -21,6 +21,19 @@ const ALL: Array[String] = [SHOP, WAND, HEX, ANIMAL_BONUS, TRADE, HARVEST, MERGE
 const FORM_RULES := {"peasant": HARVEST, "pyromancer": CASTERS, "frost_mage": CASTERS}
 
 var enabled := {}
+var forest_roster := false
+const FOREST_HUMANS := ["archer", "guardian", "spearman"]
+const FOREST_ANIMALS := ["rabbit", "wolf", "deer"]
+## A closed forest practice graph: three cross-family outcomes per form.
+## This deliberately replaces the eight-stage full-roster graph on this island.
+const FOREST_OUTCOMES := {
+	"archer": ["rabbit", "wolf", "deer"],
+	"guardian": ["deer", "wolf", "rabbit"],
+	"spearman": ["wolf", "rabbit", "deer"],
+	"rabbit": ["archer", "spearman", "guardian"],
+	"wolf": ["spearman", "guardian", "archer"],
+	"deer": ["guardian", "archer", "spearman"],
+}
 
 
 func _init(rules: Array = ALL) -> void:
@@ -56,6 +69,8 @@ func any_upgrade() -> bool:
 
 
 func allows_form(id: String) -> bool:
+	if forest_roster:
+		return id in FOREST_HUMANS or id in FOREST_ANIMALS
 	return not FORM_RULES.has(id) or has(FORM_RULES[id])
 
 
@@ -73,3 +88,25 @@ func shop_ids() -> Array[String]:
 		if allows_form(id):
 			ids.append(id)
 	return ids
+
+
+func outcomes(id: String) -> Array:
+	if not forest_roster:
+		return CreatureDB.outcomes(id)
+	var result := []
+	var next: Array = FOREST_OUTCOMES.get(id, [])
+	for i in next.size():
+		result.append({"id": next[i], "chance": CreatureDB.OUTCOME_CHANCES[i]})
+	return result
+
+
+func roll_outcome(id: String, rng: RandomNumberGenerator) -> String:
+	var options := outcomes(id)
+	if options.is_empty():
+		return id
+	var roll := rng.randf()
+	for option in options:
+		roll -= option.chance
+		if roll <= 0.0:
+			return option.id
+	return options[-1].id

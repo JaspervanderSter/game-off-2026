@@ -141,6 +141,8 @@ static func _weakest_fielded(state: WizardState, profile: Dictionary) -> OwnedCr
 
 
 static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: Dictionary = {}) -> Dictionary:
+	if state.learning_duel:
+		return {} # demonstrate the player's shop without an enemy arms race
 	if profile.is_empty():
 		profile = profile_for(state.ai_level)
 	var difficulty := Difficulty.profile(state.ai_level)
@@ -342,7 +344,7 @@ static func choose_cast(battle: Battle, team: int, profile: Dictionary = DEFAULT
 		var expected := 0.0
 		# An allied cast adds a level; a hex resets the target to level 1.
 		var new_level := u.level + 1 if allied else (1 if profile.get("hex_level_reset", false) else u.level)
-		for outcome in CreatureDB.outcomes(u.form_id):
+		for outcome in battle.ruleset.outcomes(u.form_id):
 			var value := form_value(outcome.id, u.stars, profile) * Rules.level_mult(new_level)
 			value *= sqrt(shifted_ratio)
 			var d := CreatureDB.get_form(outcome.id)

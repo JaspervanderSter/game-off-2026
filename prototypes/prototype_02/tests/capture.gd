@@ -21,6 +21,10 @@ func _ready() -> void:
 	game =load("res://main.tscn").instantiate()
 	add_child(game)
 	await _frames(10)
+	if "--forest-only" in OS.get_cmdline_user_args():
+		await _capture_forest()
+		get_tree().quit()
+		return
 	get_viewport().warp_mouse(Hud.difficulty_rect(Difficulty.ADEPT).get_center())
 	await _frames(4)
 	await _shot("00_difficulty")
@@ -234,6 +238,29 @@ func _capture_rewards() -> void:
 	game.hud.advance_loss_rewards(0.38)
 	await _frames(2)
 	await _shot("08_coin_arrival")
+
+
+func _capture_forest() -> void:
+	game.difficulty_progress_path = capture_dir.path_join("forest_progress.cfg")
+	game.journey.completed.assign(range(Journey.stage_count()))
+	for index in 5:
+		game.choose_stage(index)
+		await _frames(4)
+		if index == 0:
+			await _shot("forest_00_choices")
+		game.choose_pack(0)
+		await _seconds(0.8)
+		await _shot("forest_%d_preparation" % index)
+		if index == 1:
+			game.start_combat()
+			await _seconds(2.0)
+			await _shot("forest_1_cast_hint")
+			var ally: Unit = game.battle.living(0)[0]
+			game._cast_at(Rules.BOARD_POS + ally.position)
+			await _seconds(0.3)
+			await _shot("forest_1_transformation")
+		game.new_duel()
+		await _frames(3)
 
 
 func _frames(n: int) -> void:
