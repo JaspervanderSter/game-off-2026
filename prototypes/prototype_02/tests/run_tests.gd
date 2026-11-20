@@ -50,6 +50,8 @@ func _ready() -> void:
 	_test_blizzard_and_recharge_upgrade()
 	_test_ai_strategy()
 	_test_difficulty()
+	_test_day_night_cycle()
+	await _test_journey_navigation()
 	_simulate_duels()
 	DirAccess.remove_absolute(PackDeck.save_path)
 	print("\n%d checks, %d failures" % [_checks, _failures])
@@ -1054,8 +1056,12 @@ func _test_phase_music() -> void:
 
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
-	check(game.music.current == "prep", "difficulty choice uses preparation music")
+	check(game.music.current == "" and not game.music.players.prep.playing,
+		"the menu starts without music")
+	game.show_map()
+	check(game.music.current == "", "the world map stays without music")
 	game.choose_difficulty(Difficulty.APPRENTICE)
+	check(game.music.current == "prep", "choosing a duel starts preparation music")
 	game.choose_pack(0)
 	check(game.music.current == "prep", "preparation keeps its music")
 	_finish_enemy_preparation(game)
@@ -1078,7 +1084,9 @@ func _test_phase_music() -> void:
 	game._finish_round()
 	check(game.phase == game.Phase.OVER and game.music.current == "", "game over keeps music faded out")
 	game.new_duel()
-	check(game.music.current == "prep", "restart fades preparation music in")
+	check(game.music.current == "", "returning to the world map keeps music off")
+	game.show_menu()
+	check(game.music.current == "", "returning to the menu keeps music off")
 	game.free()
 
 
@@ -2033,82 +2041,54 @@ func _test_difficulty() -> void:
 		and apprentice.cast_delay.x > adept.cast_delay.x and adept.cast_delay.x > archmage.cast_delay.x,
 		"easier levels cast more slowly and less accurately")
 
-	# Use a fresh save and reload it in a separate game instance.
+	# Exercise the real menu -> map -> duel -> map flow with an isolated save.
 	var progress_path := "user://difficulty_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
 	var game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = progress_path
 	add_child(game)
-	check(game.phase == game.Phase.DIFFICULTY and game.enemy.ai_level == Difficulty.APPRENTICE
-		and game.is_difficulty_unlocked(Difficulty.APPRENTICE), "a fresh profile starts with apprentice")
-	game._left_press(Hud.difficulty_rect(Difficulty.ADEPT).get_center())
-	check(game.phase == game.Phase.DIFFICULTY, "clicking a locked hat cannot start a duel")
-	var key := InputEventKey.new()
-	key.pressed = true
-	key.keycode = KEY_3
-	game._unhandled_input(key)
-	check(game.phase == game.Phase.DIFFICULTY, "the keyboard cannot select a locked difficulty")
-	game._left_press(Hud.difficulty_rect(Difficulty.APPRENTICE).get_center())
-	check(game.phase == game.Phase.PACK and game.enemy.ai_level == Difficulty.APPRENTICE
-		and game.player.creatures.is_empty(), "clicking the apprentice hat selects it and opens pack choice")
+	check(game.menu_screen.visible and not game.map_screen.visible and not game.hud.visible,
+		"startup shows the dedicated menu")
+	game.menu_screen._activate(0)
+	check(game.map_screen.visible and not game.menu_screen.visible and game.journey.available(0),
+		"the menu opens the map with its first stage available")
+	game.choose_stage(6)
+	check(game.phase == game.Phase.DIFFICULTY, "locked map stages cannot launch")
+	game.map_screen._activate(0)
+	check(game.phase == game.Phase.PACK and game.hud.visible and not game.map_screen.visible,
+		"a map seal starts pack selection")
 	game.choose_pack(0)
 	game.player.hp = 0.5
 	game._on_battle_ended({"winner": 1, "survivors": 1})
 	game.battle = Battle.new()
 	game.add_child(game.battle)
 	game._finish_round()
-	check(game.phase == game.Phase.OVER and not game.is_difficulty_unlocked(Difficulty.ADEPT)
-		and game.hud.victory._particles.is_empty(), "a defeat does not unlock a level or start the celebration")
+	check(game.journey.completed.is_empty(), "a defeat never completes a stage")
 	game._left_press(Hud.RESTART_POS)
-	check(game.phase == game.Phase.DIFFICULTY and game.enemy.ai_level == Difficulty.APPRENTICE,
-		"replaying returns to the difficulty screen and remembers the last level")
-	game.choose_difficulty(Difficulty.APPRENTICE)
-	game.choose_pack(0)
-	_finish_test_difficulty_win(game)
-	check(game.newly_unlocked_difficulty == Difficulty.ADEPT and game.is_difficulty_unlocked(Difficulty.ADEPT)
-		and not game.is_difficulty_unlocked(Difficulty.ARCHMAGE), "winning as apprentice unlocks only adept")
-	check(not game.hud.victory._particles.is_empty() and not game.hud.unlock_animation_active(),
-		"victory celebrates the duel and queues the unlock reveal for replay")
-	game._left_press(Hud.RESTART_POS)
-	check(game.newly_unlocked_difficulty == -1 and game.hud.unlock_level == Difficulty.ADEPT
-		and game.hud.victory._particles.is_empty(), "replay starts the unlock reveal on the difficulty screen")
-	key.keycode = KEY_2
-	game._unhandled_input(key)
-	check(game.phase == game.Phase.DIFFICULTY, "selection waits for the unlock reveal")
-	Sfx._last_played.erase("ui/difficulty_unlock")
-	game.hud.advance_difficulty_unlock(Hud.UNLOCK_CLICK * 0.5)
-	check(not Sfx._last_played.has("ui/difficulty_unlock"), "the closed lock is silent before opening")
-	game.hud.advance_difficulty_unlock(Hud.UNLOCK_CLICK)
-	check(not Sfx.enabled or Sfx._last_played.has("ui/difficulty_unlock"), "the opening plays the unlock sound")
-	game.hud.advance_difficulty_unlock(Hud.UNLOCK_DURATION)
-	game.new_duel()
-	check(not game.hud.unlock_animation_active(), "the unlock reveal plays once")
-	game._unhandled_input(key)
-	check(game.phase == game.Phase.PACK and game.enemy.ai_level == Difficulty.ADEPT, "number keys pick a hat")
-	var hat_battle := Battle.new()
-	add_child(hat_battle)
-	hat_battle.setup(game.states, 5)
-	check(hat_battle.ai_levels[1] == Difficulty.ADEPT and hat_battle._ai_delay[1] >= adept.first_delay.x,
-		"combat uses the opponent level for its casting delays")
-	hat_battle.free()
-	game.choose_pack(0)
-	_finish_test_difficulty_win(game)
-	check(game.newly_unlocked_difficulty == Difficulty.ARCHMAGE, "winning as adept unlocks archmage")
+	check(game.map_screen.visible, "the end-of-duel button returns to the map")
+	for index in [0, 2, 3, 5, 6]:
+		game.choose_stage(index)
+		check(game.enemy.ai_level == Journey.LEVELS[index], "stage %d selects its AI tier" % index)
+		game.choose_pack(0)
+		_finish_test_difficulty_win(game)
+		check(index in game.journey.completed, "winning stage %d saves completion" % index)
+		game._left_press(Hud.RESTART_POS)
+	check(game.journey.available(1) and game.journey.available(4), "unplayed side branches remain available")
+	check(game.journey.available(6), "the final seal remains replayable")
 	game.free()
 	game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = progress_path
 	add_child(game)
-	check(game.is_difficulty_unlocked(Difficulty.ARCHMAGE), "the unlocked levels survive a reload")
-	key.keycode = KEY_R
-	key.ctrl_pressed = true
-	key.shift_pressed = true
-	game._unhandled_input(key)
-	check(not game.is_difficulty_unlocked(Difficulty.ADEPT) and not game.hud.unlock_animation_active(),
-		"the reset shortcut restores the initial difficulty screen")
+	check(game.journey.completed == [0, 2, 3, 5, 6], "map progress survives reloading")
+	game._reset_difficulty_progress()
+	check(game.journey.completed.is_empty() and not game.journey.available(1), "reset clears the map")
 	game.free()
+	var legacy := ConfigFile.new()
+	legacy.set_value("progress", "unlocked_difficulty", Difficulty.ARCHMAGE)
+	legacy.save(progress_path)
 	game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = progress_path
 	add_child(game)
-	check(not game.is_difficulty_unlocked(Difficulty.ADEPT), "the reset survives a reload")
+	check(game.journey.available(6), "legacy archmage access migrates to the final seal")
 	game.free()
 	DirAccess.remove_absolute(progress_path)
 
@@ -2232,3 +2212,108 @@ func _simulate_duels() -> void:
 			avg_r += r
 		avg_r /= rounds.size()
 		print("casting=%s: %d combats, avg combat %.1f s, avg duel %.1f rounds, draws %d" % [casting, combats, avg_t, avg_r, draws])
+
+
+func _test_day_night_cycle() -> void:
+	var cycle = preload("res://scripts/ui/day_night_sky.gd").new()
+	for index in 4:
+		var state: Dictionary = cycle.palette(index / 4.0)
+		check(state.top.is_equal_approx(cycle.TOP[index]) and state.bottom.is_equal_approx(cycle.BOTTOM[index]),
+			"sky cycle reaches palette %d" % index)
+	check(cycle.palette(0.75).night == 1.0 and cycle.palette(0.0).night == 0.0,
+		"stars and moon belong to the night phase")
+	var between: Dictionary = cycle.palette(0.125)
+	check(not between.top.is_equal_approx(cycle.TOP[0]) and not between.top.is_equal_approx(cycle.TOP[1]),
+		"sky interpolates between daytime palettes")
+	for boundary in [0.0, 0.25, 0.5, 0.75, 1.0]:
+		check(cycle.palette(boundary - 0.000001).top.is_equal_approx(cycle.palette(boundary + 0.000001).top),
+			"sky has no colour jump at phase %s" % boundary)
+	cycle.elapsed = cycle.cycle_seconds - 1.0
+	cycle.advance(2.0)
+	check(is_equal_approx(cycle.elapsed, 1.0), "sky clock wraps after a full cycle")
+	cycle.free()
+
+
+func _test_journey_navigation() -> void:
+	# Headless Godot otherwise uses a 64 x 64 window, which changes GUI picking.
+	var previous_size := get_window().size
+	get_window().size = Vector2i(1280, 720)
+	var game = load("res://main.tscn").instantiate()
+	game.difficulty_progress_path = "user://journey_ui_test_%d.cfg" % OS.get_process_id()
+	add_child(game)
+	game.set_physics_process(false)
+	game.show_map()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var map = game.map_screen
+	check(map.scroll.scroll_vertical > 0, "map opens near the first forest encounter")
+	check(map.content.custom_minimum_size.y > map.scroll.size.y, "map extends vertically beyond the viewport")
+	var initial_scroll: int = map.scroll.scroll_vertical
+	var motion := InputEventMouseMotion.new()
+	motion.position = Vector2(640, 400)
+	Input.parse_input_event(motion)
+	await get_tree().process_frame
+	var wheel := InputEventMouseButton.new()
+	wheel.position = Vector2(640, 400)
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	Input.parse_input_event(wheel)
+	await get_tree().process_frame
+	check(map.scroll.scroll_vertical < initial_scroll, "mouse wheel moves the journey toward the upper islands")
+	var before_swipe: int = map.scroll.scroll_vertical
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.position = Vector2(640, 400)
+	touch.pressed = true
+	Input.parse_input_event(touch)
+	await get_tree().process_frame
+	var swipe := InputEventScreenDrag.new()
+	swipe.index = 0
+	swipe.position = Vector2(640, 550)
+	swipe.relative = Vector2(0, 150)
+	Input.parse_input_event(swipe)
+	await get_tree().process_frame
+	touch = touch.duplicate()
+	touch.position = swipe.position
+	touch.pressed = false
+	Input.parse_input_event(touch)
+	await get_tree().process_frame
+	check(map.scroll.scroll_vertical < before_swipe and game.phase == game.Phase.DIFFICULTY,
+		"a touch swipe scrolls without launching a duel")
+	map._reveal_stage(0)
+	await get_tree().process_frame
+	var pos: Vector2 = map.buttons[1].get_global_transform_with_canvas() * (map.buttons[1].size * 0.5)
+	motion = InputEventMouseMotion.new()
+	motion.position = pos
+	Input.parse_input_event(motion)
+	await get_tree().process_frame
+	var click := InputEventMouseButton.new()
+	click.position = pos
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	Input.parse_input_event(click)
+	await get_tree().process_frame
+	click = click.duplicate()
+	click.pressed = false
+	Input.parse_input_event(click)
+	await get_tree().process_frame
+	check(game.phase == game.Phase.PACK and game.hud.visible, "a scrolled map button launches the correct duel")
+	check(get_window().content_scale_aspect == Window.CONTENT_SCALE_ASPECT_KEEP, "duel restores its original viewport layout")
+	var sky_time: float = map.sky.elapsed
+	map.sky._process(15.0)
+	check(is_equal_approx(map.sky.elapsed, sky_time), "hidden map pauses its sky clock")
+	game.new_duel()
+	check(is_equal_approx(map.sky.elapsed, sky_time), "returning to the map retains its time of day")
+	get_window().size = Vector2i(390, 844)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+	check(map.content.custom_minimum_size.y > map.scroll.size.y, "portrait map keeps vertical scrolling")
+	check(map.scroll.scroll_vertical > 0, "rotating to portrait keeps the current island in view")
+	check(map.buttons[0].size.x * 390.0 / map.get_viewport_rect().size.x >= 44.0, "portrait menu target remains touch sized")
+	for index in map.STAGE_OFFSETS.size():
+		var target: Vector2 = map.buttons[index + 1].get_global_transform_with_canvas() * (map.buttons[index + 1].size * 0.5)
+		check(target.x >= 20 and target.x <= map.get_viewport_rect().size.x - 20,
+			"portrait encounter %d remains within the map width" % index)
+	game.free()
+	get_window().size = previous_size

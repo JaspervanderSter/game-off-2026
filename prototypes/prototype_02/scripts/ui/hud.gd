@@ -1147,7 +1147,7 @@ func _draw_game_over() -> void:
 		Icons.skull(_ci, Vector2(640, 280), 95)
 	var hovered := RESTART_POS.distance_to(get_global_mouse_position()) < 46
 	Shapes.circle(_ci, RESTART_POS, 46, Color(0.25, 0.18, 0.3) if hovered else Color(0.15, 0.1, 0.18))
-	Icons.restart(_ci, RESTART_POS, 24, Color(0.9, 0.85, 1.0))
+	Icons.world_map(_ci, RESTART_POS, 24)
 
 
 ## Hover card: current form, its three possible outcomes with chances, and

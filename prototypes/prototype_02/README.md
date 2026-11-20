@@ -17,7 +17,10 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 
 | Action | Control |
 | --- | --- |
-| Pick the opponent's difficulty | Left-click an unlocked hat or press its number (1 / 2 / 3) |
+| Open the journey | Click the map-and-arrow button in the menu (or Enter) |
+| Pick a stage | Click an unlocked opponent on an island; Tab / arrow keys and Enter also work |
+| Explore the map | Mouse wheel, scrollbar, touch swipe, or Page Up / Page Down; Home / End jump to either end |
+| Return to the menu | Map back arrow (or Esc on the map) |
 | Pick a starting composition | Left-click one of the three cards |
 | Buy a creature | Click and release a shop card for the bench, or drag it directly to a board cell / reserve slot |
 | Reroll shop | Click the circular-arrow button below the offers, inside the stall (1 gold) |
@@ -295,7 +298,9 @@ weight, and the layout rules.
 
 ## Music
 
-`scripts/audio/phase_music.gd` plays the supplied looping OGG tracks in `music/`:
+`scripts/audio/phase_music.gd` plays the supplied looping OGG tracks in `music/`
+only during duels. The menu and world map have no music; preparation music starts
+when a stage is selected:
 
 - Pack choice and preparation: `cartoon_magic.ogg`.
 - Combat: `marching_beat.ogg`.
@@ -596,20 +601,41 @@ other finalists combined. It values pyromancer and frost mage more highly,
 accounts for fireball and burn scaling with stars, and prioritises
 interrupting enemy casts.
 
-## Difficulty levels (13 November 2026)
+## Journey map and difficulty levels (20 November 2026)
 
-Each duel opens on a difficulty screen with three hats, from modest to impressive:
-a patched brown apprentice cap, a blue adept hat with a gold band and star, and a
-glowing purple archmage hat with a curled tip, moon, stars, jewel and orbiting
-sparks. Hovering a card lifts it, bobs its hat and previews that hat in the
-opponent's panel, where the chosen hat stays as a reminder for the whole duel.
-The restart button returns to this screen; the last choice is kept as the
-opponent's hat until a new one is picked.
+The game opens on `menu.tscn`, a procedural duel diorama. Its map button opens
+`world_map.tscn`, a vertically scrolling journey through floating forest, village
+and mage islands. The map fills portrait screens and keeps its menu button fixed
+at the top. Selecting an opponent starts the duel; completed stages are marked
+with gold stars, and future stages carry small padlocks. Keyboard focus scrolls
+the relevant encounter into view. Islands, scenery and opponents are drawn in
+code using the existing vector shapes, without generated image assets.
 
-Only Apprentice is available on a fresh profile. Winning a duel against
-Apprentice unlocks Adept, and winning against Adept unlocks Archmage. The game
-saves unlocked difficulties locally. When the player replays after unlocking a
-difficulty, its padlock opens on the difficulty screen.
+The sky runs a 160-second local cycle: clear blue daylight, golden mist,
+rose-and-mauve dusk, starry night, then back to daylight. Colours blend smoothly,
+clouds drift with a little scrolling parallax, and the moon and stars fade in at
+night. Island colours and interaction markers remain readable throughout. The
+clock pauses while the map is hidden and resumes on return; it is decorative
+and does not alter combat. `scripts/ui/day_night_sky.gd` exposes `cycle_seconds`
+for adjusting the duration. `scripts/ui/world_map.gd` owns navigation and layout;
+`scripts/ui/map_island.gd` draws the floating land masses.
+
+The roads follow `1 -> (2 or 3) -> 4 -> (5 or 6) -> 7`. Winning a full duel
+completes its seal and opens all outgoing roads. Either incoming road is enough
+to unlock a merge. Defeats do not advance progress. Completed stages and side
+branches remain replayable, and the end-of-duel map button returns to the map.
+Gold stars mark completed stages; padlocks mark inaccessible ones. The seven
+header pips track completion. Every stage starts a fresh duel with the
+existing pack decks, economy and rules; there are no branch-specific modifiers yet.
+
+Stages 1–3 use Apprentice AI, 4–6 use Adept, and 7 uses Archmage. The opponent's
+hat stays visible during the duel. Unlock rules live in
+`scripts/core/journey.gd`; island positions and visual opponent markers live in
+`scripts/ui/world_map.gd`. The biome markers establish the journey visually;
+combat still uses the existing opponent decks and AI tiers. Progress is saved locally in `difficulty_progress.cfg`.
+Older saves retain their access: unlocked Adept marks the Apprentice stages
+complete, and unlocked Archmage also marks the Adept stages complete. The hidden
+Ctrl+Shift+R shortcut on the menu or map resets progression.
 
 - **Archmage** plays its own tuned strategy (`EnemyAI.ARCHMAGE_PROFILE`), with
   the same rules, gold and information as the player: it draws its opening from

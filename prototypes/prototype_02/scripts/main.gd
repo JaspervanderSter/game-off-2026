@@ -1,7 +1,7 @@
 extends Node2D
 ## Prototype 02 game controller: the duel loop
-## difficulty -> pack choice -> (shop + preparation -> combat -> resolution) x N
-## -> game over -> difficulty again.
+## menu -> journey map -> pack choice -> (preparation -> combat -> resolution)
+## -> game over -> journey map.
 
 enum Phase { DIFFICULTY, PACK, PREP, COMBAT, RESOLVE, OVER }
 
@@ -27,6 +27,9 @@ var difficulty := Difficulty.APPRENTICE
 var unlocked_difficulty := Difficulty.APPRENTICE
 var newly_unlocked_difficulty := -1
 var difficulty_progress_path := "user://difficulty_progress.cfg"
+var journey := Journey.new()
+var menu_screen: Node2D
+var map_screen: Node2D
 const PACK_CHOICES := 3
 # Starting compositions come from hidden decks: three cards for the player per
 # duel, one for the opponent from its own deck.
@@ -92,7 +95,44 @@ func _ready() -> void:
 	_load_difficulty_progress()
 	player_deck.load_state()
 	enemy_deck.load_state()
+	menu_screen = preload("res://menu.tscn").instantiate()
+	map_screen = preload("res://world_map.tscn").instantiate()
+	for screen in [menu_screen, map_screen]:
+		screen.game = self
+		screen.z_index = 30
+		add_child(screen)
 	new_duel()
+	show_menu()
+
+
+func show_menu() -> void:
+	music.transition_to("")
+	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+	menu_screen.show()
+	map_screen.hide()
+	board_view.hide()
+	hud.hide()
+	menu_screen.focus_first()
+
+
+func show_map() -> void:
+	music.transition_to("")
+	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	menu_screen.hide()
+	map_screen.show()
+	board_view.hide()
+	hud.hide()
+	map_screen.focus_first()
+	Sfx.play("ui/click")
+
+
+func choose_stage(index: int) -> void:
+	if phase != Phase.DIFFICULTY or not journey.available(index):
+		return
+	journey.selected = index
+	# The roads, rather than the former difficulty locks, grant access.
+	difficulty = Journey.LEVELS[index]
+	_start_duel()
 
 
 func new_duel() -> void:
@@ -118,12 +158,15 @@ func new_duel() -> void:
 	hud.clear_harvest()
 	hud.clear_victory()
 	phase = Phase.DIFFICULTY
+	journey.selected = -1
 	hud.begin_difficulty_unlock(newly_unlocked_difficulty)
 	newly_unlocked_difficulty = -1
-	music.transition_to("prep")
+	if map_screen != null:
+		show_map()
 
 
-## Every duel starts by picking the opponent's hat; the level holds for the duel.
+## Direct difficulty entry retained for rule tests and developer tooling.
+## The playable front end chooses stages through choose_stage().
 func choose_difficulty(level: int) -> void:
 	if phase != Phase.DIFFICULTY or hud.unlock_animation_active():
 		return
@@ -131,6 +174,16 @@ func choose_difficulty(level: int) -> void:
 		Sfx.play("ui/fail")
 		return
 	difficulty = level
+	_start_duel()
+
+
+func _start_duel() -> void:
+	music.transition_to("prep")
+	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+	menu_screen.hide()
+	map_screen.hide()
+	board_view.show()
+	hud.show()
 	enemy.ai_level = difficulty
 	offered_packs = player_deck.deal(PACK_CHOICES, rng)
 	player_deck.save_state()
@@ -148,11 +201,14 @@ func _load_difficulty_progress() -> void:
 		var saved = config.get_value("progress", "unlocked_difficulty", Difficulty.APPRENTICE)
 		if saved is int:
 			unlocked_difficulty = clampi(saved, Difficulty.APPRENTICE, Difficulty.COUNT - 1)
+	journey.restore(config, unlocked_difficulty)
 
 
 func _unlock_next_difficulty() -> void:
+	journey.record_win()
 	var next := difficulty + 1
 	if next <= unlocked_difficulty or next >= Difficulty.COUNT:
+		_save_difficulty_progress(unlocked_difficulty)
 		return
 	unlocked_difficulty = next
 	newly_unlocked_difficulty = next
@@ -162,6 +218,7 @@ func _unlock_next_difficulty() -> void:
 func _save_difficulty_progress(level: int) -> bool:
 	var config := ConfigFile.new()
 	config.set_value("progress", "unlocked_difficulty", level)
+	config.set_value("journey", "completed", journey.completed)
 	var error := config.save(difficulty_progress_path)
 	if error != OK:
 		push_warning("Could not save difficulty progress: %s" % error_string(error))
@@ -169,7 +226,10 @@ func _save_difficulty_progress(level: int) -> bool:
 
 
 func _reset_difficulty_progress() -> void:
+	var previous := journey.completed.duplicate()
+	journey.completed.clear()
 	if not _save_difficulty_progress(Difficulty.APPRENTICE):
+		journey.completed.assign(previous)
 		Sfx.play("ui/fail")
 		return
 	difficulty = Difficulty.APPRENTICE
@@ -472,6 +532,16 @@ func toggle_sound_set() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if menu_screen.visible or map_screen.visible:
+		if event is InputEventKey and event.pressed and not event.echo:
+			if event.keycode == KEY_ESCAPE:
+				show_menu()
+			elif event.keycode == KEY_ENTER and menu_screen.visible:
+				show_map()
+			elif event.keycode == KEY_R and event.ctrl_pressed and event.shift_pressed:
+				_reset_difficulty_progress()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseMotion and shop_drag_index >= 0:
 		shop_drag_position = event.position
 		if event.position.distance_to(shop_drag_origin) >= SHOP_DRAG_DISTANCE:
