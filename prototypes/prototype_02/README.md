@@ -829,7 +829,10 @@ teams use these humans; enemies field fixed armies that grow by one creature
 per lesson, from one to five (`OpponentDB.FOREST_ARMIES`), and never shop. Magical enemies demonstrate one cast after six seconds per round.
 Damage cannot kill the player's last creature in forest; normal battles retain
 lethal damage. The empty bench and its drop targets stay hidden until shopping.
-An animated wand invites the first allied cast, then the first enemy cast. In
+An animated wand invites the first allied cast, then the first enemy cast. The
+allied cue never aims at the tank (the shield guardian) while another ally can
+take the cast: it picks the least armoured ally, the farthest from the enemies
+on a tie, and the tank only as the last creature left. In
 the druid's and the swamp witch's duels, combat stops while that cue waits and
 resumes once the player has tried the cast (`awaiting_learning_cast()` in
 `main.gd`). The cue appears only in those two duels, until that cast has been

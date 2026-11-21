@@ -501,6 +501,10 @@ The user played the journey and listed 22 changes, handled one at a time.
 - **Map icon:** every way back to the journey map (menu button, end of a duel,
   leaving a replay) shows the same sky-blue medallion with a floating island,
   replacing the folded paper map.
+- **Druid's cast lesson:** the cue no longer invites a shapeshift of the tank
+  (shield guardian), which would lose its armour and keep the aggro. It picks the
+  least armoured ally, the farthest from the enemies on a tie, and falls back on
+  the tank only when no other ally is left. See [[Journey and Opponents]].
 
 ## Playtest plan and completion criteria
 

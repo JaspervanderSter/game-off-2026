@@ -1013,7 +1013,8 @@ func _process(dt: float) -> void:
 
 
 ## Forest lesson cue: the creature the player is invited to shapeshift (an ally
-## before hexes, an enemy afterwards), or null once tried or when none is ready.
+## before hexes, never the tank while another ally is ready; an enemy
+## afterwards), or null once tried or when none is ready.
 ## Shown only in the duel that teaches that cast (the druid's wand, the swamp
 ## witch's hex) and only until the player has tried it once, ever (saved).
 func learning_cast_target() -> Unit:
@@ -1024,10 +1025,32 @@ func learning_cast_target() -> Unit:
 		return null
 	if not player.can_cast() or not battle.spells[0].can_cast():
 		return null
-	for u in battle.living(1 if ruleset.has(Ruleset.HEX) else 0):
-		if u.immune_t <= 0.0 and battle.can_target(0, u):
+	var hex := ruleset.has(Ruleset.HEX)
+	var best: Unit = null
+	for u in battle.living(1 if hex else 0):
+		if u.immune_t > 0.0 or not battle.can_target(0, u):
+			continue
+		if hex:
 			return u
-	return null
+		if best == null or _better_lesson_ally(u, best):
+			best = u
+	return best
+
+
+## Druid's lesson: never invite a shapeshift of the tank while another ally can
+## take it, since the tank would lose its armour and keep the enemies' aggro.
+## The ally with the least armour goes first; on a tie, the one farthest from
+## the enemies, the least likely to be their target. The tank remains the
+## fallback when it is the only creature left to cast on.
+func _better_lesson_ally(u: Unit, best: Unit) -> bool:
+	if not is_equal_approx(u.armour(), best.armour()):
+		return u.armour() < best.armour()
+	return _distance_to_foes(u) > _distance_to_foes(best) + 0.5
+
+
+func _distance_to_foes(u: Unit) -> float:
+	var foe := battle.nearest_enemy(u)
+	return u.position.distance_to(foe.position) if foe != null else 0.0
 
 
 ## The druid's and the swamp witch's duels stop the fight while their cast

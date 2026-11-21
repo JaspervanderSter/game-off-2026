@@ -56,6 +56,7 @@ func _ready() -> void:
 	_test_forest_lessons()
 	_test_rule_spotlight()
 	_test_learning_pause()
+	_test_learning_cue_spares_tank()
 	_test_abandon_replay()
 	_test_screen_transition()
 	_test_screen_layout()
@@ -2882,6 +2883,50 @@ func _test_learning_pause() -> void:
 	check(restored.lessons_done == game.journey.lessons_done, "tried lesson casts are saved")
 	game.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://learning_pause_test_%d.cfg" % OS.get_process_id()))
+
+
+## The druid's cue never invites a shapeshift of the tank (the shield guardian,
+## the most armoured ally) while another ally can take it: the least armoured
+## one goes first, the farthest from the enemies on a tie, and the tank only
+## when it is the last creature to cast on.
+func _test_learning_cue_spares_tank() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.set_physics_process(false)
+	game.difficulty_progress_path = "user://learning_cue_tank_test_%d.cfg" % OS.get_process_id()
+	game.journey.completed.assign(range(Journey.stage_count()))
+	for slot in OpponentDB.learning_packs().size():
+		game.journey.lessons_done.clear()
+		game.new_duel()
+		game.choose_stage(1)
+		game.choose_pack(slot)
+		game._advance_enemy_preparation(1.0)
+		game.start_combat()
+		var allies: Array[Unit] = game.battle.living(0)
+		var tank: Unit = null
+		for u in allies:
+			if tank == null or u.armour() > tank.armour():
+				tank = u
+		check(tank.form_id == "guardian", "pack %d: the shield guardian is the tank" % slot)
+		var target: Unit = game.learning_cast_target()
+		check(target != null and target.team == 0 and target != tank,
+			"pack %d: the druid's cue spares the tank" % slot)
+		var least := INF
+		for u in allies:
+			least = minf(least, u.armour())
+		check(target != null and is_equal_approx(target.armour(), least),
+			"pack %d: the cue picks the least armoured ally" % slot)
+		for u in allies:
+			if u != target and is_equal_approx(u.armour(), target.armour()):
+				check(game._distance_to_foes(target) >= game._distance_to_foes(u),
+					"pack %d: on a tie the cue picks the ally farthest from the enemies" % slot)
+		for u in allies:
+			if u != tank:
+				u.alive = false
+		check(game.learning_cast_target() == tank,
+			"pack %d: the tank is invited only when it is the last ally" % slot)
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://learning_cue_tank_test_%d.cfg" % OS.get_process_id()))
 
 
 ## A journey duel spotlights its opponent's rule once, when it first shows up;

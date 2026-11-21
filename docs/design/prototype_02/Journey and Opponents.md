@@ -140,6 +140,15 @@ Current implementation defaults, available for playtest revision:
   that teaches its cast and only until the player has tried that cast once,
   ever (saved as `journey.lessons_done`). It no longer appears with the
   lumberjack or the archdruid, nor when replaying the druid or the witch.
+- **Revised after playtest (21 November 2026):** the druid's cue **never invites
+  a shapeshift of the tank** (the shield guardian) while another ally can take
+  it: the tank would lose its armour and keep the enemies' aggro, so the lesson
+  would teach a bad move. The cue picks the ally with the least armour; on a tie,
+  the one farthest from the enemies, the least likely to be their target. The
+  tank is invited only when it is the last creature to cast on, so the lesson
+  can still happen. The witch's hex cue keeps aiming at the first enemy (hexing
+  an armoured foe is a good move), and the druid's own demonstration casts on
+  its first spearman, as its army has no shield guardian.
 
 ### Closed forest transformation graph
 
