@@ -29,6 +29,32 @@ func _ready() -> void:
 		await _capture_map_reveal()
 		get_tree().quit()
 		return
+	if "--transitions-only" in OS.get_cmdline_user_args():
+		# The map -> duel cloud transition, every 0.22 s from start to end.
+		game.difficulty_progress_path = capture_dir.path_join("transition_progress.cfg")
+		game.journey.completed.assign(range(6))
+		var map: Node2D = game.map_screen
+		map.discovered.assign(range(7))
+		map._pending.clear()
+		map.revealing = -1
+		game.show_map()
+		map.show_islands(true)
+		map._refresh_discovery()
+		await _seconds(0.5)
+		for style in 1:
+			game.transition.set_process(false)
+			game.enter_stage(3)
+			for step in 6:
+				game.transition._process(0.22)
+				await _frames(2)
+				await _shot("transition_%d_%d" % [style, step])
+			game.transition._process(1.0)
+			game.transition.set_process(true)
+			game.new_duel()
+			map.show_islands(true)
+			await _frames(3)
+		get_tree().quit()
+		return
 	if "--map-full-only" in OS.get_cmdline_user_args():
 		# The whole journey map, every opponent discovered, with its scenery.
 		game.difficulty_progress_path = capture_dir.path_join("map_full_progress.cfg")

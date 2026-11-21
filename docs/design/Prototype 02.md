@@ -480,6 +480,10 @@ The user played the journey and listed 22 changes, handled one at a time.
   peasant into the purse, where "+N" rises; it no longer circles the peasant.
 - **Leaving a replay:** a replayed duel shows an island medallion (top left, or
   Esc) that pauses it under a check / cross confirmation and returns to the map.
+- **Map and duel transition:** cloud curtains in the map's flat cloud style roll
+  in from both sides, cover the screen while it changes, then part, with a soft
+  whoosh (chosen over an iris, a zoom, a vortex, a rising cloud sea, a spiral and
+  a bloom; a noisy textured version was rejected as off the art direction).
 - **Island scenery:** each opponent has a home, a prop or both (picked one by
   one); the forest's waterfall pours out of a rooted opening in its cliff into
   mist; a rope bridge on piers to the town, crystal steps from the keep's roof

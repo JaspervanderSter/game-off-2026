@@ -57,6 +57,7 @@ func _ready() -> void:
 	_test_rule_spotlight()
 	_test_learning_pause()
 	_test_abandon_replay()
+	_test_screen_transition()
 	_test_screen_layout()
 	_test_merge_lesson_and_full_board()
 	_test_scroll_shows_introduced_upgrades()
@@ -2088,6 +2089,7 @@ func _test_difficulty() -> void:
 	game.choose_stage(6)
 	check(game.phase == game.Phase.DIFFICULTY, "locked map stages cannot launch")
 	game.map_screen._activate(0)
+	_finish_transition(game)
 	check(game.phase == game.Phase.PACK and game.hud.visible and not game.map_screen.visible,
 		"a map seal starts pack selection")
 	game.choose_pack(0)
@@ -2098,6 +2100,7 @@ func _test_difficulty() -> void:
 	game._finish_round()
 	check(game.journey.completed.is_empty(), "a defeat never completes a stage")
 	game._left_press(Hud.RESTART_POS)
+	_finish_transition(game)
 	check(game.map_screen.visible, "the end-of-duel button returns to the map")
 	for index in Journey.stage_count():
 		game.choose_stage(index)
@@ -2106,6 +2109,7 @@ func _test_difficulty() -> void:
 		_finish_test_difficulty_win(game)
 		check(index in game.journey.completed, "winning stage %d saves completion" % index)
 		game._left_press(Hud.RESTART_POS)
+		_finish_transition(game)
 	check(game.journey.available(1) and game.journey.available(4), "completed intermediate stages remain replayable")
 	check(game.journey.available(6), "the final seal remains replayable")
 	game.free()
@@ -2192,6 +2196,36 @@ func _test_difficulty() -> void:
 		picks[EnemyAI.random_cast_target(b)] = true
 	check(picks.size() == 1 and picks.has(ally), "clumsy casts only pick creatures that can be shapeshifted")
 	b.free()
+
+
+## Every transition covers the map, starts the duel only once covered, blocks
+## input meanwhile, and brings the player back to the map the same way.
+func _test_screen_transition() -> void:
+	var game = load("res://main.tscn").instantiate()
+	game.difficulty_progress_path = "user://transition_test_%d.cfg" % OS.get_process_id()
+	add_child(game)
+	game.map_screen.show_islands(true)
+	for style in 2: # twice in a row: the transition can run again
+		game.enter_stage(0)
+		check(game.transition.active() and game.phase == game.Phase.DIFFICULTY, "style %d covers the map before the duel" % style)
+		game.enter_stage(0)
+		game.transition._process(ScreenTransition.COVER * 0.5)
+		check(game.phase == game.Phase.DIFFICULTY and game.transition.coverage() > 0.3, "style %d is half way over the map" % style)
+		game.transition._process(ScreenTransition.COVER * 0.5 + 0.01)
+		check(game.phase == game.Phase.PACK and game.hud.visible, "style %d starts the duel once the screen is covered" % style)
+		game.transition._process(ScreenTransition.HOLD + ScreenTransition.REVEAL)
+		check(not game.transition.active() and game.map_screen.scale == Vector2.ONE and game.map_screen.position == Vector2.ZERO,
+			"style %d ends with the map at its normal scale" % style)
+		game.leave_duel()
+		_finish_transition(game)
+		check(game.phase == game.Phase.DIFFICULTY and game.map_screen.visible, "style %d brings the player back to the map" % style)
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://transition_test_%d.cfg" % OS.get_process_id()))
+
+
+## Plays the map <-> duel transition to its end at once (screens swap while covered).
+func _finish_transition(game: Node) -> void:
+	game.transition._process(10.0)
 
 
 func _finish_test_difficulty_win(game: Node) -> void:
@@ -2362,6 +2396,7 @@ func _test_journey_navigation() -> void:
 	click.pressed = false
 	Input.parse_input_event(click)
 	await get_tree().process_frame
+	_finish_transition(game)
 	check(game.phase == game.Phase.PACK and game.hud.visible, "a fitted map button launches its duel")
 	check(get_window().content_scale_aspect == Window.CONTENT_SCALE_ASPECT_KEEP, "duel restores its original viewport layout")
 	var sky_time: float = map.sky.elapsed
@@ -2408,6 +2443,7 @@ func _test_journey_navigation() -> void:
 	touch = touch.duplicate()
 	touch.pressed = false
 	map._input(touch)
+	_finish_transition(game)
 	check(game.phase == game.Phase.PACK, "portrait map opponents can be selected by touch")
 	game.free()
 	get_window().size = previous_size
@@ -3010,6 +3046,7 @@ func _test_abandon_replay() -> void:
 	check(not game.abandon_asked and game.battle.time > time, "the cross resumes the duel")
 	game.ask_abandon()
 	game.abandon_duel()
+	_finish_transition(game)
 	check(game.phase == game.Phase.DIFFICULTY and game.map_screen.visible and not game.abandon_asked,
 		"the check leaves the duel for the map")
 	check(game.journey.completed == [0] and not game.journey.available(2), "abandoning changes nothing on the journey")

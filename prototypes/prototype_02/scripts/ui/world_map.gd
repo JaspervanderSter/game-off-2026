@@ -145,7 +145,7 @@ func _activate(index: int) -> void:
 	if index < 0:
 		game.show_menu()
 	elif index < buttons.size() and buttons[index].visible and not buttons[index].disabled:
-		game.choose_stage(index)
+		game.enter_stage(index)
 
 func focus_first() -> void:
 	_sync_discovery()

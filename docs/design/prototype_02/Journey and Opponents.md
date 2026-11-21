@@ -280,6 +280,16 @@ and 3 hearts, town paving and 6 hearts, school gold-inlaid slabs and 10 hearts.
 Old seven-stage saves preserve proportional advancement through each zone; the
 new fifteen-opponent saves use their own `journey.opponents` key.
 
+### Entering and leaving a duel — playtest revision, 21 November 2026
+
+Confirmed: a short transition joins the map and the duels both ways. Cloud
+curtains roll in from both sides of the screen, cover it while the screens
+change, then part; a soft whoosh plays each way. The clouds stay in the game's
+flat style (the map's cloud silhouette in solid tones). Rejected: an iris, a
+zoom into the island, a shapeshift vortex, a rising sea of clouds, a spiral, a
+bloom of puffs, and clouds drawn as soft noisy textures (they broke the art
+direction). Durations are implementation choices.
+
 ### Island scenery — playtest revision, 21 November 2026
 
 The user found the forest and the school bare. Confirmed after several rounds

@@ -98,6 +98,26 @@ R), with sounds, to come back to them later:
 godot --path . res://tools/title_proposals.tscn
 ```
 
+## Map and duel transition (21 November 2026)
+
+Going from the map into a duel, and back (the end-of-duel medallion or leaving
+a replay), cloud curtains cover the screen (`ScreenTransition`,
+`scripts/ui/screen_transition.gd`, on its own canvas layer):
+three layers of clouds roll in from both sides over 0.65 s, the back ones
+smaller, slower and a shade darker, and meet in the middle; the screens swap
+while covered (0.1 s), then the curtains part over 0.65 s. The clouds keep the
+game's flat look: the map's own cloud silhouette in solid tones (a darker
+underside, the body, a light crest), tinted with the map's cloud colour of the
+moment. A soft whoosh (`ui/clouds`) plays each way, and input waits until the
+transition is done. The map enters a duel through `main.enter_stage` and leaves
+it through `main.leave_duel`; `choose_stage` and `new_duel` stay immediate for
+tests and tools. The whoosh is synthesised (filtered noise sweeping up then
+down):
+
+```
+godot --path . --headless --script res://tools/make_cloud_whoosh.gd
+```
+
 ## Screen layout (21 November 2026)
 
 The duel screen grows with the rules the journey has introduced instead of
@@ -518,6 +538,7 @@ are copied back into the project's `sfx/` and `music/` folders.
 |---|---|---|
 | `ui/map_step` | ui | Soft, muffled tap as a new journey-path point appears |
 | `ui/map_opponent_appear` | ui | The next journey opponent springs out of the ground at the end of its path (plays the files of `coins/pop`, lower) |
+| `ui/clouds` | ui | Clouds roll over the screen between the journey map and a duel, and again as they part (two synthesised takes, `tools/make_cloud_whoosh.gd`) |
 | `ui/click` | ui | Interface click: difficulty, picking up or reselecting a creature, offer lock, enemy reroll, restart |
 | `ui/fail` | ui | Unavailable or invalid action, such as a locked difficulty, fizzled cast or invalid drop |
 | `ui/buy` | ui | Starting composition, player sale, enemy purchase or wand upgrade |

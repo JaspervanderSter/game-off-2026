@@ -83,6 +83,8 @@ var fx: FxLayer
 var hud: Hud
 var music: PhaseMusic
 var switch_flash: SwitchFlash
+## The cloud transition between the map and a duel, on its own canvas layer.
+var transition: ScreenTransition
 var fps_counter: Control
 var alternate_audio: Node
 
@@ -112,6 +114,11 @@ func _ready() -> void:
 	top.add_child(switch_flash)
 	fps_counter = preload("res://scripts/ui/fps_counter.gd").new()
 	top.add_child(fps_counter)
+	var transition_layer := CanvasLayer.new()
+	transition_layer.layer = 9
+	add_child(transition_layer)
+	transition = ScreenTransition.new()
+	transition_layer.add_child(transition)
 	_load_difficulty_progress()
 	player_deck.load_state()
 	enemy_deck.load_state()
@@ -230,7 +237,30 @@ func cancel_abandon() -> void:
 func abandon_duel() -> void:
 	if not abandon_asked:
 		return
-	new_duel()
+	leave_duel()
+
+
+## The map's way into a duel: the transition covers the screen from the
+## clicked opponent, then the duel starts.
+func enter_stage(index: int) -> void:
+	if transition.active() or phase != Phase.DIFFICULTY or not journey.available(index):
+		return
+	var button: Control = map_screen.buttons[index]
+	var at: Vector2 = button.get_global_transform_with_canvas() * (button.size * 0.5)
+	transition.play(at, Rules.BOARD_POS + Rules.BOARD_SIZE * 0.5, choose_stage.bind(index), map_screen.sky.colors().cloud)
+
+
+## Back to the map after a duel (or leaving a replay): the transition covers
+## the screen from the board and uncovers it on the opponent's spot.
+func leave_duel() -> void:
+	if transition.active():
+		return
+	var stage := journey.selected
+	var at := Vector2(640, 360)
+	if stage >= 0:
+		var button: Control = map_screen.buttons[stage]
+		at = button.get_global_transform_with_canvas() * (button.size * 0.5)
+	transition.play(Rules.BOARD_POS + Rules.BOARD_SIZE * 0.5, at, new_duel, map_screen.sky.colors().cloud)
 
 
 ## Direct difficulty entry retained for rule tests and developer tooling.
@@ -719,6 +749,9 @@ func cycle_environment() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if transition.active():
+		get_viewport().set_input_as_handled()
+		return
 	if map_screen.visible:
 		if event is InputEventKey and event.pressed and not event.echo:
 			var on_title: bool = map_screen.on_title()
@@ -826,7 +859,7 @@ func _left_press(pos: Vector2) -> void:
 		Phase.OVER:
 			if pos.distance_to(Hud.RESTART_POS) < 46:
 				Sfx.play("ui/click")
-				new_duel()
+				leave_duel()
 
 
 func _left_release(pos: Vector2) -> void:
