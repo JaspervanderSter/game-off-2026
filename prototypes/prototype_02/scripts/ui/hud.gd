@@ -633,8 +633,6 @@ func _shop_key() -> Array:
 	key.append(shop_rect().has_point(mouse))
 	if game.enemy_preparing:
 		key.append(Time.get_ticks_msec()) # the spinner around the fight button turns
-	elif game.fight_lesson_waiting():
-		key.append(Time.get_ticks_msec()) # the first fight's halo breathes
 	elif _fight_ready() and fight_glint(Time.get_ticks_msec() / 1000.0) >= 0.0:
 		key.append(Time.get_ticks_msec()) # the glint crosses the fight button
 	else:
@@ -1287,11 +1285,6 @@ func _draw_fight_button() -> void:
 	var hovered := ok and Rules.FIGHT_CENTER.distance_to(get_global_mouse_position()) < Rules.FIGHT_RADIUS
 	var c := Rules.FIGHT_CENTER
 	var r := Rules.FIGHT_RADIUS * (FIGHT_HOVER_SCALE if hovered else 1.0)
-	if game.fight_lesson_waiting():
-		# Until the very first fight, a gold halo breathes around the button.
-		var breath := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 4.0)
-		for ring in 4:
-			Shapes.circle(_ci, c, r + 6.0 + ring * 7.0 + breath * 4.0, Color(1.0, 0.84, 0.43, 0.1 + 0.06 * breath))
 	# Medallion split vertically: red combat half left, purple magic half right.
 	var left := Color(0.6, 0.16, 0.12) if ok else Color(0.25, 0.2, 0.2)
 	var right := Color(0.29, 0.16, 0.4) if ok else Color(0.22, 0.2, 0.25)

@@ -126,6 +126,10 @@ func _ready() -> void:
 		await _capture_trade_lesson()
 		get_tree().quit()
 		return
+	if "--fight-lesson-only" in OS.get_cmdline_user_args():
+		await _capture_fight_lesson()
+		get_tree().quit()
+		return
 	get_viewport().warp_mouse(Hud.difficulty_rect(Difficulty.ADEPT).get_center())
 	await _frames(4)
 	await _shot("00_difficulty")
@@ -489,6 +493,26 @@ func _capture_trade_lesson() -> void:
 	while Hud.reroll_glint(game.reroll_sense_time) < 0.3:
 		await _frames(1)
 	await _shot("trade_2_glint")
+
+
+## The hunter's duel, very first visit: the preparation as it opens, the
+## spotlight on the fight button, then the frames right after the click.
+func _capture_fight_lesson() -> void:
+	game.difficulty_progress_path = capture_dir.path_join("fight_progress.cfg")
+	game.journey.completed.clear()
+	game.journey.introduced.clear()
+	game.journey.lessons_done.clear()
+	game.choose_stage(0)
+	await _frames(4)
+	if game.phase == game.Phase.PACK:
+		game.choose_pack(0)
+	for n in 8:
+		await _seconds(0.25)
+		await _shot("fight_0_prep_%d" % n)
+	game._left_press(Rules.FIGHT_CENTER)
+	for n in 4:
+		await _seconds(0.06)
+		await _shot("fight_1_click_%d" % n)
 
 
 func _frames(n: int) -> void:

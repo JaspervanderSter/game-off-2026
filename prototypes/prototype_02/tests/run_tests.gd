@@ -3279,8 +3279,8 @@ func _test_screen_layout() -> void:
 		"ten hearts use two arcs, the last on the outer one")
 	check(Hud.crystal_pos(0, 2).y + 16.0 < board.end.y + 4.0, "the player's crystals stay above the board's bottom")
 	Hud.layout_screen(Ruleset.new())
-	# The fight button's lesson: spotlit at the hunter's first preparation, then a
-	# halo until the very first fight.
+	# The fight button's lesson: spotlit at the hunter's first preparation until
+	# the very first fight, the light going out as soon as the button is pressed.
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
 	game.difficulty_progress_path = "user://fight_lesson_test_%d.cfg" % OS.get_process_id()
@@ -3292,8 +3292,16 @@ func _test_screen_layout() -> void:
 	game._watch_rule_spotlight()
 	check(game.spotlight.active() and game.spotlight.center == Rules.FIGHT_CENTER and game.fight_lesson_waiting(),
 		"the hunter's first preparation spotlights the fight button, which waits for its first fight")
+	game.spotlight.advance(30.0)
+	check(game.spotlight.active() and game.spotlight.time_scale() == RuleSpotlight.SLOW_MOTION,
+		"the fight button stays spotlit, at full strength, until it is pressed")
 	game.start_combat()
 	check(not game.fight_lesson_waiting() and game.FIGHT_LESSON in game.journey.lessons_done, "the first fight ends the fight lesson for good")
+	game.spotlight.advance(RuleSpotlight.DISMISS_FADE * 0.5)
+	var dimming: float = game.spotlight.time_scale()
+	game.spotlight.advance(RuleSpotlight.DISMISS_FADE * 0.6)
+	check(dimming > RuleSpotlight.SLOW_MOTION and not game.spotlight.active() and game.spotlight.rule == "",
+		"pressing the fight button puts its spotlight out within %.1f s" % RuleSpotlight.DISMISS_FADE)
 	game.new_duel()
 	game.choose_stage(0)
 	game.choose_pack(0)

@@ -152,8 +152,9 @@ player by the next income. A lost heart flashes the disc red and shakes it.
 The round frieze and the composition cards centre on the board.
 
 The fight button is introduced like a rule: the hunter's first preparation
-spotlights it, then a gold halo breathes around it until the player's very
-first fight (`main.FIGHT_LESSON`, saved in `journey.introduced` and
+spotlights it and the light stays on until the player presses it, then goes
+out within 0.1 s (`RuleSpotlight.dismiss`). The button itself behaves as in
+every duel (`main.FIGHT_LESSON`, saved in `journey.introduced` and
 `journey.lessons_done`; a save that already beat the hunter skips it). During
 combat the button drops below the bottom edge instead of sliding right.
 

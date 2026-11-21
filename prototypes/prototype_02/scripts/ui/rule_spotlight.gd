@@ -12,6 +12,7 @@ const FADE_IN := 0.35
 const HOLD := 1.9
 const FADE_OUT := 0.5
 const DURATION := FADE_IN + HOLD + FADE_OUT
+const DISMISS_FADE := 0.1 # a dismissed spotlight goes out this fast
 const DIM := Color(0.04, 0.03, 0.06, 0.62)
 const GOLD := Color("ddba70")
 const SLOW_MOTION := 0.25
@@ -30,6 +31,10 @@ var hold := HOLD
 ## While valid, called every frame for [center, radii] (an empty array keeps
 ## them): the spotlight follows a moving element, such as harvest coins.
 var track := Callable()
+## Time at which dismiss() cut the spotlight short, and its strength then;
+## negative while it runs its full course.
+var _dismissed_at := -1.0
+var _dismissed_from := 0.0
 
 
 ## Prepares a duel: `introduced_rule` waits for its moment ("" for none).
@@ -39,6 +44,7 @@ func reset(introduced_rule: String) -> void:
 	unit = null
 	track = Callable()
 	hold = HOLD
+	_dismissed_at = -1.0
 
 
 ## True while the rule still waits for its moment.
@@ -47,6 +53,8 @@ func pending() -> bool:
 
 
 func duration() -> float:
+	if _dismissed_at >= 0.0:
+		return _dismissed_at + DISMISS_FADE
 	return FADE_IN + hold + FADE_OUT
 
 
@@ -63,7 +71,17 @@ func begin(at: Vector2, ellipse: Vector2, follow: Unit = null, hold_for := HOLD,
 	hold = hold_for
 	track = track_with
 	time = 0.0
+	_dismissed_at = -1.0
 	Sfx.play("ui/difficulty_unlock")
+
+
+## Puts an active spotlight out within DISMISS_FADE: the player has used what
+## it showed.
+func dismiss() -> void:
+	if not active() or _dismissed_at >= 0.0:
+		return
+	_dismissed_from = _strength()
+	_dismissed_at = time
 
 
 func advance(dt: float) -> void:
@@ -89,6 +107,8 @@ func time_scale() -> float:
 
 
 func _strength() -> float:
+	if _dismissed_at >= 0.0:
+		return _dismissed_from * (1.0 - smoothstep(_dismissed_at, duration(), time))
 	if time < FADE_IN:
 		return smoothstep(0.0, FADE_IN, time)
 	return 1.0 - smoothstep(FADE_IN + hold, duration(), time)

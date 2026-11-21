@@ -46,9 +46,9 @@ var reroll_sense_time := 0.0
 var spotlight := RuleSpotlight.new()
 ## True while a replayed duel waits, paused, for the player to confirm leaving it.
 var abandon_asked := false
-## The fight button's lesson (first-pass rule spotlight, then a halo): the
-## hunter's first preparation spotlights the button, which then breathes in gold
-## until the player's very first fight. Saved in journey.introduced and
+## The fight button's lesson: the hunter's first preparation spotlights the
+## button, which otherwise behaves as in every duel, until the player presses
+## it; the light then goes out at once. Saved in journey.introduced and
 ## journey.lessons_done; a save that already beat the hunter skips it.
 const FIGHT_LESSON := "fight"
 var map_screen: Node2D
@@ -454,6 +454,8 @@ func start_combat() -> void:
 	if fight_lesson_waiting():
 		journey.lessons_done.append(FIGHT_LESSON)
 		_save_difficulty_progress(unlocked_difficulty)
+	if spotlight.rule == FIGHT_LESSON:
+		spotlight.dismiss() # the button did its job: the light goes out at once
 	hud.clear_loss_rewards()
 	battle = Battle.new()
 	battle.position = Rules.BOARD_POS
@@ -1124,7 +1126,8 @@ func _watch_rule_spotlight() -> void:
 	var rule := spotlight.rule
 	var shop_shown := phase == Phase.PREP and shop_out <= 0.0 and not enemy_preparing
 	if rule == FIGHT_LESSON and shop_shown:
-		_spotlight(Rules.FIGHT_CENTER, Vector2(66, 66))
+		# Shows the fight button until it is pressed (start_combat puts it out).
+		_spotlight(Rules.FIGHT_CENTER, Vector2(66, 66), null, INF)
 	elif rule == Ruleset.SHOP and shop_shown:
 		_spotlight(Hud.stall_rect().get_center(), Hud.STALL_RECT.size * 0.54)
 	elif rule.begins_with("upgrade_") and shop_shown and scroll_open >= 1.0:

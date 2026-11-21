@@ -374,7 +374,7 @@ blocked, and combat slows to a quarter speed while the dimming is full.
 
 | Rule | Spotlit element | When |
 | --- | --- | --- |
-| Fight button (hunter) | The fight button, then a gold halo until the first fight | First preparation |
+| Fight button (hunter) | The fight button, until it is pressed | First preparation |
 | Wand (druid) | Charge crystals | First fight |
 | Shop (lumberjack) | Creature stall | Shop in place |
 | Hex (swamp witch) | First enemy creature, followed | First fight |
@@ -433,6 +433,11 @@ among four proposals:
   spotlight at the hunter's first preparation, then a breathing gold halo until
   the player's very first fight, ever. Rejected: a bouncing arrow, a giant
   breathing button, a button that wakes up.
+  **Revised (21 November 2026):** no more halo. The button behaves exactly as
+  in every other duel; the only lesson is the spotlight, which stays on until
+  the player presses the button and goes out within 0.1 s of the click. The
+  light lingering over the button as it dropped away made it look as if it
+  hid, and the halo was a behaviour seen nowhere else.
 
 Positions and sizes are implementation choices (see the prototype README,
 "Screen layout").
