@@ -252,9 +252,11 @@ or buildings. After a playtest found them lined up along the island edge, they
 stand at natural spots spread over each island's surface (confirmed request;
 spots are implementation choices): forest clearings between the groves, town
 streets, and the school courtyard ending with the archmage at the tower door.
-The last opponent of the forest (archdruid) and of the town (king) stands just
-inland of the landing of the bridge to the next island, as its guard (confirmed
-request); the spot follows the bridge in landscape and portrait. The road winds between them and passes in
+The forest's last opponent (archdruid) stands just inland of the landing of the
+bridge to the town, as its guard (confirmed request); the spot follows the
+bridge in landscape and portrait. The king stands on top of his keep and the
+crystal steps to the school leave from the keep's roof beside him (confirmed
+after a playtest, 21 November 2026). The road winds between them and passes in
 front of the tower, never behind it. Opponents further back are drawn slightly
 smaller. It fits the whole screen with no scroll or header. Both bridges
 are complete and visible from the start. Only the first opponent is visible on a
@@ -277,6 +279,47 @@ Duels use their zone's terrain and starting hearts for both sides: forest grass
 and 3 hearts, town paving and 6 hearts, school gold-inlaid slabs and 10 hearts.
 Old seven-stage saves preserve proportional advancement through each zone; the
 new fifteen-opponent saves use their own `journey.opponents` key.
+
+### Island scenery — playtest revision, 21 November 2026
+
+The user found the forest and the school bare. Confirmed after several rounds
+of proposals drawn on the real islands (homes, props, nature, density, then
+mixes): every opponent gets a home (where it lives), a prop (an object of its
+trade) or both, picked one by one:
+
+| Opponent | Scenery |
+| --- | --- |
+| Hunter | A hunting hide on stilts with antlers |
+| Druid | A ring of standing stones around him (no glowing stone) |
+| Lumberjack | His log cabin, a stump without an axe (he holds his) and a log pile |
+| Swamp witch | A hut on stilts over her pond, and her cauldron |
+| Archdruid | A great tree with a glowing hollow |
+| Merchant | A market stall under a striped awning |
+| Innkeeper | The tavern with its sign, and barrels |
+| Thief | A sack of loot with coins |
+| Court mage | A fire brazier and a frost brazier |
+| King | His keep: he stands on its top |
+| Apprentice | A straw practice dummy |
+| Caretaker | A shed with a bucket (he holds the broom) |
+| Adept | A lectern with floating books |
+| Transmutation teacher | A greenhouse puffing coloured smoke |
+| Archmage | The tower, and a glowing rune circle at its door |
+
+The forest's former groves give way to a few firs clear of the homes. Its
+waterfall no longer starts from nowhere at the island's edge: it pours out of a
+jagged opening in the cliff, half hidden by roots hanging from the forest above
+(as if the witch's marsh drained underground; coherence was dropped for looks),
+and vanishes into small drifting clouds of mist. Rejected along the way: a
+spring and stream on the grass, a lake, a rain cloud, a basin, a fall leaving
+the frame, a cave, a stone arch, a fissure, strata.
+
+Bridges: the forest-to-town rope bridge rests on stone piers, its handrails
+swag between posts and a lantern lights each end post. The town-to-school bridge
+became floating crystal steps rising in an arch from a crystal pedestal on the
+keep's roof, bobbing along a ribbon of light; the journey's path follows them
+(rejected: bunting, a stone arch, materials matching each shore; and as the
+steps' start, the corner tower or a landing on the cliff). Positions and sizes
+are implementation choices.
 
 ## Introducing a rule — first pass, 20 November 2026
 

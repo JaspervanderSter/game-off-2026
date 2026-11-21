@@ -2477,6 +2477,11 @@ func _check_whole_map_visible(map: Node2D, orientation: String) -> void:
 		var start: Vector2 = map.islands[index].transform.affine_inverse() * bridge.from_point
 		var finish: Vector2 = map.islands[index + 1].transform.affine_inverse() * bridge.to_point
 		var shore := Rect2(-240, -96, 480, 192)
+		if index == 1:
+			# The crystal steps rise from the keep's roof, beside the king.
+			check(start.is_equal_approx(map.STEPS_START) and shore.has_point(finish),
+				"%s crystal steps leave the keep for the school's shore" % orientation)
+			continue
 		check(shore.has_point(start) and shore.has_point(finish),
 			"%s bridge %d joins the islands at their shores" % [orientation, index])
 

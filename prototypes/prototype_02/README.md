@@ -728,10 +728,20 @@ interrupting enemy casts.
 The game opens directly on `world_map.tscn`. The entire journey fits on one
 screen, with no scrolling, banner or progress HUD. The islands form a triangle:
 forest and town below, magic school above, with clear sky between their silhouettes.
-Portrait uses a taller triangle and scales the whole map to fit. A wooden
-suspension bridge links forest to town, and a violet bridge with gold handrails
-links town to the school courtyard. Both bridges land on the shores, clear of
-the encounters. Routes follow curved trails and the bridge decks.
+Portrait uses a taller triangle and scales the whole map to fit. A rope bridge
+on stone piers, its handrails swagging between posts and a lantern on each end
+post, links forest to town; floating crystal steps rise in an arch from the
+keep's roof, beside the king, to the school courtyard (`map_bridge.gd`; both
+share their walking line, `point_at`, with the routes). Routes follow curved
+trails and the bridges.
+
+Each island draws its scenery around its opponents' spots (`MapScenery`,
+`scripts/ui/map_scenery.gd`, given the spots by the map): every opponent has
+a home, a prop or both (see the design note's "Island scenery" table), a few
+firs dot the forest, the tower stands in the school courtyard, and the forest's
+waterfall pours out of a jagged opening behind hanging roots in its cliff, then
+vanishes into drifting mist. The king stands on top of his keep
+(`world_map.KING_SPOT`); the archdruid guards the rope bridge.
 The menu is the title, in the sky one screen above the islands (see "Title"
 below). Selecting an opponent starts the duel; completed stages stand
 on a soft gold ring, without a star. Unknown opponents and routes have no visible markers,

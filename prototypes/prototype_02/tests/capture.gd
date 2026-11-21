@@ -29,6 +29,21 @@ func _ready() -> void:
 		await _capture_map_reveal()
 		get_tree().quit()
 		return
+	if "--map-full-only" in OS.get_cmdline_user_args():
+		# The whole journey map, every opponent discovered, with its scenery.
+		game.difficulty_progress_path = capture_dir.path_join("map_full_progress.cfg")
+		game.journey.completed.assign(range(Journey.stage_count()))
+		var map: Node2D = game.map_screen
+		map.discovered.assign(range(Journey.stage_count()))
+		map.revealing = -1
+		map._pending.clear()
+		game.show_map()
+		map.show_islands(true)
+		map._refresh_discovery()
+		await _seconds(1.0)
+		await _shot("map_full")
+		get_tree().quit()
+		return
 	if "--journey-only" in OS.get_cmdline_user_args():
 		await _capture_journey()
 		get_tree().quit()
