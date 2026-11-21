@@ -943,8 +943,11 @@ func _merge_feedback(recipient: OwnedCreature, previous_stars: int) -> void:
 	Sfx.play("ui/merge" if ranked_up else "ui/combine")
 
 
+## Right click on an offer locks it. Locking belongs to trading: before the
+## merchant introduces it, the click gives no feedback at all (playtest, 21
+## November 2026).
 func _right_press(pos: Vector2) -> void:
-	if phase == Phase.PREP:
+	if phase == Phase.PREP and ruleset.has(Ruleset.TRADE):
 		for i in Rules.SHOP_SIZE:
 			if Hud.offer_rect(i).has_point(pos):
 				Sfx.play("ui/click" if player.toggle_lock(i) else "ui/fail")

@@ -1805,7 +1805,8 @@ func _test_combat_click_casts() -> void:
 	# The druid hands over the wand before the swamp witch teaches the hex:
 	# clicking an enemy then gives no feedback at all, not an error.
 	game = load("res://main.tscn").instantiate()
-	game.difficulty_progress_path = "user://hex_click_test_%d.cfg" % OS.get_process_id()
+	var hex_progress := "user://hex_click_test_%d.cfg" % OS.get_process_id()
+	game.difficulty_progress_path = hex_progress
 	add_child(game)
 	game.journey.completed.assign(range(Journey.stage_count()))
 	game.choose_stage(1)
@@ -1829,7 +1830,7 @@ func _test_combat_click_casts() -> void:
 	game._left_press(Rules.BOARD_POS + ally.position)
 	check(b.casts[0] == 1, "the wand still shapeshifts the player's own creatures")
 	game.queue_free()
-	DirAccess.remove_absolute(game.difficulty_progress_path)
+	DirAccess.remove_absolute(hex_progress)
 
 
 func _test_blizzard_and_recharge_upgrade() -> void:
@@ -2755,6 +2756,24 @@ func _test_journey_rules() -> void:
 	s.refresh_offers(rng)
 	check(s.offers[0] != "" and s.can_buy(0), "the stall is open from the lumberjack on")
 	check(not s.can_reroll() and not s.toggle_lock(0), "no reroll or lock before the merchant")
+	# The lumberjack's stall has no trading: a right click on an offer gives no
+	# feedback at all, not an error sound.
+	var lumberjack = load("res://main.tscn").instantiate()
+	var lock_progress := "user://lock_click_test_%d.cfg" % OS.get_process_id()
+	lumberjack.difficulty_progress_path = lock_progress
+	add_child(lumberjack)
+	lumberjack.journey.completed.assign(range(Journey.stage_count()))
+	lumberjack.choose_stage(2)
+	lumberjack.choose_pack(0)
+	check(lumberjack.phase == lumberjack.Phase.PREP and lumberjack.player.offers[0] != ""
+		and not lumberjack.ruleset.has(Ruleset.TRADE), "the lumberjack's stall is open without trading")
+	Sfx._last_played.erase("ui/fail")
+	Sfx._last_played.erase("ui/click")
+	lumberjack._right_press(Hud.offer_rect(0).get_center())
+	check(not lumberjack.player.locked[0] and not Sfx._last_played.has("ui/fail") and not Sfx._last_played.has("ui/click"),
+		"before trading, right-clicking an offer neither locks it nor plays a sound")
+	lumberjack.free()
+	DirAccess.remove_absolute(lock_progress)
 	var a := s.add_creature("archer")
 	var b := s.add_creature("archer")
 	check(not s.can_merge(a, b) and not s.can_sell(a) and not s.sell(a), "no merge before the thief and no selling before the merchant")

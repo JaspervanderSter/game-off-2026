@@ -513,7 +513,8 @@ The user played the journey and listed 22 changes, handled one at a time.
   [[Journey and Opponents]].
 - **No error for an unmet rule:** before the swamp witch introduces the hex,
   clicking an enemy during a fight does nothing at all (no fizzle, no error
-  sound).
+  sound); before the merchant introduces trading, right-clicking an offer to
+  lock it does nothing either.
 
 ## Playtest plan and completion criteria
 

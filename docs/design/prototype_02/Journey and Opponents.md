@@ -223,7 +223,8 @@ defaults and can be revised.
 - **Before the shop (opponents 1–2):** no creature stall, no gold counter and no
   gold for lost hearts. Each round both sides fight with their opening.
 - **Before trading (opponents 1–5):** no reroll button; selling and locking
-  offers do nothing.
+  offers do nothing. A right click on an offer gives no feedback at all, no
+  error sound (confirmed after a playtest, 21 November 2026).
 - **Before the wand (opponent 1):** neither side can cast; charge crystals are
   hidden. With the druid, casts on one's own creatures only; hexes on enemy
   creatures come with the swamp witch. Until then, clicking an enemy during a
