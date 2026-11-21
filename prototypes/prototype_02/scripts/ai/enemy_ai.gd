@@ -46,6 +46,11 @@ const ARCHMAGE_PROFILE := {
 	"low_health_bonus": 0.12, "stun_value": 0.3, "interrupt_value": 1.1,
 	"hex_level_reset": true,
 }
+# Optional profile keys, absent from the level profiles above and set by a
+# journey opponent's own strategy (OpponentDB "ai"):
+# - "max_starred": the most creatures with a star the wizard keeps; past it,
+#   it neither merges unstarred copies nor buys copies to merge.
+
 # Wand upgrades the AI saves for, first unmaxed one first: faster recharge, then
 # both starting charges, then the longer hex and the stronger heal.
 const UPGRADE_ORDER: Array[String] = ["recharge", "charges", "hex", "heal"]
@@ -55,6 +60,18 @@ const UPGRADE_ORDER: Array[String] = ["recharge", "charges", "hex", "heal"]
 ## worse through Difficulty; the Archmage plays its own tuned strategy.
 static func profile_for(level: int) -> Dictionary:
 	return ARCHMAGE_PROFILE if level == Difficulty.ARCHMAGE else DEFAULT_PROFILE
+
+
+## Strategy of a wizard: its level's profile, with its opponent's own keys on top.
+static func profile_of(state: WizardState) -> Dictionary:
+	var profile := profile_for(state.ai_level)
+	return profile if state.ai_overrides.is_empty() else profile.merged(state.ai_overrides, true)
+
+
+## Whether the wizard may still give a creature its first star ("max_starred").
+static func may_star(state: WizardState, profile: Dictionary) -> bool:
+	var cap: int = profile.get("max_starred", -1)
+	return cap < 0 or state.creatures.filter(func(c: OwnedCreature) -> bool: return c.stars > 0).size() < cap
 
 
 ## Simulations draw an opening uniformly, unless the profile forces one
@@ -68,7 +85,7 @@ static func choose_pack(rng: RandomNumberGenerator, profile: Dictionary = DEFAUL
 ## them out so spending, combining and placement remain visible.
 static func shop(state: WizardState, rng: RandomNumberGenerator, profile: Dictionary = {}) -> void:
 	if profile.is_empty():
-		profile = profile_for(state.ai_level)
+		profile = profile_of(state)
 	state.ai_rerolls = 0
 	while not shop_step(state, rng, profile).is_empty():
 		pass
@@ -144,12 +161,16 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 	if state.learning_duel:
 		return {} # demonstrate the player's shop without an enemy arms race
 	if profile.is_empty():
-		profile = profile_for(state.ai_level)
+		profile = profile_of(state)
 	var difficulty := Difficulty.profile(state.ai_level)
 	draw_whims(state, rng)
+	var starring := may_star(state, profile)
 	var targets := state.creatures.duplicate()
 	targets.sort_custom(func(a, b): return a.is_fielded() and not b.is_fielded())
 	for target in targets:
+		if target.stars == 0 and not starring:
+			continue # no new star past the profile's cap
+
 		var total := 0
 		for c in state.creatures:
 			if c.form_id == target.form_id and c.stars == target.stars:
@@ -180,8 +201,9 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 		var copies := 0
 		var can_build := false
 		for c in state.creatures:
-			# Copies only count once merging is introduced.
-			if c.form_id != id or not state.rules.has(Ruleset.MERGE):
+			# Copies only count once merging is introduced, and while one more
+			# star is allowed (a copy only builds towards a new star).
+			if c.form_id != id or not state.rules.has(Ruleset.MERGE) or not starring:
 				continue
 			if c.stars == 0:
 				copies += c.merge_copies
@@ -262,7 +284,7 @@ static func shop_step(state: WizardState, rng: RandomNumberGenerator, profile: D
 ## to cover it. Spread ranged units to reduce exposure to 3x3 blizzards.
 static func arrange(state: WizardState, profile: Dictionary = {}) -> void:
 	if profile.is_empty():
-		profile = profile_for(state.ai_level)
+		profile = profile_of(state)
 	var sorted := state.creatures.duplicate()
 	sorted.sort_custom(func(a, b): return field_value(state, a.form_id, a.stars, profile) > field_value(state, b.form_id, b.stars, profile))
 	var selected: Array[OwnedCreature] = []

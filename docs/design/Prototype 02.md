@@ -113,9 +113,11 @@ round counts are not fixed or guaranteed by this decision.
 - **Selected composition: the triangle (proposal 3).** Forest and town occupy the
   lower corners; the magic school sits above them. Keep clear sky between the
   complete island silhouettes, including cliffs and detached rocks.
-- Use **two continuous suspended bridges**: forest to town, then town to the magic
-  school. Bridges meet the shores and keep landings clear of opponents and key
-  buildings. Curved dotted trails connect discovered encounters and follow the
+- Use **two continuous bridges**: forest to town, then town to the magic
+  school. **Revised 21 November 2026:** a rope bridge on stone piers with
+  lanterns to the town, then floating crystal steps from the keep's roof to the
+  school (see [[Journey and Opponents]], "Island scenery"). Bridges keep
+  landings clear of opponents and key buildings. Curved dotted trails connect discovered encounters and follow the
   bridge decks between islands. **Both complete bridges are visible from the
   start** as permanent scenery. Discovery animates only the small route points;
   it must never build, shorten, fade in or hide a bridge.
@@ -478,19 +480,62 @@ The user played the journey and listed 22 changes, handled one at a time.
   peasant into the purse, where "+N" rises; it no longer circles the peasant.
 - **Leaving a replay:** a replayed duel shows an island medallion (top left, or
   Esc) that pauses it under a check / cross confirmation and returns to the map.
+- **Map and duel transition:** cloud curtains in the map's flat cloud style roll
+  in from both sides, cover the screen while it changes, then part, with a soft
+  whoosh (chosen over an iris, a zoom, a vortex, a rising cloud sea, a spiral and
+  a bloom; a noisy textured version was rejected as off the art direction).
+- **Island scenery:** each opponent has a home, a prop or both (picked one by
+  one); the forest's waterfall pours out of a rooted opening in its cliff into
+  mist; a rope bridge on piers to the town, crystal steps from the keep's roof
+  (where the king now stands) to the school.
 - **Menu:** the title forms in the map's sky from creatures running through
   their transformation chains into vector-stroke letters; the island medallion
   pans the camera down to the islands. Splash screen deferred.
 - **Screen layout:** the duel screen grows with the introduced rules (board and
-  wizards centred before the shop, fight button under the board, then right of
-  the bench); the wizard panels became medallions with hearts on fixed-spacing
-  arcs; the fight button is spotlit before the very first fight. See
+  wizards centred before the shop, fight button right of the bench in every
+  duel); the wizard panels became medallions with hearts on fixed-spacing
+  arcs; the fight button is spotlit until the very first click on it. See
   [[Journey and Opponents]].
 - **Map ambience:** nature sounds follow the sky cycle on the map (wind and
   birds by day, chimes in the golden mist, crickets and an owl at night).
 - **Map icon:** every way back to the journey map (menu button, end of a duel,
   leaving a replay) shows the same sky-blue medallion with a floating island,
   replacing the folded paper map.
+- **Druid's cast lesson:** the cue no longer invites a shapeshift of the tank
+  (shield guardian), which would lose its armour and keep the aggro. It picks the
+  least armoured ally, the farthest from the enemies on a tie, and falls back on
+  the tank only when no other ally is left. See [[Journey and Opponents]].
+- **Map routes:** the routes, drawn before the opponents' spots were fixed, are
+  cleaned up: evenly spaced dots (a few on short hops, no overlap), each route
+  stopping at the opponents' edge, the lumberjack's road past his cabin door,
+  the king's road up to his keep's gate, and the school road below the
+  archmage's rune circle so it never doubles his own road. See
+  [[Journey and Opponents]].
+- **No error for an unmet rule:** before the swamp witch introduces the hex,
+  clicking an enemy during a fight does nothing at all (no fizzle, no error
+  sound); before the merchant introduces trading, right-clicking an offer to
+  lock it does nothing either.
+- **Merge lesson:** the thief's duel opens with three shield guardians in the
+  front line (no choice of composition) and two more coins; the demonstration
+  merges the three into a one-star guardian and lasts until the player's first
+  star. See [[Journey and Opponents]].
+- **Thief's AI:** it merged too much; it now keeps at most two creatures with a
+  star, through a per-opponent AI setting rather than a special case. See
+  [[Journey and Opponents]].
+- **Trading lesson:** the merchant's duel no longer spotlights the reroll button
+  when the stall opens, which pushed a pointless reroll and felt compulsory.
+  In every duel with trading, the button glints (a band of light, no dimming,
+  no sound) only while a reroll makes sense: nothing left to buy, coins for the
+  reroll and a creature, and room for one. A reroll turns the stall's panels
+  over on a horizontal axis, the old offer, a plain back, the new one; locked
+  offers stay. See [[Journey and Opponents]].
+- **Board population:** the six plain round pips under the board that counted
+  the player's fielded creatures became six gems set in the board's wooden
+  frame, on both sides: blue under the player's edge, red over the opponent's,
+  one lit per creature on the board, with a pop and a sparkle as it lights; the
+  full-board warning turns the player's rims red. Chosen among four proposals
+  (pawns, pennants, gems, portraits) tried in the real duel. The merge-progress
+  circles stay as they are. See [[Journey and Opponents]].
 
 ## Playtest plan and completion criteria
 

@@ -30,13 +30,36 @@ const ZONE_SPOTS := [
 	[Vector2(-150, 30), Vector2(-66, 4), Vector2(58, 40), Vector2(108, -8), Vector2(-14, -30)],
 	[Vector2(-88, 52), Vector2(-170, 6), Vector2(-100, -56), Vector2(130, -44), Vector2(46, 10)],
 ]
-## Extra waypoints (island coordinates) for a road that must go around a
-## landmark: the school road passes in front of the tower, never behind it.
-const ROAD_VIAS := {13: [Vector2(-40, 26), Vector2(70, 22)]}
-## Bridge guards (the forest's and the town's last opponents) stand this far
-## inland from their bridge's landing, towards this point (island coordinates).
+## Roads, cleaned up once the spots were fixed (playtest, 21 November 2026).
+## Their dots keep one even spacing (map units), so a short hop shows a few and
+## a long crossing more, capped to keep the trace's pace.
+const DOT_SPACING := 12.0
+const MIN_DOTS := 2
+const MAX_DOTS := 40
+## A road stops at the edge of the opponents it joins (island units, scaled by
+## depth): their ground ring sideways and in front, their figure above.
+const FOOTPRINT := Vector2(28, 13)
+const FIGURE_TOP := 56.0
+## Extra waypoints (island coordinates) for roads that go around a home or a
+## landmark, by destination stage: past the lumberjack's door rather than over
+## his cabin; the school road in front of the tower, never behind it, and below
+## the archmage's rune circle, then up the courtyard's side to the greenhouse,
+## so it never runs beside the archmage's own road.
+const ROAD_VIAS := {
+	3: [Vector2(4, 36), Vector2(40, 20)],
+	13: [Vector2(-30, 24), Vector2(46, 42), Vector2(150, 14)],
+}
+## The road to the king ends at his keep's gate (island coordinates): he waits
+## on its top.
+const ROAD_ENDS := {9: Vector2(-12, -40)}
+## The forest's last opponent guards the rope bridge, standing this far inland
+## from its landing, towards this point (island coordinates).
 const GUARD_INLAND := 36.0
 const GUARD_INLAND_TOWARD := Vector2(0, 10)
+## The king stands on top of his keep, and the crystal steps to the school leave
+## from the keep's roof beside him (island coordinates).
+const KING_SPOT := Vector2(-1, -118)
+const STEPS_START := Vector2(-30, -128)
 var _guard_spots := {} # zone -> island-coordinate spot, set by _layout
 ## Opponents further back on an island are drawn slightly smaller.
 const DEPTH_SCALE := Vector2(0.86, 1.0)
@@ -141,7 +164,7 @@ func _activate(index: int) -> void:
 	if index < 0:
 		game.show_menu()
 	elif index < buttons.size() and buttons[index].visible and not buttons[index].disabled:
-		game.choose_stage(index)
+		game.enter_stage(index)
 
 func focus_first() -> void:
 	_sync_discovery()
@@ -273,15 +296,20 @@ func _layout() -> void:
 	for index in islands.size():
 		islands[index].position = origins[index]
 		islands[index].scale = Vector2.ONE * scales[index]
-	# Landings stay on the shore, clear of the opponents and the school tower.
+	# The rope bridge lands on the shores, clear of the opponents; the crystal
+	# steps rise from the keep's roof to the school courtyard.
 	bridges[0].set_span(_bridge_bank(0, islands[1].position), _bridge_bank(1, islands[0].position), false)
-	bridges[1].set_span(_bridge_bank(1, islands[2].position), islands[2].position + Vector2(0, 74) * islands[2].scale, true)
-	# Bridge guards stand just inland of their bridge's landing, which moves
-	# with the screen orientation.
-	for zone in bridges.size():
-		var island: Node2D = islands[zone]
-		var bank: Vector2 = (bridges[zone].from_point - island.position) / island.scale
-		_guard_spots[zone] = bank + (GUARD_INLAND_TOWARD - bank).normalized() * GUARD_INLAND
+	bridges[1].set_span(islands[1].position + STEPS_START * islands[1].scale, islands[2].position + Vector2(0, 74) * islands[2].scale, true)
+	# The archdruid guards the rope bridge just inland of its landing, which
+	# moves with the screen orientation; the king stands on his keep.
+	var bank: Vector2 = (bridges[0].from_point - islands[0].position) / islands[0].scale
+	_guard_spots[0] = bank + (GUARD_INLAND_TOWARD - bank).normalized() * GUARD_INLAND
+	_guard_spots[1] = KING_SPOT
+	for zone in islands.size():
+		var spots: Array = []
+		for i in OpponentDB.ZONE_SIZE:
+			spots.append(stage_offset(zone * OpponentDB.ZONE_SIZE + i))
+		islands[zone].spots = spots
 	for index in buttons.size():
 		var target_size := Vector2(140, 144) if portrait else Vector2(104, 108)
 		buttons[index].size = target_size
@@ -558,15 +586,20 @@ func _append_curve(points: PackedVector2Array, a: Vector2, b: Vector2, c: Vector
 		points.append(a.bezier_interpolate(b, c, d, index / 32.0))
 	return points
 
-## A gently winding footpath through `stops`: each leg leaves and arrives
-## level, so a change of depth reads as a bend rather than a straight cut.
+## A gently winding footpath through `stops`: it leaves and reaches the
+## opponents level, so a change of depth reads as a bend rather than a straight
+## cut, and flows through any waypoint in between without a sharp turn.
 func _winding(stops: Array[Vector2]) -> PackedVector2Array:
 	var points := PackedVector2Array()
+	var last := stops.size() - 1
 	for index in range(1, stops.size()):
 		var a := stops[index - 1]
 		var b := stops[index]
-		var reach := Vector2((b.x - a.x) * 0.45, 0)
-		points = _append_curve(points, a, a + reach, b - reach, b)
+		var level := Vector2((b.x - a.x) * 0.45, 0)
+		var reach := a.distance_to(b) * 0.38
+		var out := level if index == 1 else (b - stops[index - 2]).normalized() * reach
+		var into := level if index == last else (stops[index + 1] - a).normalized() * reach
+		points = _append_curve(points, a, a + out, b - into, b)
 	return points
 
 func _length(points: PackedVector2Array) -> float:
@@ -586,34 +619,57 @@ func _sample(points: PackedVector2Array, distance: float) -> Vector2:
 func _rebuild_paths() -> void:
 	_paths.clear()
 	for stage in range(1, buttons.size()):
-		var a := stage_position(stage - 1)
-		var b := stage_position(stage)
-		var points := PackedVector2Array()
-		if stage_island(stage) != stage_island(stage - 1):
-			var bridge: Node2D = bridges[stage_island(stage) - 1]
-			var start: Vector2 = bridge.from_point
-			var finish: Vector2 = bridge.to_point
-			# The guard stands just before the landing: a short, straight step on.
-			points = _append_curve(points, a, a.lerp(start, 0.33), a.lerp(start, 0.66), start)
-			var sag := minf(27, start.distance_to(finish) * 0.10)
-			for index in 65:
-				points.append(start.lerp(finish, index / 64.0) + Vector2(0, sin(index / 64.0 * PI) * sag))
-			points.append_array(_winding([finish, b]))
-		else:
-			var island: Node2D = islands[stage_island(stage)]
-			var stops: Array[Vector2] = [a]
-			for via in ROAD_VIAS.get(stage, []):
-				stops.append(island.position + via * island.scale)
-			stops.append(b)
-			points = _winding(stops)
-		var trim_start: float = 26 * islands[stage_island(stage - 1)].scale.x
-		var trim_end: float = 30 * islands[stage_island(stage)].scale.x
-		var length := maxf(1.0, _length(points) - trim_start - trim_end)
-		var count := clampi(roundi(length / 8.0), 6, 40)
+		var points := _road(stage)
+		var start := _footprint_exit(points, stage - 1, false)
+		var finish := 0.0 if ROAD_ENDS.has(stage) else _footprint_exit(points, stage, true)
+		var length := maxf(0.0, _length(points) - start - finish)
+		var count := clampi(roundi(length / DOT_SPACING) + 1, MIN_DOTS, MAX_DOTS)
 		var dots := PackedVector2Array()
 		for index in count:
-			dots.append(_sample(points, trim_start + length * index / float(count - 1)))
+			dots.append(_sample(points, start + length * index / float(count - 1)))
 		_paths[stage] = dots
+
+## The whole road from the previous opponent to `stage`, in world coordinates,
+## before it is cut at their footprints.
+func _road(stage: int) -> PackedVector2Array:
+	var a := stage_position(stage - 1)
+	var island: Node2D = islands[stage_island(stage)]
+	var b := stage_position(stage)
+	if ROAD_ENDS.has(stage):
+		b = island.position + ROAD_ENDS[stage] * island.scale
+	var points := PackedVector2Array()
+	if stage_island(stage) != stage_island(stage - 1):
+		var bridge: Node2D = bridges[stage_island(stage) - 1]
+		var start: Vector2 = bridge.from_point
+		var finish: Vector2 = bridge.to_point
+		# The guard stands just before the bridge: a short, straight step on.
+		points = _append_curve(points, a, a.lerp(start, 0.33), a.lerp(start, 0.66), start)
+		for index in 65:
+			points.append(bridge.point_at(index / 64.0))
+		points.append_array(_winding([finish, b]))
+		return points
+	var stops: Array[Vector2] = [a]
+	for via in ROAD_VIAS.get(stage, []):
+		stops.append(island.position + via * island.scale)
+	stops.append(b)
+	return _winding(stops)
+
+## Distance along `points`, from its start or its end, where the road leaves
+## the footprint of `stage`'s opponent.
+func _footprint_exit(points: PackedVector2Array, stage: int, from_end: bool) -> float:
+	var total := _length(points)
+	var travelled := 0.0
+	while travelled < total and in_footprint(_sample(points, total - travelled if from_end else travelled), stage):
+		travelled += 1.0
+	return travelled
+
+## True when a world point lies on `stage`'s opponent: its ground ring, or
+## below the top of its figure.
+func in_footprint(point: Vector2, stage: int) -> bool:
+	var island: Node2D = islands[stage_island(stage)]
+	var local := (point - stage_position(stage)) / (island.scale.x * depth_scale(stage))
+	var reach := Vector2(FOOTPRINT.x, FIGURE_TOP if local.y < 0.0 else FOOTPRINT.y)
+	return (local / reach).length_squared() < 1.0
 
 func _draw_roads() -> void:
 	for stage in range(1, buttons.size()):

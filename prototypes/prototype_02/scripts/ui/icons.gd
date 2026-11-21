@@ -311,6 +311,24 @@ static func merge_progress(ci: CanvasItem, center: Vector2, copies: int, stars: 
 			Shapes.circle(ci, p, 2.3, GOLD)
 
 
+## Round-cut gem of radius r in a team's colour, seen from above: a darker
+## girdle, a lighter table, one lit facet and a white reflection. Lights the
+## board's capacity settings (BoardView).
+static func gem(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
+	if r < 0.5:
+		return
+	var girdle := PackedVector2Array()
+	var table := PackedVector2Array()
+	for i in 8:
+		var dir := Vector2.from_angle(PI / 8 + i * PI / 4)
+		girdle.append(p + dir * r)
+		table.append(p + dir * r * 0.55)
+	ci.draw_colored_polygon(girdle, col.darkened(0.25))
+	ci.draw_colored_polygon(table, col.lightened(0.28))
+	ci.draw_colored_polygon(PackedVector2Array([girdle[4], girdle[5], table[5], table[4]]), col.lightened(0.45))
+	Shapes.circle(ci, p + Vector2(-r * 0.3, -r * 0.3), r * 0.22, Color(1, 1, 1, 0.85))
+
+
 static func padlock(ci: CanvasItem, p: Vector2, opening := 0.0, scale_factor := 1.0, opacity := 1.0) -> void:
 	var gold := Color(GOLD, opacity)
 	var hinge := Vector2(-6, -4)

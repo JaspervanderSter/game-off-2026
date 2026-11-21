@@ -13,6 +13,9 @@ var shift_recharge_upgraded: bool:
 	set(value):
 		upgrades["recharge"] = 1 if value else 0
 var ai_level := Difficulty.ARCHMAGE # opponent strength; the player ignores it
+## EnemyAI profile keys this opponent plays differently from its level
+## (OpponentDB.ai_overrides); see EnemyAI.profile_of.
+var ai_overrides := {}
 ## Rules of the duel, shared by both wizards (complete outside the journey).
 var rules := Ruleset.new()
 ## False for journey opponents without magic: they never cast.
@@ -243,6 +246,24 @@ func can_reroll() -> bool:
 		if not locked[i] or offers[i] == "":
 			return true
 	return false
+
+
+## A reroll makes sense once nothing left on the stall can be bought, while the
+## gold still covers the reroll and the cheapest creature it could deal, and
+## there is room for that creature. The reroll button glints only then.
+func reroll_makes_sense() -> bool:
+	if not can_reroll() or not has_space():
+		return false
+	var cheapest := -1
+	for id in rules.shop_ids():
+		var price: int = CreatureDB.get_form(id).price
+		cheapest = price if cheapest < 0 else mini(cheapest, price)
+	if cheapest < 0 or gold < Rules.REROLL_COST + cheapest:
+		return false
+	for id in offers:
+		if id != "" and gold >= CreatureDB.get_form(id).price:
+			return false
+	return true
 
 
 func reroll(rng: RandomNumberGenerator) -> bool:

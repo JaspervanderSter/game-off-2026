@@ -51,12 +51,16 @@ func _ready() -> void:
 	_test_combat_click_casts()
 	_test_blizzard_and_recharge_upgrade()
 	_test_ai_strategy()
+	_test_opponent_ai_profile()
 	_test_difficulty()
 	_test_journey_rules()
 	_test_forest_lessons()
 	_test_rule_spotlight()
+	_test_reroll_glint()
 	_test_learning_pause()
+	_test_learning_cue_spares_tank()
 	_test_abandon_replay()
+	_test_screen_transition()
 	_test_screen_layout()
 	_test_merge_lesson_and_full_board()
 	_test_scroll_shows_introduced_upgrades()
@@ -1800,6 +1804,35 @@ func _test_combat_click_casts() -> void:
 	game._left_press(Vector2(20, 20))
 	check(game.fx.items.size() == effects, "clicks outside the board neither cast nor fizzle")
 	game.queue_free()
+	# The druid hands over the wand before the swamp witch teaches the hex:
+	# clicking an enemy then gives no feedback at all, not an error.
+	game = load("res://main.tscn").instantiate()
+	var hex_progress := "user://hex_click_test_%d.cfg" % OS.get_process_id()
+	game.difficulty_progress_path = hex_progress
+	add_child(game)
+	game.journey.completed.assign(range(Journey.stage_count()))
+	game.choose_stage(1)
+	game.choose_pack(0)
+	game._advance_enemy_preparation(1.0)
+	game.start_combat()
+	b = game.battle
+	b.spells[0].charges = 2
+	check(game.ruleset.has(Ruleset.WAND) and not game.ruleset.has(Ruleset.HEX), "the druid's duel has the wand, not the hex")
+	foe = b.living(1)[0]
+	effects = game.fx.items.size()
+	Sfx._last_played.erase("ui/fail")
+	game._left_press(Rules.BOARD_POS + foe.position)
+	check(b.casts[0] == 0 and game.fx.items.size() == effects and not Sfx._last_played.has("ui/fail"),
+		"before the hex, clicking an enemy neither casts, fizzles nor plays an error")
+	var empty := Rules.BOARD_POS + Rules.cell_center(Vector2i(0, 0))
+	if b.unit_at(empty - Rules.BOARD_POS) == null:
+		game._left_press(empty)
+		check(game.fx.items.any(func(i): return i.kind == "fizzle"), "an empty cell still fizzles once the wand is in hand")
+	ally = b.living(0)[0]
+	game._left_press(Rules.BOARD_POS + ally.position)
+	check(b.casts[0] == 1, "the wand still shapeshifts the player's own creatures")
+	game.queue_free()
+	DirAccess.remove_absolute(hex_progress)
 
 
 func _test_blizzard_and_recharge_upgrade() -> void:
@@ -1931,6 +1964,48 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 		var outcomes := CreatureDB.outcomes(id)
 		check(outcomes[0].chance == 0.55 and outcomes[1].chance == 0.30 and outcomes[2].chance == 0.15,
 			"ordered decreasing probabilities for " + id)
+
+
+## A journey opponent can play its own strategy over its AI level: the thief
+## keeps at most two starred creatures, so it no longer out-merges the player.
+func _test_opponent_ai_profile() -> void:
+	check(OpponentDB.ai_overrides(7) == {"max_starred": 2} and OpponentDB.ai_overrides(6).is_empty()
+		and OpponentDB.ai_overrides(-1).is_empty(), "only the thief has its own AI strategy")
+	var game = load("res://main.tscn").instantiate()
+	var progress := "user://thief_ai_test_%d.cfg" % OS.get_process_id()
+	game.difficulty_progress_path = progress
+	add_child(game)
+	game.journey.completed.assign(range(Journey.stage_count()))
+	game.choose_stage(7)
+	var profile: Dictionary = EnemyAI.profile_of(game.enemy)
+	var level_profile: Dictionary = EnemyAI.profile_for(game.enemy.ai_level)
+	check(profile.max_starred == 2 and profile.merged(level_profile) == profile and profile.size() == level_profile.size() + 1,
+		"the thief plays its level's strategy plus its star limit")
+	game.new_duel()
+	game.choose_stage(6)
+	check(EnemyAI.profile_of(game.enemy) == EnemyAI.profile_for(game.enemy.ai_level),
+		"the next duel's opponent drops the thief's strategy")
+	game.free()
+	DirAccess.remove_absolute(progress)
+	# The same seeded thief, with and without its limit, over a long rich duel.
+	for capped in [true, false]:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 21
+		var thief := WizardState.new(1)
+		thief.rules = OpponentDB.ruleset(7)
+		thief.ai_level = OpponentDB.ai_level(7)
+		thief.ai_overrides = OpponentDB.ai_overrides(7) if capped else {}
+		thief.take_starting_pack(OpponentDB.packs_for(7)[OpponentDB.pack_index(7)])
+		var most := 0
+		for round_num in range(1, 16):
+			thief.gold += Rules.income(round_num) + 6
+			thief.refresh_offers(rng)
+			EnemyAI.shop(thief, rng)
+			most = maxi(most, thief.creatures.filter(func(c: OwnedCreature) -> bool: return c.stars > 0).size())
+		if capped:
+			check(most == 2, "the thief's AI keeps at most two starred creatures, and still merges (%d)" % most)
+		else:
+			check(most > 2, "without its limit the same AI stars more creatures (%d)" % most)
 
 
 func _test_ai_strategy() -> void:
@@ -2088,6 +2163,7 @@ func _test_difficulty() -> void:
 	game.choose_stage(6)
 	check(game.phase == game.Phase.DIFFICULTY, "locked map stages cannot launch")
 	game.map_screen._activate(0)
+	_finish_transition(game)
 	check(game.phase == game.Phase.PACK and game.hud.visible and not game.map_screen.visible,
 		"a map seal starts pack selection")
 	game.choose_pack(0)
@@ -2098,6 +2174,7 @@ func _test_difficulty() -> void:
 	game._finish_round()
 	check(game.journey.completed.is_empty(), "a defeat never completes a stage")
 	game._left_press(Hud.RESTART_POS)
+	_finish_transition(game)
 	check(game.map_screen.visible, "the end-of-duel button returns to the map")
 	for index in Journey.stage_count():
 		game.choose_stage(index)
@@ -2106,6 +2183,7 @@ func _test_difficulty() -> void:
 		_finish_test_difficulty_win(game)
 		check(index in game.journey.completed, "winning stage %d saves completion" % index)
 		game._left_press(Hud.RESTART_POS)
+		_finish_transition(game)
 	check(game.journey.available(1) and game.journey.available(4), "completed intermediate stages remain replayable")
 	check(game.journey.available(6), "the final seal remains replayable")
 	game.free()
@@ -2192,6 +2270,36 @@ func _test_difficulty() -> void:
 		picks[EnemyAI.random_cast_target(b)] = true
 	check(picks.size() == 1 and picks.has(ally), "clumsy casts only pick creatures that can be shapeshifted")
 	b.free()
+
+
+## Every transition covers the map, starts the duel only once covered, blocks
+## input meanwhile, and brings the player back to the map the same way.
+func _test_screen_transition() -> void:
+	var game = load("res://main.tscn").instantiate()
+	game.difficulty_progress_path = "user://transition_test_%d.cfg" % OS.get_process_id()
+	add_child(game)
+	game.map_screen.show_islands(true)
+	for style in 2: # twice in a row: the transition can run again
+		game.enter_stage(0)
+		check(game.transition.active() and game.phase == game.Phase.DIFFICULTY, "style %d covers the map before the duel" % style)
+		game.enter_stage(0)
+		game.transition._process(ScreenTransition.COVER * 0.5)
+		check(game.phase == game.Phase.DIFFICULTY and game.transition.coverage() > 0.3, "style %d is half way over the map" % style)
+		game.transition._process(ScreenTransition.COVER * 0.5 + 0.01)
+		check(game.phase == game.Phase.PACK and game.hud.visible, "style %d starts the duel once the screen is covered" % style)
+		game.transition._process(ScreenTransition.HOLD + ScreenTransition.REVEAL)
+		check(not game.transition.active() and game.map_screen.scale == Vector2.ONE and game.map_screen.position == Vector2.ZERO,
+			"style %d ends with the map at its normal scale" % style)
+		game.leave_duel()
+		_finish_transition(game)
+		check(game.phase == game.Phase.DIFFICULTY and game.map_screen.visible, "style %d brings the player back to the map" % style)
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://transition_test_%d.cfg" % OS.get_process_id()))
+
+
+## Plays the map <-> duel transition to its end at once (screens swap while covered).
+func _finish_transition(game: Node) -> void:
+	game.transition._process(10.0)
 
 
 func _finish_test_difficulty_win(game: Node) -> void:
@@ -2362,6 +2470,7 @@ func _test_journey_navigation() -> void:
 	click.pressed = false
 	Input.parse_input_event(click)
 	await get_tree().process_frame
+	_finish_transition(game)
 	check(game.phase == game.Phase.PACK and game.hud.visible, "a fitted map button launches its duel")
 	check(get_window().content_scale_aspect == Window.CONTENT_SCALE_ASPECT_KEEP, "duel restores its original viewport layout")
 	var sky_time: float = map.sky.elapsed
@@ -2408,6 +2517,7 @@ func _test_journey_navigation() -> void:
 	touch = touch.duplicate()
 	touch.pressed = false
 	map._input(touch)
+	_finish_transition(game)
 	check(game.phase == game.Phase.PACK, "portrait map opponents can be selected by touch")
 	game.free()
 	get_window().size = previous_size
@@ -2477,8 +2587,44 @@ func _check_whole_map_visible(map: Node2D, orientation: String) -> void:
 		var start: Vector2 = map.islands[index].transform.affine_inverse() * bridge.from_point
 		var finish: Vector2 = map.islands[index + 1].transform.affine_inverse() * bridge.to_point
 		var shore := Rect2(-240, -96, 480, 192)
+		if index == 1:
+			# The crystal steps rise from the keep's roof, beside the king.
+			check(start.is_equal_approx(map.STEPS_START) and shore.has_point(finish),
+				"%s crystal steps leave the keep for the school's shore" % orientation)
+			continue
 		check(shore.has_point(start) and shore.has_point(finish),
 			"%s bridge %d joins the islands at their shores" % [orientation, index])
+	_check_map_paths(map, orientation)
+
+
+## Every road between consecutive opponents is a clean dotted line: evenly
+## spaced dots that never overlap, a few on short hops, none on an opponent,
+## and never beside another road.
+func _check_map_paths(map: Node2D, orientation: String) -> void:
+	var diameter := 7.0 # the dots' dark rim
+	for stage in range(1, map.buttons.size()):
+		var dots: PackedVector2Array = map._paths[stage]
+		check(dots.size() >= map.MIN_DOTS and dots.size() <= map.MAX_DOTS,
+			"%s road %d has %d dots" % [orientation, stage, dots.size()])
+		var gaps: Array[float] = []
+		for index in range(1, dots.size()):
+			gaps.append(dots[index - 1].distance_to(dots[index]))
+		check(gaps.min() > diameter + 1.0 and gaps.max() < map.DOT_SPACING * 1.4,
+			"%s road %d spaces its dots evenly without overlap (%.1f-%.1f)" % [orientation, stage, gaps.min(), gaps.max()])
+		var on_opponent := false
+		for dot in dots:
+			for other in map.buttons.size():
+				on_opponent = on_opponent or map.in_footprint(dot, other)
+		check(not on_opponent, "%s road %d never runs over an opponent" % [orientation, stage])
+		for other in range(stage + 1, map.buttons.size()):
+			var nearest := INF
+			for dot in dots:
+				for other_dot: Vector2 in map._paths[other]:
+					nearest = minf(nearest, dot.distance_to(other_dot))
+			check(nearest > diameter + 1.0, "%s roads %d and %d stay apart" % [orientation, stage, other])
+	var town: Node2D = map.islands[1]
+	var gate: Vector2 = town.position + map.ROAD_ENDS[9] * town.scale
+	check(map._paths[9][-1].distance_to(gate) < 1.0, "%s the road to the king ends at his keep's gate" % orientation)
 
 
 func _test_journey_health() -> void:
@@ -2654,6 +2800,24 @@ func _test_journey_rules() -> void:
 	s.refresh_offers(rng)
 	check(s.offers[0] != "" and s.can_buy(0), "the stall is open from the lumberjack on")
 	check(not s.can_reroll() and not s.toggle_lock(0), "no reroll or lock before the merchant")
+	# The lumberjack's stall has no trading: a right click on an offer gives no
+	# feedback at all, not an error sound.
+	var lumberjack = load("res://main.tscn").instantiate()
+	var lock_progress := "user://lock_click_test_%d.cfg" % OS.get_process_id()
+	lumberjack.difficulty_progress_path = lock_progress
+	add_child(lumberjack)
+	lumberjack.journey.completed.assign(range(Journey.stage_count()))
+	lumberjack.choose_stage(2)
+	lumberjack.choose_pack(0)
+	check(lumberjack.phase == lumberjack.Phase.PREP and lumberjack.player.offers[0] != ""
+		and not lumberjack.ruleset.has(Ruleset.TRADE), "the lumberjack's stall is open without trading")
+	Sfx._last_played.erase("ui/fail")
+	Sfx._last_played.erase("ui/click")
+	lumberjack._right_press(Hud.offer_rect(0).get_center())
+	check(not lumberjack.player.locked[0] and not Sfx._last_played.has("ui/fail") and not Sfx._last_played.has("ui/click"),
+		"before trading, right-clicking an offer neither locks it nor plays a sound")
+	lumberjack.free()
+	DirAccess.remove_absolute(lock_progress)
 	var a := s.add_creature("archer")
 	var b := s.add_creature("archer")
 	check(not s.can_merge(a, b) and not s.can_sell(a) and not s.sell(a), "no merge before the thief and no selling before the merchant")
@@ -2737,8 +2901,38 @@ func _test_merge_lesson_and_full_board() -> void:
 	game.difficulty_progress_path = "user://merge_lesson_test_%d.cfg" % OS.get_process_id()
 	game.journey.completed.assign(range(Journey.stage_count()))
 	game.journey.lessons_done.clear()
+	# The thief deals three shield guardians in the front line and two more
+	# coins, and demonstrates merging all three into a one-star guardian.
 	game.choose_stage(7)
-	game.choose_pack(0)
+	check(game.phase == game.Phase.PREP and game.offered_packs.is_empty(),
+		"the thief deals the player's opening instead of a choice")
+	var guardians: Array[OwnedCreature] = game.player.creatures.duplicate()
+	var front: int = game.player.preferred_row("front")
+	check(guardians.size() == 3 and guardians.all(func(c: OwnedCreature) -> bool:
+		return c.form_id == "guardian" and c.is_fielded() and c.cell.y == front),
+		"the thief's duel opens with three shield guardians in the front line")
+	check(game.player.gold == Rules.income(1) + 2, "the thief's duel opens with two more coins than the income")
+	game.enemy_preparing = false
+	game.shop_out = 0.0
+	var demo: Dictionary = game.merge_demo()
+	var middle: OwnedCreature = demo.get("target")
+	check(demo.get("sources", []).size() == 2 and middle in guardians and middle.cell.x == 3,
+		"the lesson flies the two outer guardians into the middle one")
+	check(Hud._merge_demo_stars(demo), "the demonstration ends on a star")
+	game._left_press(demo.sources[0])
+	game._left_release(demo.to)
+	demo = game.merge_demo()
+	check(middle.merge_copies == 2 and not game.merge_lesson_done and demo.get("target") == middle
+		and demo.sources.size() == 1, "after a first combine the lesson shows the copy that completes the star")
+	game._left_press(demo.sources[0])
+	game._left_release(demo.to)
+	check(middle.stars == 1 and game.player.creatures.size() == 1, "the three guardians make a one-star guardian")
+	check(game.merge_lesson_done and game.merge_demo().is_empty() and Ruleset.MERGE in game.journey.lessons_done,
+		"the first star ends the lesson for good")
+	# With fewer copies, the lesson demonstrates an identical offer or a pair.
+	game.journey.lessons_done.clear()
+	game.new_duel()
+	game.choose_stage(7)
 	game.enemy_preparing = false
 	game.shop_out = 0.0
 	var form: String = game.player.creatures[0].form_id
@@ -2750,8 +2944,8 @@ func _test_merge_lesson_and_full_board() -> void:
 		game.player.offers[i] = ""
 	check(game.merge_demo().is_empty(), "no merge demonstration without a copy to merge")
 	game.player.offers[0] = form
-	var demo: Dictionary = game.merge_demo()
-	check(not demo.is_empty() and demo.from == Hud.offer_token_pos(0), "an identical offer is demonstrated onto its copy")
+	demo = game.merge_demo()
+	check(not demo.is_empty() and demo.sources == [Hud.offer_token_pos(0)], "an identical offer is demonstrated onto its copy")
 	# A second identical creature can be placed on an empty cell.
 	var empty := Vector2i(0, 5)
 	game._left_press(Hud.offer_rect(0).get_center())
@@ -2761,15 +2955,25 @@ func _test_merge_lesson_and_full_board() -> void:
 	check(game.player.at_cell(empty) != null and game.player.at_cell(empty).form_id == form and game.player.field_count() == 2,
 		"an identical creature can be placed beside its copy")
 	demo = game.merge_demo()
-	check(not demo.is_empty() and demo.target in game.player.creatures, "two copies on the board are demonstrated")
-	game._left_press(demo.from)
+	check(not demo.is_empty() and demo.target in game.player.creatures and demo.sources.size() == 1,
+		"two copies on the board are demonstrated")
+	game._left_press(demo.sources[0])
 	game._left_release(demo.to)
-	check(game.merge_lesson_done and game.merge_demo().is_empty(), "the first merge ends the demonstration")
+	check(not game.merge_lesson_done and Ruleset.MERGE not in game.journey.lessons_done,
+		"a combine without a star keeps the lesson going")
+	game.player.offers[1] = form
+	demo = game.merge_demo()
+	check(demo.get("sources", []) == [Hud.offer_token_pos(1)] and Hud._merge_demo_stars(demo),
+		"the identical offer that completes the star is demonstrated")
+	game._left_press(Hud.offer_rect(1).get_center())
+	game.shop_drag_position = demo.to
+	game.shop_drag_active = true
+	game._left_release(demo.to)
+	check(game.merge_lesson_done and game.merge_demo().is_empty(), "the first star ends the demonstration")
 	check(Ruleset.MERGE in game.journey.lessons_done, "the merge lesson is remembered")
-	# Replaying the thief: an identical pair, but no demonstration any more.
+	# Replaying the thief: three identical guardians, but no demonstration any more.
 	game.new_duel()
 	game.choose_stage(7)
-	game.choose_pack(0)
 	game.enemy_preparing = false
 	game.shop_out = 0.0
 	game.player.offers[0] = game.player.creatures[0].form_id
@@ -2792,7 +2996,11 @@ func _test_merge_lesson_and_full_board() -> void:
 	game.shop_drag_position = Rules.BOARD_POS + Rules.cell_center(free)
 	game.shop_drag_active = true
 	game._left_release(Rules.BOARD_POS + Rules.cell_center(free))
-	check(game.player.at_cell(free) == null and game.field_full_flash > 0.0, "a refused drop on a full board flashes the capacity pips")
+	check(game.player.at_cell(free) == null and game.field_full_flash > 0.0, "a refused drop on a full board flashes the capacity gems")
+	game.board_view._process(0.016)
+	check(game.board_view._fielded == [Rules.FIELD_CAP, game.enemy.field_count()], "capacity gems count both sides' creatures on the board")
+	check(BoardView.gem_position(0, 0).y > Rules.BOARD_SIZE.y and BoardView.gem_position(1, 0).y < 0.0,
+		"the player's gems sit in the frame's lower edge, the opponent's in its upper edge")
 	game.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://merge_lesson_test_%d.cfg" % OS.get_process_id()))
 
@@ -2843,6 +3051,117 @@ func _test_learning_pause() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://learning_pause_test_%d.cfg" % OS.get_process_id()))
 
 
+## The druid's cue never invites a shapeshift of the tank (the shield guardian,
+## the most armoured ally) while another ally can take it: the least armoured
+## one goes first, the farthest from the enemies on a tie, and the tank only
+## when it is the last creature to cast on.
+func _test_learning_cue_spares_tank() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.set_physics_process(false)
+	game.difficulty_progress_path = "user://learning_cue_tank_test_%d.cfg" % OS.get_process_id()
+	game.journey.completed.assign(range(Journey.stage_count()))
+	for slot in OpponentDB.learning_packs().size():
+		game.journey.lessons_done.clear()
+		game.new_duel()
+		game.choose_stage(1)
+		game.choose_pack(slot)
+		game._advance_enemy_preparation(1.0)
+		game.start_combat()
+		var allies: Array[Unit] = game.battle.living(0)
+		var tank: Unit = null
+		for u in allies:
+			if tank == null or u.armour() > tank.armour():
+				tank = u
+		check(tank.form_id == "guardian", "pack %d: the shield guardian is the tank" % slot)
+		var target: Unit = game.learning_cast_target()
+		check(target != null and target.team == 0 and target != tank,
+			"pack %d: the druid's cue spares the tank" % slot)
+		var least := INF
+		for u in allies:
+			least = minf(least, u.armour())
+		check(target != null and is_equal_approx(target.armour(), least),
+			"pack %d: the cue picks the least armoured ally" % slot)
+		for u in allies:
+			if u != target and is_equal_approx(u.armour(), target.armour()):
+				check(game._distance_to_foes(target) >= game._distance_to_foes(u),
+					"pack %d: on a tie the cue picks the ally farthest from the enemies" % slot)
+		for u in allies:
+			if u != tank:
+				u.alive = false
+		check(game.learning_cast_target() == tank,
+			"pack %d: the tank is invited only when it is the last ally" % slot)
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://learning_cue_tank_test_%d.cfg" % OS.get_process_id()))
+
+
+## Trading is shown without a spotlight (playtest, 21 November 2026): the reroll
+## button glints only while a reroll makes sense, and a reroll turns the
+## replaced offers over.
+func _test_reroll_glint() -> void:
+	var s := WizardState.new(0)
+	s.rules = OpponentDB.ruleset(5)
+	var cheapest := ""
+	for id in s.rules.shop_ids():
+		if cheapest == "" or CreatureDB.get_form(id).price < CreatureDB.get_form(cheapest).price:
+			cheapest = id
+	var low: int = CreatureDB.get_form(cheapest).price
+	s.offers.assign([cheapest, "", ""])
+	s.gold = 5
+	check(not s.reroll_makes_sense(), "no reroll glint while an offer can still be bought")
+	s.offers.assign(["", "", ""])
+	check(s.reroll_makes_sense(), "an emptied stall with coins to spare makes a reroll sensible")
+	s.gold = Rules.REROLL_COST + low - 1
+	check(not s.reroll_makes_sense(), "no glint when the reroll would leave too little for any creature")
+	# Offers too dear to buy: three-coin creatures arrive with the court mage.
+	var school := WizardState.new(0)
+	school.rules = OpponentDB.ruleset(14)
+	school.gold = Rules.REROLL_COST + low
+	school.offers.assign(["pyromancer", "pyromancer", ""])
+	check(CreatureDB.get_form("pyromancer").price > school.gold and school.reroll_makes_sense(),
+		"offers too dear to buy make a reroll sensible")
+	s.gold = 5
+	while s.has_space():
+		s.add_creature(cheapest)
+	check(not s.reroll_makes_sense(), "no glint without room for another creature")
+	var before_trade := WizardState.new(0)
+	before_trade.rules = OpponentDB.ruleset(4)
+	before_trade.gold = 9
+	check(not before_trade.reroll_makes_sense(), "no glint before the merchant introduces trading")
+	check(Hud.reroll_glint(Hud.REROLL_GLINT_DELAY - 0.1) < 0.0 and Hud.reroll_glint(Hud.REROLL_GLINT_DELAY + 0.1) >= 0.0
+		and Hud.reroll_glint(Hud.REROLL_GLINT_DELAY + Hud.REROLL_GLINT_SWEEP + 0.1) < 0.0
+		and Hud.reroll_glint(Hud.REROLL_GLINT_DELAY + Hud.REROLL_GLINT_PERIOD + 0.1) >= 0.0,
+		"the glint waits a moment, then crosses the button every few seconds")
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.difficulty_progress_path = "user://reroll_glint_test_%d.cfg" % OS.get_process_id()
+	game.journey.completed.assign(range(5))
+	game.choose_stage(5)
+	game.choose_pack(0)
+	game.shop_out = 0.0
+	game.enemy_preparing = false
+	game.player.gold = 5
+	game.player.offers.assign([cheapest, "", cheapest])
+	game.player.locked.assign([false, false, true])
+	check(not game.reroll_sensible(), "the merchant's stall opens without a glint while its offers can be bought")
+	game._left_press(Hud.reroll_rect().get_center())
+	var hud: Hud = game.hud
+	var turned := hud.offer_flips.map(func(f: Dictionary) -> int: return f.slot)
+	check(turned == [0, 1] and hud.offer_flips[1].from == "" and game.player.offers[2] == cheapest,
+		"a reroll turns over the replaced offer and the empty slot, never a locked one")
+	hud.advance_offer_flips(Hud.OFFER_FLIP_TIME + Hud.OFFER_FLIP_STAGGER * 2.0)
+	check(hud.offer_flips.is_empty(), "the turned offers settle")
+	game.player.offers.assign(["", "", ""])
+	game.player.locked.assign([false, false, false])
+	game.player.gold = 5
+	check(game.reroll_sensible(), "the emptied stall's reroll button glints")
+	game.drag = game.player.creatures[0]
+	check(not game.reroll_sensible(), "no glint while a creature is dragged")
+	game.drag = null
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://reroll_glint_test_%d.cfg" % OS.get_process_id()))
+
+
 ## A journey duel spotlights its opponent's rule once, when it first shows up;
 ## merge pips stay hidden until merging exists.
 func _test_rule_spotlight() -> void:
@@ -2857,17 +3176,17 @@ func _test_rule_spotlight() -> void:
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
 	game.difficulty_progress_path = "user://rule_spotlight_test_%d.cfg" % OS.get_process_id()
-	game.journey.completed.assign(range(5))
+	game.journey.completed.assign(range(2))
 	game.journey.introduced.clear()
-	game.choose_stage(5)
+	game.choose_stage(2)
 	game.choose_pack(0)
-	check(game.spotlight.rule == Ruleset.TRADE and game.spotlight.pending(), "the merchant's duel waits to show trading")
+	check(game.spotlight.rule == Ruleset.SHOP and game.spotlight.pending(), "the lumberjack's duel waits to show the shop")
 	game.shop_out = 0.0
 	game.enemy_preparing = false
 	game._watch_rule_spotlight()
-	check(game.spotlight.active() and Ruleset.TRADE in game.journey.introduced,
-		"the reroll button is spotlit as soon as the shop is in place, and remembered")
-	check(game.spotlight.center == Hud.reroll_rect().get_center(), "the spotlight opens on the reroll button")
+	check(game.spotlight.active() and Ruleset.SHOP in game.journey.introduced,
+		"the stall is spotlit as soon as it is in place, and remembered")
+	check(game.spotlight.center == Hud.stall_rect().get_center(), "the spotlight opens on the stall")
 	game.spotlight.advance(RuleSpotlight.FADE_IN)
 	check(game.spotlight.time_scale() < 0.5, "the duel slows while the spotlight is on")
 	game.spotlight.advance(RuleSpotlight.DURATION)
@@ -2901,10 +3220,15 @@ func _test_rule_spotlight() -> void:
 	check(not game.spotlight.active() and hud.harvest_lesson.is_empty() and hud.harvest_speed == 1.0,
 		"the harvest lesson ends and the harvest plays at its normal speed again")
 	hud.set_process(true)
+	game.journey.completed.assign(range(2))
+	game.new_duel()
+	game.choose_stage(2)
+	check(not game.spotlight.pending(), "a rule already introduced is not spotlit again")
 	game.journey.completed.assign(range(5))
 	game.new_duel()
 	game.choose_stage(5)
-	check(not game.spotlight.pending(), "a rule already introduced is not spotlit again")
+	check(not game.spotlight.pending() and Ruleset.TRADE not in game.journey.introduced,
+		"the merchant's trading has no spotlight: the reroll button glints when a reroll makes sense")
 	game.choose_pack(0)
 	var hovered: OwnedCreature = game.player.creatures[0]
 	game.hover_info = {"owned": hovered}
@@ -2915,7 +3239,7 @@ func _test_rule_spotlight() -> void:
 	var config := ConfigFile.new()
 	game.journey.save(config)
 	restored.restore(config, Difficulty.APPRENTICE)
-	check(Ruleset.TRADE in restored.introduced, "introduced rules are saved")
+	check(Ruleset.SHOP in restored.introduced, "introduced rules are saved")
 	game.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://rule_spotlight_test_%d.cfg" % OS.get_process_id()))
 
@@ -2927,8 +3251,8 @@ func _test_rule_spotlight() -> void:
 func _test_screen_layout() -> void:
 	Hud.layout_screen(OpponentDB.ruleset(0))
 	var shopless_board := Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE)
-	check(absf(Rules.FIGHT_CENTER.x - shopless_board.get_center().x) < 0.5 and Rules.FIGHT_CENTER.y - Rules.FIGHT_RADIUS > shopless_board.end.y,
-		"before the shop the fight button sits under the board's centre")
+	var shopless_fight := Rules.FIGHT_CENTER - shopless_board.position
+	var shopless_bench := Rules.RESERVE_POS - shopless_board.position
 	var left := Hud.medallion_centers[0].x - Hud.MEDALLION_RADIUS
 	check(absf((left + shopless_board.end.x) * 0.5 - 640.0) < 30.0, "before the shop the board and the medallions are centred together")
 	for team in 2:
@@ -2940,6 +3264,8 @@ func _test_screen_layout() -> void:
 	check(board.position.x < shopless_board.position.x and Rules.FIGHT_CENTER.x - Rules.FIGHT_RADIUS > bench_end.x
 		and Rules.FIGHT_CENTER.x + Rules.FIGHT_RADIUS * Hud.FIGHT_HOVER_SCALE < Hud.stall_rect().position.x,
 		"with the shop the fight button sits right of the bench, clear of the stall")
+	check((Rules.FIGHT_CENTER - board.position).is_equal_approx(shopless_fight) and (Rules.RESERVE_POS - board.position).is_equal_approx(shopless_bench),
+		"the fight button and the bench keep the same place under the board before and with the shop")
 	for count in [1, 3, 6, 10]:
 		var gaps: Array[float] = []
 		var inner: int = count if count <= Hud.HEART_ARC else ceili(count / 2.0)
@@ -2953,8 +3279,8 @@ func _test_screen_layout() -> void:
 		"ten hearts use two arcs, the last on the outer one")
 	check(Hud.crystal_pos(0, 2).y + 16.0 < board.end.y + 4.0, "the player's crystals stay above the board's bottom")
 	Hud.layout_screen(Ruleset.new())
-	# The fight button's lesson: spotlit at the hunter's first preparation, then a
-	# halo until the very first fight.
+	# The fight button's lesson: spotlit at the hunter's first preparation until
+	# the very first fight, the light going out as soon as the button is pressed.
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
 	game.difficulty_progress_path = "user://fight_lesson_test_%d.cfg" % OS.get_process_id()
@@ -2966,8 +3292,16 @@ func _test_screen_layout() -> void:
 	game._watch_rule_spotlight()
 	check(game.spotlight.active() and game.spotlight.center == Rules.FIGHT_CENTER and game.fight_lesson_waiting(),
 		"the hunter's first preparation spotlights the fight button, which waits for its first fight")
+	game.spotlight.advance(30.0)
+	check(game.spotlight.active() and game.spotlight.time_scale() == RuleSpotlight.SLOW_MOTION,
+		"the fight button stays spotlit, at full strength, until it is pressed")
 	game.start_combat()
 	check(not game.fight_lesson_waiting() and game.FIGHT_LESSON in game.journey.lessons_done, "the first fight ends the fight lesson for good")
+	game.spotlight.advance(RuleSpotlight.DISMISS_FADE * 0.5)
+	var dimming: float = game.spotlight.time_scale()
+	game.spotlight.advance(RuleSpotlight.DISMISS_FADE * 0.6)
+	check(dimming > RuleSpotlight.SLOW_MOTION and not game.spotlight.active() and game.spotlight.rule == "",
+		"pressing the fight button puts its spotlight out within %.1f s" % RuleSpotlight.DISMISS_FADE)
 	game.new_duel()
 	game.choose_stage(0)
 	game.choose_pack(0)
@@ -3005,6 +3339,7 @@ func _test_abandon_replay() -> void:
 	check(not game.abandon_asked and game.battle.time > time, "the cross resumes the duel")
 	game.ask_abandon()
 	game.abandon_duel()
+	_finish_transition(game)
 	check(game.phase == game.Phase.DIFFICULTY and game.map_screen.visible and not game.abandon_asked,
 		"the check leaves the duel for the map")
 	check(game.journey.completed == [0] and not game.journey.available(2), "abandoning changes nothing on the journey")
@@ -3058,7 +3393,9 @@ func _town_offered_cards(index: int) -> Array[int]:
 	game.journey.completed.assign(range(Journey.stage_count()))
 	game.choose_stage(index)
 	var cards: Array[int] = game.offered_packs.duplicate()
-	check(cards.size() == 3, "town %d offers three compositions" % index)
+	# The thief's merge lesson deals its own opening instead.
+	var dealt := not OpponentDB.player_pack(index).is_empty()
+	check(cards.size() == (0 if dealt else 3), "town %d offers three compositions unless it deals a lesson opening" % index)
 	game.choose_pack(0)
 	for c: OwnedCreature in game.enemy.creatures:
 		check(c.form_id in Ruleset.TOWN_HUMANS, "town %d opponent opens with town humans" % index)

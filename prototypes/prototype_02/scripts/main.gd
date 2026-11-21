@@ -39,13 +39,16 @@ var merge_lesson_done := false
 ## drop refused because the board already holds Rules.FIELD_CAP creatures.
 var field_full_flash := 0.0
 const FIELD_FULL_FLASH := 0.9
+## Seconds a reroll has made sense for (WizardState.reroll_makes_sense, with the
+## stall in place); the reroll button glints meanwhile (Hud.reroll_glint).
+var reroll_sense_time := 0.0
 ## Spotlight on the rule this duel's opponent introduces, the first time it shows.
 var spotlight := RuleSpotlight.new()
 ## True while a replayed duel waits, paused, for the player to confirm leaving it.
 var abandon_asked := false
-## The fight button's lesson (first-pass rule spotlight, then a halo): the
-## hunter's first preparation spotlights the button, which then breathes in gold
-## until the player's very first fight. Saved in journey.introduced and
+## The fight button's lesson: the hunter's first preparation spotlights the
+## button, which otherwise behaves as in every duel, until the player presses
+## it; the light then goes out at once. Saved in journey.introduced and
 ## journey.lessons_done; a save that already beat the hunter skips it.
 const FIGHT_LESSON := "fight"
 var map_screen: Node2D
@@ -83,6 +86,8 @@ var fx: FxLayer
 var hud: Hud
 var music: PhaseMusic
 var switch_flash: SwitchFlash
+## The cloud transition between the map and a duel, on its own canvas layer.
+var transition: ScreenTransition
 var fps_counter: Control
 var alternate_audio: Node
 
@@ -112,6 +117,11 @@ func _ready() -> void:
 	top.add_child(switch_flash)
 	fps_counter = preload("res://scripts/ui/fps_counter.gd").new()
 	top.add_child(fps_counter)
+	var transition_layer := CanvasLayer.new()
+	transition_layer.layer = 9
+	add_child(transition_layer)
+	transition = ScreenTransition.new()
+	transition_layer.add_child(transition)
 	_load_difficulty_progress()
 	player_deck.load_state()
 	enemy_deck.load_state()
@@ -197,6 +207,13 @@ func new_duel() -> void:
 		show_map()
 
 
+## True while a reroll makes sense with the stall in place and nothing dragged:
+## the reroll button then glints, without pushing a reroll at any other time.
+func reroll_sensible() -> bool:
+	return phase == Phase.PREP and ruleset.has(Ruleset.TRADE) and shop_out <= 0.0 and drag == null \
+		and not abandon_asked and player.reroll_makes_sense()
+
+
 ## True while the hunter's preparation waits for the player's very first fight.
 func fight_lesson_waiting() -> bool:
 	return opponent == 0 and phase == Phase.PREP and 0 not in journey.completed \
@@ -230,7 +247,30 @@ func cancel_abandon() -> void:
 func abandon_duel() -> void:
 	if not abandon_asked:
 		return
-	new_duel()
+	leave_duel()
+
+
+## The map's way into a duel: the transition covers the screen from the
+## clicked opponent, then the duel starts.
+func enter_stage(index: int) -> void:
+	if transition.active() or phase != Phase.DIFFICULTY or not journey.available(index):
+		return
+	var button: Control = map_screen.buttons[index]
+	var at: Vector2 = button.get_global_transform_with_canvas() * (button.size * 0.5)
+	transition.play(at, Rules.BOARD_POS + Rules.BOARD_SIZE * 0.5, choose_stage.bind(index), map_screen.sky.colors().cloud)
+
+
+## Back to the map after a duel (or leaving a replay): the transition covers
+## the screen from the board and uncovers it on the opponent's spot.
+func leave_duel() -> void:
+	if transition.active():
+		return
+	var stage := journey.selected
+	var at := Vector2(640, 360)
+	if stage >= 0:
+		var button: Control = map_screen.buttons[stage]
+		at = button.get_global_transform_with_canvas() * (button.size * 0.5)
+	transition.play(Rules.BOARD_POS + Rules.BOARD_SIZE * 0.5, at, new_duel, map_screen.sky.colors().cloud)
 
 
 ## Direct difficulty entry retained for rule tests and developer tooling.
@@ -253,6 +293,11 @@ func _start_duel() -> void:
 	merge_lesson_done = false
 	field_full_flash = 0.0
 	var rule := journey.rule_to_introduce(opponent)
+	if rule == Ruleset.TRADE:
+		# Trading has no spotlight: it pushed a reroll as soon as the stall
+		# opened, when a reroll is pointless. The reroll button glints instead,
+		# in every duel, while a reroll makes sense (playtest, 21 November 2026).
+		rule = ""
 	if opponent == 0 and 0 not in journey.completed and FIGHT_LESSON not in journey.introduced:
 		rule = FIGHT_LESSON
 	spotlight.reset(rule)
@@ -270,10 +315,17 @@ func _start_duel() -> void:
 	board_view.show()
 	hud.show()
 	enemy.ai_level = difficulty
+	enemy.ai_overrides = OpponentDB.ai_overrides(opponent)
 	for state in states:
 		state.rules = ruleset
 		state.learning_duel = OpponentDB.is_learning_encounter(opponent)
 	enemy.magic = opponent < 0 or OpponentDB.get_opponent(opponent).magic
+	# A lesson that needs a precise team deals it rather than offering a choice.
+	var lesson_pack := OpponentDB.player_pack(opponent)
+	if not lesson_pack.is_empty():
+		offered_packs.clear()
+		_open_duel(lesson_pack)
+		return
 	if OpponentDB.is_learning_encounter(opponent):
 		offered_packs = OpponentDB.learning_packs()
 	elif ruleset.is_complete():
@@ -360,7 +412,12 @@ func pack_at(slot: int) -> Dictionary:
 func choose_pack(slot: int) -> void:
 	if phase != Phase.PACK or slot < 0 or slot >= offered_packs.size():
 		return
-	player.take_starting_pack(pack_at(slot))
+	_open_duel(pack_at(slot))
+
+
+## Both wizards take their openings and the first round begins.
+func _open_duel(player_pack: Dictionary) -> void:
+	player.take_starting_pack(player_pack)
 	# A journey opponent opens with its own composition; the archmage and duels
 	# outside the journey deal from the opponent's deck.
 	var enemy_pack := OpponentDB.pack_index(opponent) if opponent >= 0 else -1
@@ -397,6 +454,8 @@ func start_combat() -> void:
 	if fight_lesson_waiting():
 		journey.lessons_done.append(FIGHT_LESSON)
 		_save_difficulty_progress(unlocked_difficulty)
+	if spotlight.rule == FIGHT_LESSON:
+		spotlight.dismiss() # the button did its job: the light goes out at once
 	hud.clear_loss_rewards()
 	battle = Battle.new()
 	battle.position = Rules.BOARD_POS
@@ -719,6 +778,9 @@ func cycle_environment() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if transition.active():
+		get_viewport().set_input_as_handled()
+		return
 	if map_screen.visible:
 		if event is InputEventKey and event.pressed and not event.echo:
 			var on_title: bool = map_screen.on_title()
@@ -795,7 +857,9 @@ func _left_press(pos: Vector2) -> void:
 						Sfx.play("ui/fail")
 					return
 			if ruleset.has(Ruleset.TRADE) and Hud.reroll_rect().has_point(pos):
+				var before := player.offers.duplicate()
 				if player.reroll(rng):
+					hud.begin_reroll_flip(before)
 					Sfx.play("ui/purchase_confirmed")
 				elif player.gold < Rules.REROLL_COST:
 					Sfx.play("ui/insufficient_gold")
@@ -826,7 +890,7 @@ func _left_press(pos: Vector2) -> void:
 		Phase.OVER:
 			if pos.distance_to(Hud.RESTART_POS) < 46:
 				Sfx.play("ui/click")
-				new_duel()
+				leave_duel()
 
 
 func _left_release(pos: Vector2) -> void:
@@ -898,20 +962,26 @@ func _release_shop_offer(pos: Vector2) -> void:
 			Sfx.play("ui/place")
 
 
+## The merge lesson ends with the player's first star: a first combine still
+## leaves the lesson showing the copy that completes it.
 func _merge_feedback(recipient: OwnedCreature, previous_stars: int) -> void:
-	merge_lesson_done = true
-	if opponent >= 0 and OpponentDB.get_opponent(opponent).rule == Ruleset.MERGE \
-			and Ruleset.MERGE not in journey.lessons_done:
-		journey.lessons_done.append(Ruleset.MERGE)
-		_save_difficulty_progress(unlocked_difficulty)
 	var ranked_up := recipient.stars > previous_stars
+	if ranked_up:
+		merge_lesson_done = true
+		if opponent >= 0 and OpponentDB.get_opponent(opponent).rule == Ruleset.MERGE \
+				and Ruleset.MERGE not in journey.lessons_done:
+			journey.lessons_done.append(Ruleset.MERGE)
+			_save_difficulty_progress(unlocked_difficulty)
 	var centre := Rules.BOARD_POS + Rules.cell_center(recipient.cell) if recipient.is_fielded() else bench_slot_rect(recipient.slot).get_center()
 	fx.add("merge" if ranked_up else "combine", centre - Rules.BOARD_POS)
 	Sfx.play("ui/merge" if ranked_up else "ui/combine")
 
 
+## Right click on an offer locks it. Locking belongs to trading: before the
+## merchant introduces it, the click gives no feedback at all (playtest, 21
+## November 2026).
 func _right_press(pos: Vector2) -> void:
-	if phase == Phase.PREP:
+	if phase == Phase.PREP and ruleset.has(Ruleset.TRADE):
 		for i in Rules.SHOP_SIZE:
 			if Hud.offer_rect(i).has_point(pos):
 				Sfx.play("ui/click" if player.toggle_lock(i) else "ui/fail")
@@ -919,11 +989,15 @@ func _right_press(pos: Vector2) -> void:
 
 
 ## Left click / tap on a living creature during combat casts the shapeshift.
-## Clicks on empty board cells fizzle; clicks outside the board are ignored.
+## Clicks on empty board cells fizzle; clicks outside the board are ignored, and
+## so are clicks on enemies before the swamp witch introduces the hex: a rule
+## the player has not met yet gives no feedback at all (playtest, 21 November 2026).
 func _cast_at(pos: Vector2) -> void:
 	if not Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE).has_point(pos) or not player.can_cast():
 		return # before the journey hands the player a wand, clicks do nothing
 	var u := battle.unit_at(pos - Rules.BOARD_POS)
+	if u != null and u.team != 0 and not ruleset.has(Ruleset.HEX):
+		return
 	if u == null or not battle.cast(0, u):
 		fx.add("fizzle", pos - Rules.BOARD_POS)
 		Sfx.play("ui/fail")
@@ -938,6 +1012,7 @@ func _process(dt: float) -> void:
 	if not abandon_asked:
 		spotlight.advance(dt)
 	field_full_flash = maxf(0.0, field_full_flash - dt)
+	reroll_sense_time = reroll_sense_time + dt if reroll_sensible() else 0.0
 	var mouse := get_global_mouse_position()
 	hover_info = {}
 	if abandon_asked:
@@ -980,7 +1055,8 @@ func _process(dt: float) -> void:
 
 
 ## Forest lesson cue: the creature the player is invited to shapeshift (an ally
-## before hexes, an enemy afterwards), or null once tried or when none is ready.
+## before hexes, never the tank while another ally is ready; an enemy
+## afterwards), or null once tried or when none is ready.
 ## Shown only in the duel that teaches that cast (the druid's wand, the swamp
 ## witch's hex) and only until the player has tried it once, ever (saved).
 func learning_cast_target() -> Unit:
@@ -991,10 +1067,32 @@ func learning_cast_target() -> Unit:
 		return null
 	if not player.can_cast() or not battle.spells[0].can_cast():
 		return null
-	for u in battle.living(1 if ruleset.has(Ruleset.HEX) else 0):
-		if u.immune_t <= 0.0 and battle.can_target(0, u):
+	var hex := ruleset.has(Ruleset.HEX)
+	var best: Unit = null
+	for u in battle.living(1 if hex else 0):
+		if u.immune_t > 0.0 or not battle.can_target(0, u):
+			continue
+		if hex:
 			return u
-	return null
+		if best == null or _better_lesson_ally(u, best):
+			best = u
+	return best
+
+
+## Druid's lesson: never invite a shapeshift of the tank while another ally can
+## take it, since the tank would lose its armour and keep the enemies' aggro.
+## The ally with the least armour goes first; on a tie, the one farthest from
+## the enemies, the least likely to be their target. The tank remains the
+## fallback when it is the only creature left to cast on.
+func _better_lesson_ally(u: Unit, best: Unit) -> bool:
+	if not is_equal_approx(u.armour(), best.armour()):
+		return u.armour() < best.armour()
+	return _distance_to_foes(u) > _distance_to_foes(best) + 0.5
+
+
+func _distance_to_foes(u: Unit) -> float:
+	var foe := battle.nearest_enemy(u)
+	return u.position.distance_to(foe.position) if foe != null else 0.0
 
 
 ## The druid's and the swamp witch's duels stop the fight while their cast
@@ -1028,20 +1126,20 @@ func _watch_rule_spotlight() -> void:
 	var rule := spotlight.rule
 	var shop_shown := phase == Phase.PREP and shop_out <= 0.0 and not enemy_preparing
 	if rule == FIGHT_LESSON and shop_shown:
-		_spotlight(Rules.FIGHT_CENTER, Vector2(66, 66))
+		# Shows the fight button until it is pressed (start_combat puts it out).
+		_spotlight(Rules.FIGHT_CENTER, Vector2(66, 66), null, INF)
 	elif rule == Ruleset.SHOP and shop_shown:
 		_spotlight(Hud.stall_rect().get_center(), Hud.STALL_RECT.size * 0.54)
-	elif rule == Ruleset.TRADE and shop_shown:
-		_spotlight(Hud.reroll_rect().get_center(), Vector2(Hud.REROLL_RECT.size.x * 0.56, 34))
 	elif rule.begins_with("upgrade_") and shop_shown and scroll_open >= 1.0:
 		var row := Rules.WAND_UPGRADES.find(rule.trim_prefix("upgrade_"))
 		_spotlight(Hud.upgrade_rect(row, ruleset).get_center(), Vector2(Hud.UPGRADE_SIZE.x * 0.58, 32))
 	elif rule == Ruleset.MERGE and shop_shown:
 		var demo := merge_demo()
 		if not demo.is_empty():
-			var a: Vector2 = demo.from
-			var b: Vector2 = demo.to
-			_spotlight((a + b) * 0.5, Vector2(absf(a.x - b.x) * 0.5 + 56, absf(a.y - b.y) * 0.5 + 56))
+			var frame := Rect2(demo.to, Vector2.ZERO)
+			for source: Vector2 in demo.sources:
+				frame = frame.expand(source)
+			_spotlight(frame.get_center(), frame.size * 0.5 + Vector2(56, 56))
 	elif phase != Phase.COMBAT or battle == null:
 		return
 	elif rule == Ruleset.WAND and player.can_cast():
@@ -1060,6 +1158,33 @@ func _watch_rule_spotlight() -> void:
 			Vector2(Rules.BOARD_SIZE.x * 0.5 + 24, 34))
 
 
+## The player's creatures that would merge into a star together, target first
+## then the copies to bring to it, nearest first; [] when no form has enough
+## copies. The target is on the board when possible, between its copies (the
+## middle shield guardian of the thief's three).
+func _star_group() -> Array:
+	var best: Array = []
+	var best_reach := INF
+	for target: OwnedCreature in player.creatures:
+		var at := _owned_screen_position(target)
+		var partners := player.creatures.filter(func(c: OwnedCreature) -> bool: return player.can_merge(c, target))
+		partners.sort_custom(func(a: OwnedCreature, b: OwnedCreature) -> bool:
+			return _owned_screen_position(a).distance_to(at) < _owned_screen_position(b).distance_to(at))
+		var group: Array = [target]
+		var copies := target.merge_copies
+		var reach := 0.0 if target.is_fielded() else 10000.0
+		for c: OwnedCreature in partners:
+			if copies >= 3:
+				break
+			group.append(c)
+			copies += c.merge_copies
+			reach += _owned_screen_position(c).distance_to(at)
+		if copies >= 3 and reach < best_reach:
+			best = group
+			best_reach = reach
+	return best
+
+
 ## Two of the player's creatures that could merge (same form and stars), or [];
 ## a benched creature comes first, so it is the one shown moving.
 func _first_pair() -> Array:
@@ -1076,11 +1201,12 @@ func _owned_screen_position(c: OwnedCreature) -> Vector2:
 	return Rules.BOARD_POS + Rules.cell_center(c.cell)
 
 
-## The thief's merge lesson: which drag to demonstrate, until the player's first
-## merge in that duel, ever (saved in journey.lessons_done).
-## {"from", "to" (screen positions), "target": OwnedCreature}, from a pair the
-## player owns, else from an affordable identical offer; {} when there is
-## nothing to show.
+## The thief's merge lesson: which merge to demonstrate, until the player's
+## first star in that duel, ever (saved in journey.lessons_done).
+## {"sources" (screen positions, flown in one after the other), "to" (screen
+## position), "target": OwnedCreature}: copies the player owns merging into a
+## star (the thief deals three shield guardians for it), else a pair, else an
+## affordable identical offer onto its copy; {} when there is nothing to show.
 func merge_demo() -> Dictionary:
 	if merge_lesson_done or phase != Phase.PREP or opponent < 0 or drag != null or shop_out > 0.0:
 		return {}
@@ -1088,13 +1214,20 @@ func merge_demo() -> Dictionary:
 		return {}
 	if OpponentDB.get_opponent(opponent).rule != Ruleset.MERGE or not ruleset.has(Ruleset.MERGE):
 		return {}
-	var pair := _first_pair()
-	if not pair.is_empty():
-		return {"from": _owned_screen_position(pair[0]), "to": _owned_screen_position(pair[1]), "target": pair[1]}
+	var group := _star_group()
+	if group.is_empty():
+		group = _first_pair()
+		group.reverse() # target first
+	if not group.is_empty():
+		var sources: Array[Vector2] = []
+		for c: OwnedCreature in group.slice(1):
+			sources.append(_owned_screen_position(c))
+		return {"sources": sources, "to": _owned_screen_position(group[0]), "target": group[0]}
 	for i in Rules.SHOP_SIZE:
 		for c: OwnedCreature in player.creatures:
 			if player.can_merge_offer(i, c):
-				return {"from": Hud.offer_token_pos(i), "to": _owned_screen_position(c), "target": c}
+				var offer: Array[Vector2] = [Hud.offer_token_pos(i)]
+				return {"sources": offer, "to": _owned_screen_position(c), "target": c}
 	return {}
 
 

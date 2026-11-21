@@ -58,6 +58,13 @@ capped at +60%); no number or extra star is shown. Team bases, health bars,
 collision sizes and combat stats are unaffected by this visual scale.
 A white dashed ring = shapeshift immunity. Small pips beside a creature = status
 effects (green rim positive, red rim negative). Hearts = wizard health.
+Six gems set in the board's wooden frame = each side's population, one lit per
+creature on the board out of the six allowed (`Rules.FIELD_CAP`): blue under the
+right part of the player's lower edge, red over the right part of the
+opponent's upper edge (`BoardView._draw_capacity`, shown with the bench once the
+shop exists, in combat too). A creature placed lights the next gem with a pop
+and a white sparkle; one removed puts the last gem out. They replaced six plain
+round pips under the board, the player's only (playtest, 21 November 2026).
 A half-filled heart represents 0.5 health. Each wizard starts with 3 hearts on
 the forest, 6 in the town and 10 at the magic school. Only that duel's heart
 capacity is drawn, including empty and half-filled hearts after damage. Hearts
@@ -98,6 +105,26 @@ R), with sounds, to come back to them later:
 godot --path . res://tools/title_proposals.tscn
 ```
 
+## Map and duel transition (21 November 2026)
+
+Going from the map into a duel, and back (the end-of-duel medallion or leaving
+a replay), cloud curtains cover the screen (`ScreenTransition`,
+`scripts/ui/screen_transition.gd`, on its own canvas layer):
+three layers of clouds roll in from both sides over 0.65 s, the back ones
+smaller, slower and a shade darker, and meet in the middle; the screens swap
+while covered (0.1 s), then the curtains part over 0.65 s. The clouds keep the
+game's flat look: the map's own cloud silhouette in solid tones (a darker
+underside, the body, a light crest), tinted with the map's cloud colour of the
+moment. A soft whoosh (`ui/clouds`) plays each way, and input waits until the
+transition is done. The map enters a duel through `main.enter_stage` and leaves
+it through `main.leave_duel`; `choose_stage` and `new_duel` stay immediate for
+tests and tools. The whoosh is synthesised (filtered noise sweeping up then
+down):
+
+```
+godot --path . --headless --script res://tools/make_cloud_whoosh.gd
+```
+
 ## Screen layout (21 November 2026)
 
 The duel screen grows with the rules the journey has introduced instead of
@@ -106,12 +133,15 @@ when a duel starts; `Rules.BOARD_POS`, `Rules.RESERVE_POS` and
 `Rules.FIGHT_CENTER` are set per duel):
 
 - **Before the shop** (hunter, druid): the board and the two medallions are
-  centred together (board at x 410, medallions at x 333) and the fight button
-  sits under the board's centre. The right of the screen stays free.
+  centred together (board at x 410, medallions at x 333). The right of the
+  screen stays free.
 - **With the shop** (from the lumberjack, and every duel outside the journey):
   the medallions stand in the left column (x 130), the board at x 352, the stall
-  and the scroll on the right; the bench and the fight button share the row
-  under the board, the button just right of the bench.
+  and the scroll on the right.
+
+In both, the bench and the fight button share the row under the board, the
+button just right of the bench: the button the first duels teach never moves
+relative to the board.
 
 Each wizard is a **medallion**: a dark disc ringed in its team colour and gold,
 holding its portrait, with its hearts on arcs above it (`Hud.heart_pos`: fixed
@@ -122,8 +152,9 @@ player by the next income. A lost heart flashes the disc red and shakes it.
 The round frieze and the composition cards centre on the board.
 
 The fight button is introduced like a rule: the hunter's first preparation
-spotlights it, then a gold halo breathes around it until the player's very
-first fight (`main.FIGHT_LESSON`, saved in `journey.introduced` and
+spotlights it and the light stays on until the player presses it, then goes
+out within 0.1 s (`RuleSpotlight.dismiss`). The button itself behaves as in
+every duel (`main.FIGHT_LESSON`, saved in `journey.introduced` and
 `journey.lessons_done`; a save that already beat the hunter skips it). During
 combat the button drops below the bottom edge instead of sliding right.
 
@@ -174,8 +205,8 @@ All confirmed rules and delegated defaults of the design note, notably:
   gold-knobbed rods holds the wand upgrades. The stall and scroll move down
   together (`Hud.layout_column`): centred on the board's height when they fit,
   otherwise as low as the screen allows, and always clear of the round
-  frieze. The board's six capacity pips sit in a row under its right edge,
-  clear of the column. The round fight button sits under the board, right of
+  frieze. The board's population gems sit in its frame, under the right part
+  of each side's edge, clear of the column. The round fight button sits under the board, right of
   the bench (see "Screen layout" below): a medallion split vertically, red on the left and wand
   purple on the right, behind a sword (tip up-left) crossed with a wand (star
   up-right), both outlined in dark. When a click would start the fight, a band of
@@ -204,6 +235,15 @@ All confirmed rules and delegated defaults of the design note, notably:
 - Reroll costs 1 gold and replaces all unlocked offers, including sold slots.
   Right-click toggles an offer lock, retained across rerolls and round refreshes;
   buying clears that slot's lock. All-locked rerolls consume nothing.
+- A reroll turns each replaced offer over on a horizontal axis (old offer, plain
+  wooden back, new offer, left to right, 0.5 s each); a locked offer stays
+  still. A new round's offers are already on the stall as it slides in.
+- The reroll button glints only while a reroll makes sense
+  (`WizardState.reroll_makes_sense`): nothing left on the stall can be bought,
+  the gold covers the reroll and the cheapest creature the stall could deal, and
+  there is room for one. With the stall in place and nothing dragged, a band of
+  light crosses the button 0.5 s after that starts, then every 3 s; no dimming
+  and no sound, so it never makes a reroll feel compulsory.
 - Manually drop a creature onto an identical form of the same star rank, on the
   board or bench. Two copies form a group with two of three circles filled,
   without any health or damage bonus. The third copy completes the group and
@@ -518,6 +558,7 @@ are copied back into the project's `default/sfx/` and `default/music/` folders.
 |---|---|---|
 | `ui/map_step` | ui | Soft, muffled tap as a new journey-path point appears |
 | `ui/map_opponent_appear` | ui | The next journey opponent springs out of the ground at the end of its path (plays the files of `coins/pop`, lower) |
+| `ui/clouds` | ui | Clouds roll over the screen between the journey map and a duel, and again as they part (two synthesised takes, `tools/make_cloud_whoosh.gd`) |
 | `ui/click` | ui | Interface click: difficulty, picking up or reselecting a creature, offer lock, enemy reroll, restart |
 | `ui/fail` | ui | Unavailable or invalid action, such as a locked difficulty, fizzled cast or invalid drop |
 | `ui/buy` | ui | Starting composition, player sale, enemy purchase or wand upgrade |
@@ -728,10 +769,28 @@ interrupting enemy casts.
 The game opens directly on `world_map.tscn`. The entire journey fits on one
 screen, with no scrolling, banner or progress HUD. The islands form a triangle:
 forest and town below, magic school above, with clear sky between their silhouettes.
-Portrait uses a taller triangle and scales the whole map to fit. A wooden
-suspension bridge links forest to town, and a violet bridge with gold handrails
-links town to the school courtyard. Both bridges land on the shores, clear of
-the encounters. Routes follow curved trails and the bridge decks.
+Portrait uses a taller triangle and scales the whole map to fit. A rope bridge
+on stone piers, its handrails swagging between posts and a lantern on each end
+post, links forest to town; floating crystal steps rise in an arch from the
+keep's roof, beside the king, to the school courtyard (`map_bridge.gd`; both
+share their walking line, `point_at`, with the routes). Routes follow curved
+trails and the bridges. Their dots keep one even spacing (`DOT_SPACING`, at
+least `MIN_DOTS`, capped at `MAX_DOTS` on the long crossings), so short hops
+show a few dots; each route stops at the edge of the opponents it joins (their
+ground ring, and above them up to past the head: `in_footprint`). Waypoints in
+`ROAD_VIAS` steer a route around homes and landmarks (past the lumberjack's
+door, in front of the tower and below the archmage's rune circle), and the road
+to the king ends at his keep's gate (`ROAD_ENDS`). The tests check every route
+in both orientations: even, non-overlapping dots, none on an opponent, and no
+two routes side by side.
+
+Each island draws its scenery around its opponents' spots (`MapScenery`,
+`scripts/ui/map_scenery.gd`, given the spots by the map): every opponent has
+a home, a prop or both (see the design note's "Island scenery" table), a few
+firs dot the forest, the tower stands in the school courtyard, and the forest's
+waterfall pours out of a jagged opening behind hanging roots in its cliff, then
+vanishes into drifting mist. The king stands on top of his keep
+(`world_map.KING_SPOT`); the archdruid guards the rope bridge.
 The menu is the title, in the sky one screen above the islands (see "Title"
 below). Selecting an opponent starts the duel; completed stages stand
 on a soft gold ring, without a star. Unknown opponents and routes have no visible markers,
@@ -783,6 +842,9 @@ Stages 1-5 use guided learning behaviour, 6-10 use Adept, and 11-15 use Archmage
 full-length characters in `OpponentDB` replace the old creature markers. Each
 introduces one existing rule; `Ruleset` applies the cumulative rules to both
 sides, limits creature offers and openings, and hides unavailable controls.
+An action that belongs to a rule not met yet gives no feedback at all: before
+the hex, clicking an enemy during a fight neither fizzles nor plays `ui/fail`;
+before trading, right-clicking an offer to lock it is silent too.
 Characters without magic never cast. The Hunter teaches placement; the Druid
 introduces the wand in encounter 2, the Lumberjack introduces the shop in encounter
 3, and the Swamp witch introduces hexes. The town introduces trading,
@@ -798,7 +860,10 @@ teams use these humans; enemies field fixed armies that grow by one creature
 per lesson, from one to five (`OpponentDB.FOREST_ARMIES`), and never shop. Magical enemies demonstrate one cast after six seconds per round.
 Damage cannot kill the player's last creature in forest; normal battles retain
 lethal damage. The empty bench and its drop targets stay hidden until shopping.
-An animated wand invites the first allied cast, then the first enemy cast. In
+An animated wand invites the first allied cast, then the first enemy cast. The
+allied cue never aims at the tank (the shield guardian) while another ally can
+take the cast: it picks the least armoured ally, the farthest from the enemies
+on a tie, and the tank only as the last creature left. In
 the druid's and the swamp witch's duels, combat stops while that cue waits and
 resumes once the player has tried the cast (`awaiting_learning_cast()` in
 `main.gd`). The cue appears only in those two duels, until that cast has been
@@ -821,11 +886,14 @@ door. Those further back are drawn slightly smaller, and the road winds between 
 The first time a rule shows up in a journey duel, `RuleSpotlight` dims the screen
 around the new element, rings it in gold with orbiting sparkles, and lifts the
 dimming after about 2.7 seconds, without text or blocking input. Interface rules
-are shown as soon as their element is on screen (stall, reroll, upgrade row);
+are shown as soon as their element is on screen (stall, upgrade row);
 the others when they happen: charge crystals at the druid's first fight, the first
 enemy creature for hexes, the first allied bonus shapeshift, the first harvest,
 the first mergeable pair, the first caster channelling, and the timer bar when
 frenzy starts. Combat slows to a quarter speed while the dimming is full.
+Trading (the merchant) has no spotlight: lighting the reroll button as the stall
+opened pushed a pointless reroll. The reroll button's glint, played only while a
+reroll makes sense (see the shop rules above), shows it instead.
 
 The harvest shows the coin rather than the peasant: the opening starts on a
 harvester (the player's first one when it has any) and its coin fan, follows its
@@ -837,12 +905,17 @@ has rested on the purse for 0.9 s. Shown
 rules are saved under `journey.introduced`; beaten opponents never replay theirs.
 Merge pips and harvest coins appear only in duels where their rule exists.
 
-In the thief's duel a looping demonstration (`main.merge_demo()`, drawn by the
-HUD) shows a translucent copy travelling along a dotted gold arc onto an
-identical creature, whose merge pips fill, until the player's first merge there, ever (saved in `journey.lessons_done`).
+The thief's duel deals the player a fixed opening instead of a choice of
+compositions (`"player_pack"` in `OpponentDB`, read by `OpponentDB.player_pack()`):
+three shield guardians in the front line and two more coins. A looping
+demonstration (`main.merge_demo()`, drawn by the HUD) flies the two outer
+guardians in turn along dotted gold arcs into the middle one, whose merge pips
+fill to three before a star pops above it. With fewer copies it shows a pair
+or an identical offer. It plays until the player's first star there, ever
+(saved in `journey.lessons_done`).
 The board holds at most six creatures (`Rules.FIELD_CAP`): when it is full,
-empty cells stay dark under a drag, the capacity pips under the board are
-ringed in red, and a refused drop makes them blink.
+empty cells stay dark under a drag, the rims of the player's population gems
+turn red, and a refused drop makes them blink.
 
 Progress is saved locally in `difficulty_progress.cfg`, under `journey.opponents`.
 The previous seven-stage `journey.completed` saves retain proportional advancement
@@ -868,6 +941,11 @@ but browsers reserve it for reloading the page without clearing saved progress.
   peasants, a benched starred creature it dislikes) while still merging copies.
 - **Sparring** (`Difficulty.SPARRING`) is never offered in the game. It keeps the
   Apprentice settings from before whims as a fixed reference for balancing.
+- A journey opponent can play its level's strategy with a few keys of its own
+  (`"ai"` in `OpponentDB`, stored in `WizardState.ai_overrides`; the AI and the
+  battle read `EnemyAI.profile_of(state)`). The thief sets `"max_starred": 2`:
+  past two creatures with a star, it neither merges unstarred copies nor buys
+  copies to merge, so it no longer out-merges the player it teaches.
 
 Apprentice calibration (13 November 2026, `training/arena.sh`, live rules):
 the Apprentice beats Sparring 23.9% of 1,760 duels (whims ±60: 32%, ±100: 26%,

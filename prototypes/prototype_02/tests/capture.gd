@@ -29,6 +29,47 @@ func _ready() -> void:
 		await _capture_map_reveal()
 		get_tree().quit()
 		return
+	if "--transitions-only" in OS.get_cmdline_user_args():
+		# The map -> duel cloud transition, every 0.22 s from start to end.
+		game.difficulty_progress_path = capture_dir.path_join("transition_progress.cfg")
+		game.journey.completed.assign(range(6))
+		var map: Node2D = game.map_screen
+		map.discovered.assign(range(7))
+		map._pending.clear()
+		map.revealing = -1
+		game.show_map()
+		map.show_islands(true)
+		map._refresh_discovery()
+		await _seconds(0.5)
+		for style in 1:
+			game.transition.set_process(false)
+			game.enter_stage(3)
+			for step in 6:
+				game.transition._process(0.22)
+				await _frames(2)
+				await _shot("transition_%d_%d" % [style, step])
+			game.transition._process(1.0)
+			game.transition.set_process(true)
+			game.new_duel()
+			map.show_islands(true)
+			await _frames(3)
+		get_tree().quit()
+		return
+	if "--map-full-only" in OS.get_cmdline_user_args():
+		# The whole journey map, every opponent discovered, with its scenery.
+		game.difficulty_progress_path = capture_dir.path_join("map_full_progress.cfg")
+		game.journey.completed.assign(range(Journey.stage_count()))
+		var map: Node2D = game.map_screen
+		map.discovered.assign(range(Journey.stage_count()))
+		map.revealing = -1
+		map._pending.clear()
+		game.show_map()
+		map.show_islands(true)
+		map._refresh_discovery()
+		await _seconds(1.0)
+		await _shot("map_full")
+		get_tree().quit()
+		return
 	if "--journey-only" in OS.get_cmdline_user_args():
 		await _capture_journey()
 		get_tree().quit()
@@ -79,6 +120,14 @@ func _ready() -> void:
 		return
 	if "--harvest-lesson-only" in OS.get_cmdline_user_args():
 		await _capture_harvest_lesson()
+		get_tree().quit()
+		return
+	if "--trade-lesson-only" in OS.get_cmdline_user_args():
+		await _capture_trade_lesson()
+		get_tree().quit()
+		return
+	if "--fight-lesson-only" in OS.get_cmdline_user_args():
+		await _capture_fight_lesson()
 		get_tree().quit()
 		return
 	get_viewport().warp_mouse(Hud.difficulty_rect(Difficulty.ADEPT).get_center())
@@ -407,6 +456,63 @@ func _capture_harvest_lesson() -> void:
 		await _seconds(t - elapsed)
 		elapsed = t
 		await _shot("harvest_lesson_%03d" % roundi(t * 100))
+
+
+## The merchant's duel, first visit: the stall opens without a spotlight, a
+## reroll turns the offers over (an empty slot too, a locked one stays), and
+## the reroll button glints once the stall has nothing left to buy.
+func _capture_trade_lesson() -> void:
+	game.difficulty_progress_path = capture_dir.path_join("trade_progress.cfg")
+	game.journey.completed.assign(range(5))
+	for index in 5:
+		var rule: String = OpponentDB.get_opponent(index).rule
+		if rule != "" and rule not in game.journey.introduced:
+			game.journey.introduced.append(rule)
+			game.journey.lessons_done.append(rule)
+	game.journey.introduced.append(game.FIGHT_LESSON)
+	game.journey.lessons_done.append(game.FIGHT_LESSON)
+	game.choose_stage(5)
+	game.choose_pack(0)
+	while game.enemy_preparing or game.shop_out > 0.0:
+		await _frames(1)
+	get_viewport().warp_mouse(Vector2(640, 690))
+	await _seconds(0.6)
+	await _shot("trade_0_stall")
+	game.player.gold = 9
+	game.player.buy(1)
+	game.player.locked[2] = true
+	game._left_press(Hud.reroll_rect().get_center())
+	for n in 4:
+		await _seconds(0.11)
+		await _shot("trade_1_flip_%d" % n)
+	await _seconds(0.4)
+	game.player.locked[2] = false
+	for i in Rules.SHOP_SIZE:
+		game.player.buy(i)
+	game.player.gold = 3
+	while Hud.reroll_glint(game.reroll_sense_time) < 0.3:
+		await _frames(1)
+	await _shot("trade_2_glint")
+
+
+## The hunter's duel, very first visit: the preparation as it opens, the
+## spotlight on the fight button, then the frames right after the click.
+func _capture_fight_lesson() -> void:
+	game.difficulty_progress_path = capture_dir.path_join("fight_progress.cfg")
+	game.journey.completed.clear()
+	game.journey.introduced.clear()
+	game.journey.lessons_done.clear()
+	game.choose_stage(0)
+	await _frames(4)
+	if game.phase == game.Phase.PACK:
+		game.choose_pack(0)
+	for n in 8:
+		await _seconds(0.25)
+		await _shot("fight_0_prep_%d" % n)
+	game._left_press(Rules.FIGHT_CENTER)
+	for n in 4:
+		await _seconds(0.06)
+		await _shot("fight_1_click_%d" % n)
 
 
 func _frames(n: int) -> void:
