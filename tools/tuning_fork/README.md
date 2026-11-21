@@ -118,7 +118,7 @@ and `scripts/sound_player.gd` the playback and file picking. When the
 runtime's rules change, change them here too. `scripts/oggenc.gd` uses the
 packaged encoder in the Windows export and the repository copy in Windows
 editor runs. It also supports `$OGGENC` and compatible encoders on the PATH.
-The **Music** tab recursively discovers OGG/WAV recordings under the selected `music/` or `<workspace>/music/` folder and
+The **Music** tab recursively discovers OGG/WAV recordings under the project's configured `music/` folder and
 edits their adjacent JSON settings. Other JSON files become generic configuration
 forms; bindings to discovered tracks get transition-preview buttons. It supports
 continuous, restart and randomly selected segment playback, fades, ducking,
@@ -126,11 +126,12 @@ waveforms, seeking, audio replacement and hot reload. The game and tool share
 identical MusicCatalog/MusicVoice scripts, with parity tested. See
 [`docs/Music.md`](docs/Music.md).
 
-The **SFX** tab also offers a folder selector for independent `sfx_*` or `<workspace>/sfx` workspaces.
-For Shapeshifters Duel, edit `custom/sfx` and `custom/music/` for the Windows
-alternative; `default/sfx/` and `default/music/music.json` belong to the original game.
-Ctrl+Shift+M in the Windows game opens Default / Custom. The original and Web
-playback are unchanged. The packaged game includes `AUDIO_WORKSPACE.md` with
+Both tabs open the project's configured audio root directly, without folder
+or mode selectors. For Shapeshifters Duel, open the game folder: its
+`tuning_fork.json` exposes only `custom/sfx/` and `custom/music/`.
+Ctrl+Shift+M in the Windows game opens Default / Custom. A fresh Windows build
+starts in Custom, and the game remembers the selected mode across restarts.
+Default and Web playback retain their original audio. The packaged game includes `AUDIO_WORKSPACE.md` with
 the cycle reference and complete workflow. WAV conversion prefers packaged
 oggenc; an installed FFmpeg with libvorbis is also supported as a fallback.
 
