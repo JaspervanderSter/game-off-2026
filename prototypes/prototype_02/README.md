@@ -629,8 +629,8 @@ suspension bridge links forest to town, and a violet bridge with gold handrails
 links town to the school courtyard. Both bridges land on the shores, clear of
 the encounters. Routes follow curved trails and the bridge decks.
 The existing `menu.tscn` diorama is retained for later work and can still be
-reached with Esc. Selecting an opponent starts the duel; completed stages are
-marked with gold stars. Unknown opponents and routes have no visible markers,
+reached with Esc. Selecting an opponent starts the duel; completed stages stand
+on a soft gold ring, without a star. Unknown opponents and routes have no visible markers,
 silhouettes or padlocks. The protagonist does not appear on the map. Controls use
 icons and animation only, including hover feedback: no labels or textual tooltips.
 

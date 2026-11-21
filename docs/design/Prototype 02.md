@@ -123,7 +123,7 @@ round counts are not fixed or guaranteed by this decision.
   landscape and portrait layouts. This supersedes the earlier vertically
   scrolling roadmap idea for the current design baseline.
 - Remove the upper UI banner. The map communicates through its islands, bridges,
-  discovered opponent icons, completion stars and animation. No textual labels or
+  discovered opponent icons, the gold ring under beaten opponents and animation. No textual labels or
   textual tooltips; numbers are allowed where they express game values.
 - The medieval territory must read as a **town**, with dense houses, stone
   streets, curtain walls, towers and a keep, rather than three isolated cottages.
@@ -446,6 +446,13 @@ opens the next zone. A merchant earning bonus gold and an alchemist shapeshiftin
 with potions were rejected because they added mechanics; a court mage replaces
 the alchemist. The opponents, the rule order and how rules not yet introduced are
 withheld are recorded in [[Journey and Opponents]].
+
+### 21 November 2026 — playtest feedback
+
+The user played the journey and listed 22 changes, handled one at a time.
+
+- **Map:** beaten opponents no longer carry a star; their gold ring and the
+  drawn route already show the win.
 
 ## Playtest plan and completion criteria
 

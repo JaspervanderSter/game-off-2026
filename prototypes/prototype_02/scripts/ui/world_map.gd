@@ -342,8 +342,6 @@ func _draw_stage(index: int, button: Button) -> void:
 	var size := OPPONENT_SIZE * k
 	Icons.opponent(button, OpponentDB.get_opponent(index).id,
 		p + Vector2(0, -size * 0.94 + sin(age * 1.8 + index) * 1.2), size, age)
-	if won:
-		Icons.star(button, p + Vector2(0, 15 * k), 9 * k, GOLD)
 	if hot:
 		var q := p + Vector2(0, -63 * k + sin(age * 3) * 3)
 		button.draw_colored_polygon(PackedVector2Array([q + Vector2(-7, -7), q + Vector2(7, -7), q]), GOLD)

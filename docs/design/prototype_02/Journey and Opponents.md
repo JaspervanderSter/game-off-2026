@@ -261,7 +261,9 @@ are complete and visible from the start. Only the first opponent is visible on a
 new journey. Winning discovers the immediate successor: only the route dots
 animate over about four seconds, with muffled taps, before its opponent appears.
 Unknown opponents and paths have no silhouette, label, tooltip or padlock. The
-player's wizard is not represented on the map. Beaten opponents carry a gold star.
+player's wizard is not represented on the map. Beaten opponents stand on a soft gold ring;
+the star they used to carry was removed after a playtest (21 November 2026):
+the ring and the drawn route already show the win.
 During a duel the opponent's portrait replaces the difficulty hat in the enemy panel.
 
 Duels use their zone's terrain and starting hearts for both sides: forest grass
