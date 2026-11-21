@@ -314,7 +314,9 @@ return to the map; a first attempt is played to its end. The control is a small
 sky-blue medallion ringed in gold with a floating island inside, in the top-left
 corner above the opponent's panel (chosen among six styles: wooden sign, bare
 island with a chevron, map scrap, cloud, pennant; the user asked for no arrow).
-Esc does the same. It asks for confirmation without text: the duel pauses under
+The same medallion replaced the folded paper map on the menu's journey button
+and on the end-of-duel button (playtest request: the map icon must show a
+floating island). Esc does the same. It asks for confirmation without text: the duel pauses under
 a dimmed screen with the medallion, a green check (leave) and a red cross
 (resume). Abandoning changes nothing on the journey. Enter and Esc confirm and
 cancel (implementation choice).

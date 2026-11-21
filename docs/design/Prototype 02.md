@@ -460,6 +460,9 @@ The user played the journey and listed 22 changes, handled one at a time.
   peasant into the purse, where "+N" rises; it no longer circles the peasant.
 - **Leaving a replay:** a replayed duel shows an island medallion (top left, or
   Esc) that pauses it under a check / cross confirmation and returns to the map.
+- **Map icon:** every way back to the journey map (menu button, end of a duel,
+  leaving a replay) shows the same sky-blue medallion with a floating island,
+  replacing the folded paper map.
 
 ## Playtest plan and completion criteria
 

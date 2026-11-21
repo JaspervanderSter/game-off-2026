@@ -1426,9 +1426,9 @@ func _draw_game_over() -> void:
 		Icons.crown(_ci, VICTORY_POS, 90 * pop)
 	else:
 		Icons.skull(_ci, Vector2(640, 280), 95)
+	# Back to the journey map: the same island medallion as when leaving a replay.
 	var hovered := RESTART_POS.distance_to(get_global_mouse_position()) < 46
-	Shapes.circle(_ci, RESTART_POS, 46, Color(0.25, 0.18, 0.3) if hovered else Color(0.15, 0.1, 0.18))
-	Icons.world_map(_ci, RESTART_POS, 24)
+	Icons.island_medallion(_ci, RESTART_POS, 46 * (ABANDON_HOVER_SCALE if hovered else 1.0), Time.get_ticks_msec() / 1000.0, hovered)
 
 
 ## Hover card: current form, its three possible outcomes with chances, and

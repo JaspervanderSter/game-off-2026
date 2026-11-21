@@ -47,6 +47,23 @@ func _ready() -> void:
 		await _shot("abandon_2_confirm")
 		get_tree().quit()
 		return
+	if "--map-icons-only" in OS.get_cmdline_user_args():
+		# Every way back to the map: the menu button and the game-over button.
+		game.show_menu()
+		await _frames(4)
+		await _shot("map_icon_menu")
+		game.difficulty_progress_path = capture_dir.path_join("icons_progress.cfg")
+		game.choose_stage(0)
+		game.choose_pack(0)
+		game.enemy.hp = 0.5
+		game.battle = Battle.new()
+		game.add_child(game.battle)
+		game._on_battle_ended({"winner": 0, "survivors": 1})
+		game._finish_round()
+		await _seconds(1.5)
+		await _shot("map_icon_game_over")
+		get_tree().quit()
+		return
 	if "--harvest-lesson-only" in OS.get_cmdline_user_args():
 		await _capture_harvest_lesson()
 		get_tree().quit()

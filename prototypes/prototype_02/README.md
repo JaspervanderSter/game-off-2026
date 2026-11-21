@@ -17,7 +17,8 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 
 | Action | Control |
 | --- | --- |
-| Open the journey | Click the map-and-arrow button in the menu (or Enter) |
+| Open the journey | Click the island-and-arrow button in the menu (or Enter) |
+| Return to the map after a duel | Click the island medallion under the crown or skull |
 | Pick a stage | Click an unlocked opponent on an island; Tab / arrow keys and Enter also work |
 | Return to the menu | Esc on the map |
 | Leave a replayed duel | Click the sky-blue island medallion in the top-left corner (or press Esc): the duel pauses under a green check (back to the map, or Enter) and a red cross (resume, or Esc). Only replays of beaten opponents show it |

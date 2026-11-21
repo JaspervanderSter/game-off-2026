@@ -921,13 +921,6 @@ static func _archmage_hat(ci: CanvasItem, p: Vector2, s: float, t: float) -> voi
 	orbit.call(true)
 
 
-static func world_map(ci: CanvasItem, p: Vector2, radius: float) -> void:
-	var points := PackedVector2Array([p + Vector2(-radius, -radius * 0.65), p + Vector2(-radius * 0.33, -radius), p + Vector2(radius * 0.33, -radius * 0.65), p + Vector2(radius, -radius), p + Vector2(radius, radius * 0.65), p + Vector2(radius * 0.33, radius), p + Vector2(-radius * 0.33, radius * 0.65), p + Vector2(-radius, radius)])
-	ci.draw_colored_polygon(points, GOLD)
-	for offset in [-0.33, 0.33]:
-		Shapes.line(ci, p + Vector2(offset * radius, -radius * 0.6), p + Vector2(offset * radius, radius * 0.6), Color(0.27, 0.18, 0.15), 2)
-
-
 ## A tiny floating island, about 22 * s wide: a grass top with a fir and a
 ## cottage over a jagged rock that tapers into the void.
 static func floating_island(ci: CanvasItem, p: Vector2, s: float) -> void:

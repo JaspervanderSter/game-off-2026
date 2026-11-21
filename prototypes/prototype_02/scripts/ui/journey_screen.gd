@@ -67,7 +67,7 @@ func _draw_menu() -> void:
 		Icons.star(self, p, 3 + sin(age * 2 + i), Color(0.95, 0.8, 0.4, 0.7))
 	var glow := _hot(0)
 	_panel(Rect2(546, 443, 188, 100), glow)
-	Icons.world_map(self, Vector2(610, 493), 27)
+	Icons.island_medallion(self, Vector2(610, 493), 32, age, glow)
 	Icons.arrow_right(self, Vector2(681 + sin(age * 3) * 3, 493), 22, GOLD)
 	if buttons.size() > 1:
 		_ring(Vector2(1219, 657), 25, GOLD if _hot(1) else Color(0.55, 0.43, 0.3))
