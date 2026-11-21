@@ -2996,7 +2996,11 @@ func _test_merge_lesson_and_full_board() -> void:
 	game.shop_drag_position = Rules.BOARD_POS + Rules.cell_center(free)
 	game.shop_drag_active = true
 	game._left_release(Rules.BOARD_POS + Rules.cell_center(free))
-	check(game.player.at_cell(free) == null and game.field_full_flash > 0.0, "a refused drop on a full board flashes the capacity pips")
+	check(game.player.at_cell(free) == null and game.field_full_flash > 0.0, "a refused drop on a full board flashes the capacity gems")
+	game.board_view._process(0.016)
+	check(game.board_view._fielded == [Rules.FIELD_CAP, game.enemy.field_count()], "capacity gems count both sides' creatures on the board")
+	check(BoardView.gem_position(0, 0).y > Rules.BOARD_SIZE.y and BoardView.gem_position(1, 0).y < 0.0,
+		"the player's gems sit in the frame's lower edge, the opponent's in its upper edge")
 	game.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://merge_lesson_test_%d.cfg" % OS.get_process_id()))
 

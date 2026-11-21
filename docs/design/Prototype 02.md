@@ -529,6 +529,13 @@ The user played the journey and listed 22 changes, handled one at a time.
   reroll and a creature, and room for one. A reroll turns the stall's panels
   over on a horizontal axis, the old offer, a plain back, the new one; locked
   offers stay. See [[Journey and Opponents]].
+- **Board population:** the six plain round pips under the board that counted
+  the player's fielded creatures became six gems set in the board's wooden
+  frame, on both sides: blue under the player's edge, red over the opponent's,
+  one lit per creature on the board, with a pop and a sparkle as it lights; the
+  full-board warning turns the player's rims red. Chosen among four proposals
+  (pawns, pennants, gems, portraits) tried in the real duel. The merge-progress
+  circles stay as they are. See [[Journey and Opponents]].
 
 ## Playtest plan and completion criteria
 

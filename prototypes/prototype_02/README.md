@@ -58,6 +58,13 @@ capped at +60%); no number or extra star is shown. Team bases, health bars,
 collision sizes and combat stats are unaffected by this visual scale.
 A white dashed ring = shapeshift immunity. Small pips beside a creature = status
 effects (green rim positive, red rim negative). Hearts = wizard health.
+Six gems set in the board's wooden frame = each side's population, one lit per
+creature on the board out of the six allowed (`Rules.FIELD_CAP`): blue under the
+right part of the player's lower edge, red over the right part of the
+opponent's upper edge (`BoardView._draw_capacity`, shown with the bench once the
+shop exists, in combat too). A creature placed lights the next gem with a pop
+and a white sparkle; one removed puts the last gem out. They replaced six plain
+round pips under the board, the player's only (playtest, 21 November 2026).
 A half-filled heart represents 0.5 health. Each wizard starts with 3 hearts on
 the forest, 6 in the town and 10 at the magic school. Only that duel's heart
 capacity is drawn, including empty and half-filled hearts after damage. Hearts
@@ -194,8 +201,8 @@ All confirmed rules and delegated defaults of the design note, notably:
   gold-knobbed rods holds the wand upgrades. The stall and scroll move down
   together (`Hud.layout_column`): centred on the board's height when they fit,
   otherwise as low as the screen allows, and always clear of the round
-  frieze. The board's six capacity pips sit in a row under its right edge,
-  clear of the column. The round fight button sits under the board, right of
+  frieze. The board's population gems sit in its frame, under the right part
+  of each side's edge, clear of the column. The round fight button sits under the board, right of
   the bench (see "Screen layout" below): a medallion split vertically, red on the left and wand
   purple on the right, behind a sword (tip up-left) crossed with a wand (star
   up-right), both outlined in dark. When a click would start the fight, a band of
@@ -903,8 +910,8 @@ fill to three before a star pops above it. With fewer copies it shows a pair
 or an identical offer. It plays until the player's first star there, ever
 (saved in `journey.lessons_done`).
 The board holds at most six creatures (`Rules.FIELD_CAP`): when it is full,
-empty cells stay dark under a drag, the capacity pips under the board are
-ringed in red, and a refused drop makes them blink.
+empty cells stay dark under a drag, the rims of the player's population gems
+turn red, and a refused drop makes them blink.
 
 Progress is saved locally in `difficulty_progress.cfg`, under `journey.opponents`.
 The previous seven-stage `journey.completed` saves retain proportional advancement

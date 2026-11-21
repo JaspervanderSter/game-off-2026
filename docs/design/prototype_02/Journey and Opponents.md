@@ -508,6 +508,20 @@ keep the limit and make it visible. While a full board refuses the dragged
 creature, empty cells no longer light up and the six capacity pips are ringed in
 red; a refused drop makes the rings blink. The bench still accepts the creature.
 
+**Revised after a playtest (21 November 2026): the population is shown by gems
+set in the board's frame, on both sides.** The six round pips under the board
+were not thematic enough. Chosen among four proposals tried in the real duel
+(wooden pawns, pennants on poles, gems in the frame, small portraits of the
+fielded creatures): six sockets in the wooden frame under the right part of
+each side's edge, blue under the player's lower edge and red over the
+opponent's upper edge, one gem lit per creature on that side of the board. A
+creature placed lights the next gem with a pop and a white sparkle; one removed
+puts the last gem out. The warning is unchanged: while the player's full board
+refuses a creature, the rims of the player's gems turn red, and a refused drop
+makes them blink. They appear with the bench, once the shop exists, and stay
+during combat. The three small circles of merge progress were not part of this
+point and stay as they are.
+
 ## Open questions
 
 - Is the first-pass spotlight clear enough without text? To check in playtest.
