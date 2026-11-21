@@ -754,7 +754,15 @@ on stone piers, its handrails swagging between posts and a lantern on each end
 post, links forest to town; floating crystal steps rise in an arch from the
 keep's roof, beside the king, to the school courtyard (`map_bridge.gd`; both
 share their walking line, `point_at`, with the routes). Routes follow curved
-trails and the bridges.
+trails and the bridges. Their dots keep one even spacing (`DOT_SPACING`, at
+least `MIN_DOTS`, capped at `MAX_DOTS` on the long crossings), so short hops
+show a few dots; each route stops at the edge of the opponents it joins (their
+ground ring, and above them up to past the head: `in_footprint`). Waypoints in
+`ROAD_VIAS` steer a route around homes and landmarks (past the lumberjack's
+door, in front of the tower and below the archmage's rune circle), and the road
+to the king ends at his keep's gate (`ROAD_ENDS`). The tests check every route
+in both orientations: even, non-overlapping dots, none on an opponent, and no
+two routes side by side.
 
 Each island draws its scenery around its opponents' spots (`MapScenery`,
 `scripts/ui/map_scenery.gd`, given the spots by the map): every opponent has

@@ -2521,6 +2521,37 @@ func _check_whole_map_visible(map: Node2D, orientation: String) -> void:
 			continue
 		check(shore.has_point(start) and shore.has_point(finish),
 			"%s bridge %d joins the islands at their shores" % [orientation, index])
+	_check_map_paths(map, orientation)
+
+
+## Every road between consecutive opponents is a clean dotted line: evenly
+## spaced dots that never overlap, a few on short hops, none on an opponent,
+## and never beside another road.
+func _check_map_paths(map: Node2D, orientation: String) -> void:
+	var diameter := 7.0 # the dots' dark rim
+	for stage in range(1, map.buttons.size()):
+		var dots: PackedVector2Array = map._paths[stage]
+		check(dots.size() >= map.MIN_DOTS and dots.size() <= map.MAX_DOTS,
+			"%s road %d has %d dots" % [orientation, stage, dots.size()])
+		var gaps: Array[float] = []
+		for index in range(1, dots.size()):
+			gaps.append(dots[index - 1].distance_to(dots[index]))
+		check(gaps.min() > diameter + 1.0 and gaps.max() < map.DOT_SPACING * 1.4,
+			"%s road %d spaces its dots evenly without overlap (%.1f-%.1f)" % [orientation, stage, gaps.min(), gaps.max()])
+		var on_opponent := false
+		for dot in dots:
+			for other in map.buttons.size():
+				on_opponent = on_opponent or map.in_footprint(dot, other)
+		check(not on_opponent, "%s road %d never runs over an opponent" % [orientation, stage])
+		for other in range(stage + 1, map.buttons.size()):
+			var nearest := INF
+			for dot in dots:
+				for other_dot: Vector2 in map._paths[other]:
+					nearest = minf(nearest, dot.distance_to(other_dot))
+			check(nearest > diameter + 1.0, "%s roads %d and %d stay apart" % [orientation, stage, other])
+	var town: Node2D = map.islands[1]
+	var gate: Vector2 = town.position + map.ROAD_ENDS[9] * town.scale
+	check(map._paths[9][-1].distance_to(gate) < 1.0, "%s the road to the king ends at his keep's gate" % orientation)
 
 
 func _test_journey_health() -> void:

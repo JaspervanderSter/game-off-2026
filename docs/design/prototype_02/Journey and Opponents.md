@@ -266,7 +266,18 @@ bridge to the town, as its guard (confirmed request); the spot follows the
 bridge in landscape and portrait. The king stands on top of his keep and the
 crystal steps to the school leave from the keep's roof beside him (confirmed
 after a playtest, 21 November 2026). The road winds between them and passes in
-front of the tower, never behind it. Opponents further back are drawn slightly
+front of the tower, never behind it. **Cleaned up after a playtest (21 November
+2026)**: the routes predated the final spots, so some had too many dots (short
+hops crowded with overlapping dots, the school road doubling the archmage's).
+Now every route's dots keep one even spacing, so a short hop shows only a few
+and a long crossing more; a route stops at the edge of the opponents it joins,
+never over one, and never runs beside another route. The lumberjack's road
+passes his cabin door instead of crossing the cabin; the road to the king climbs
+the square in front of the keep to its gate (he waits on top); the school road
+leaves the adept along the tower's shadow, passes below the archmage's rune
+circle and climbs the courtyard's side to the greenhouse, so the archmage's own
+road is the only one to reach him. Spacing and waypoints are implementation
+choices. Opponents further back are drawn slightly
 smaller. It fits the whole screen with no scroll or header. Both bridges
 are complete and visible from the start. Only the first opponent is visible on a
 new journey. Winning discovers the immediate successor: only the route dots

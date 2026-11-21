@@ -505,6 +505,12 @@ The user played the journey and listed 22 changes, handled one at a time.
   (shield guardian), which would lose its armour and keep the aggro. It picks the
   least armoured ally, the farthest from the enemies on a tie, and falls back on
   the tank only when no other ally is left. See [[Journey and Opponents]].
+- **Map routes:** the routes, drawn before the opponents' spots were fixed, are
+  cleaned up: evenly spaced dots (a few on short hops, no overlap), each route
+  stopping at the opponents' edge, the lumberjack's road past his cabin door,
+  the king's road up to his keep's gate, and the school road below the
+  archmage's rune circle so it never doubles his own road. See
+  [[Journey and Opponents]].
 
 ## Playtest plan and completion criteria
 
