@@ -34,6 +34,12 @@ and its project window.
   out like `sfx/` over every folder the runtime reads. It works like the
   `sfx/` folder beside the executable: its sound files replace all the files
   of their event, and its JSON files apply key by key. `Sfx.set_overlay("")`
-  removes it. Shapeshifters Duel uses it to compare its sounds with an earlier
-  set (Ctrl+Shift+S). [[Playback]] lists only `play`, `stop` and
+  removes it. Shapeshifters Duel uses it for its Windows alternate audio mode
+  (`custom/sfx/`, Ctrl+Shift+M). [[Playback]] lists only `play`, `stop` and
   `set_group_volume` as the programmer's calls, and the tool ignores overlays.
+- **Runtime:** the project setting `audio/tuning_fork/log_plays` (Project
+  Settings > Audio > Tuning Fork > Log Plays, off by default) prints every
+  `Sfx.play` to the output: the event, the sound file it played, or why
+  nothing played (no such event, no sound file, cooldown). It is read when the
+  game starts and only in debug builds, so release exports never print. It
+  serves to find which file a sound heard in the game comes from.

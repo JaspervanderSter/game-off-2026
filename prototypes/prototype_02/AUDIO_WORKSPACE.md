@@ -62,7 +62,7 @@ matches the procedural mix's -14 dB level; it is not peak-normalized.
 
 In SFX, choose **custom/sfx** to edit the alternate workspace. Its initial
 files are baked copies of the current sound events. `default/sfx` remains the original
-workspace and `default/sfx_legacy` the older comparison set. A file saved in
+workspace. A file saved in
 `custom/sfx` affects only the alternate mode. Settings and recordings reload
 when the game regains focus; no build is needed. The current SFX are already
 recordings, so no runtime synthesizer is replaced to expose them.

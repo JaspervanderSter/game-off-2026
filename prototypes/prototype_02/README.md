@@ -550,8 +550,7 @@ window regains focus; an unreadable file keeps the current version. Web builds
 use only the packed files and force Godot's Stream playback for both music
 and effects (`audio/general/default_playback_type.web = 0`), bypassing the
 browser's default Sample playback. This override does not affect Windows.
-The Web preset includes the earlier sound set's JSON files as well, so the
-in-game sound comparison works with packed resources. Approved replacements
+Approved replacements
 are copied back into the project's `default/sfx/` and `default/music/` folders.
 
 | Event | Group | Played when |
@@ -562,10 +561,10 @@ are copied back into the project's `default/sfx/` and `default/music/` folders.
 | `ui/click` | ui | Interface click: difficulty, picking up or reselecting a creature, offer lock, enemy reroll, restart |
 | `ui/fail` | ui | Unavailable or invalid action, such as a locked difficulty, fizzled cast or invalid drop |
 | `ui/buy` | ui | Starting composition, player sale, enemy purchase or wand upgrade |
-| `ui/battle_start` | ui | A fight successfully starts |
-| `ui/place` | ui | The player drops a creature into a new board cell or reserve slot |
-| `ui/purchase_confirmed` | ui | The player spends gold on a creature, shop reroll or wand upgrade |
-| `ui/insufficient_gold` | ui | The player cannot afford a creature, shop reroll or wand upgrade |
+| `ui/battle_start` | ui | A fight successfully starts (plays the files of `ui/click`) |
+| `ui/place` | ui | The player drops a creature into a new board cell or reserve slot (plays the files of `ui/click`) |
+| `ui/purchase_confirmed` | ui | The player spends gold on a creature, shop reroll or wand upgrade (plays the files of `ui/buy`) |
+| `ui/insufficient_gold` | ui | The player cannot afford a creature, shop reroll or wand upgrade (plays the files of `ui/fail`) |
 | `ui/combine` | ui | Merge without a new star |
 | `ui/merge` | ui | Merge that grants a star |
 | `ui/difficulty_unlock` | ui | The lock of a newly unlocked difficulty opens |
@@ -573,7 +572,7 @@ are copied back into the project's `default/sfx/` and `default/music/` folders.
 | `coins/harvest/1` to `/8` | effects | Landing harvest coins 1 to 8 of a peasant, each higher; later coins replay `/8` |
 | `coins/compensation` | effects | Coin given for a lost heart |
 | `coins/pop` | effects | A peasant pops its harvest coins at the start of combat |
-| `combat/hit` | effects | Melee hit, dive, charge, fireball impact, with three shuffled takes |
+| `combat/hit` | effects | Melee hit, dive, charge, fireball impact |
 | `combat/shoot` | effects | A projectile is fired |
 | `combat/death` | effects | A creature dies |
 | `abilities/hop` | effects | Rabbit leap |
@@ -612,37 +611,19 @@ provide round feedback. Each recording plays once at its original pitch and is
 `protected`, so effects cannot cut it. Music has faded out during resolution
 and stays silent at game over.
 
-### Comparing with the earlier sounds (20 November 2026)
+### Sounds restored (21 November 2026)
 
-**Ctrl+Shift+S** switches in game between the current sound effects (the
-default) and the earlier ones, to compare a game with each. An icon at the top
-right announces the switch: a speaker with sparkling waves for the current
-sounds, a speaker with a turning-back arrow for the earlier ones. The choice is
-saved in `user://sound_set.cfg`, so it stays across restarts. Releases include
-both sets.
-
-`default/sfx_legacy/` holds the sounds as they were before the duel sound effects of
-14 November 2026 (commit `b770cb4`), laid out like `default/sfx/`. `SoundSet`
-(`scripts/core/sound_set.gd`) lays it over `default/sfx/` with `Sfx.set_overlay`: a
-sound file there replaces all the files of its event, and a JSON file there
-applies key by key.
-
-- `combat/hit`, `duel/victory`, `duel/defeat`, `shapeshift/bless`,
-  `shapeshift/hex` and `ui/click` get their earlier file back; `combat/hit`
-  has a single take again.
-- Four events did not exist then. They play the file the game used for the
-  same moment, with the former ±8 % pitch variation:
-  - `ui/battle_start` and `ui/place` play the earlier click.
-  - `ui/purchase_confirmed` plays `ui/buy`.
-  - `ui/insufficient_gold` plays `ui/fail`.
-- The events the game plays did change. For example, buying a creature by
-  dropping it on the board now plays both the purchase and the placement
-  sounds, where it used to play only the purchase sound. A reroll now plays
-  the purchase sound instead of the click. The earlier set compares the sounds,
-  not those changes.
-
-A sound event added later has nothing in `default/sfx_legacy/` and sounds the same in
-both sets. The tests fail when a file in `default/sfx_legacy/` matches no current event.
+The sounds from before the duel sound effects of 14 November 2026 (commit
+`b770cb4`) are the game's sounds again, at the user's request after a
+playtest: `combat/hit` (a single take again), `duel/victory`, `duel/defeat`,
+`shapeshift/bless`, `shapeshift/hex` and `ui/click` have their earlier file
+back, and the files of that day were deleted. The four events added that day
+play, through `files_from`, the file the game used for the same moment before,
+with a ±8 % pitch variation: `ui/battle_start` and `ui/place` play `ui/click`,
+`ui/purchase_confirmed` plays `ui/buy` and `ui/insufficient_gold` plays
+`ui/fail`. The Ctrl+Shift+S comparison with the earlier set and its
+`default/sfx_legacy/` folder are gone. The source recordings of 14 November stay in
+`audio_sources/`.
 
 ## Choices made for this prototype (3 November 2026)
 
@@ -1034,6 +1015,11 @@ the average combat and duel lengths.
 
 Pass `-- --no-sound` after any Godot command line (game included) to mute all
 audio, music included.
+
+To find which file a sound heard in the game comes from, tick Project Settings >
+Audio > Tuning Fork > Log Plays and run the game: the Output panel then shows a
+`[Sfx]` line per sound event played, with the file it played. Untick it when
+done. Release exports never print it.
 
 A separate, on-demand balance suite (parallel 1v1 duels between all forms, CSV/JSON
 rankings) lives in [`balance/`](balance/README.md). It is not part of these tests

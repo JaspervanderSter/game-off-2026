@@ -1,4 +1,5 @@
 {
 	"description": "The player drops a creature into a new board cell or reserve slot.",
-	"group": "ui"
+	"group": "ui",
+	"files_from": "ui/click"
 }

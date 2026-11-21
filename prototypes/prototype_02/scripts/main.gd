@@ -94,7 +94,6 @@ var alternate_audio: Node
 
 func _ready() -> void:
 	rng.randomize()
-	SoundSet.apply()
 	Shapes.warm_up() # builds the shape atlas now rather than on the first frame
 	music = PhaseMusic.new()
 	add_child(music)
@@ -732,10 +731,6 @@ func _input(event: InputEvent) -> void:
 		toggle_art_style()
 		get_viewport().set_input_as_handled()
 		return
-	if event.keycode == KEY_S and event.ctrl_pressed and event.shift_pressed:
-		toggle_sound_set()
-		get_viewport().set_input_as_handled()
-		return
 	if event.keycode == KEY_T and event.ctrl_pressed and event.shift_pressed:
 		cycle_environment()
 		get_viewport().set_input_as_handled()
@@ -760,14 +755,6 @@ func toggle_art_style() -> void:
 	var style := ArtStyle.toggle()
 	propagate_call("queue_redraw")
 	switch_flash.show_art_style(style)
-
-
-## Hidden Ctrl+Shift+S switch between the current sound effects (default) and
-## the earlier ones, to compare them; the choice is remembered (see SoundSet).
-func toggle_sound_set() -> void:
-	if alternate_audio != null and alternate_audio.active:
-		return
-	switch_flash.show_sound_set(SoundSet.toggle())
 
 
 ## Hidden Ctrl+Shift+T switch to the next battlefield environment (forest,

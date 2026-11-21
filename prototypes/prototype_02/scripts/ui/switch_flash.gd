@@ -4,10 +4,8 @@ extends Node2D
 ## the screen, then fades out.
 ## - Art style: a circle drawn smooth for the vector art, as blocky pixels for
 ##   the pixel art.
-## - Sound set: a speaker with sparkling waves for the current sounds, with a
-##   turning-back arrow for the earlier ones.
 
-enum Icon { VECTOR, PIXEL, SOUND_CURRENT, SOUND_LEGACY }
+enum Icon { VECTOR, PIXEL }
 
 const DURATION := 1.1
 const CENTER := Vector2(1220, 60)
@@ -19,10 +17,6 @@ var _icon := Icon.VECTOR
 
 func show_art_style(style: ArtStyle.Style) -> void:
 	_show(Icon.PIXEL if style == ArtStyle.Style.PIXEL else Icon.VECTOR)
-
-
-func show_sound_set(value: SoundSet.Set) -> void:
-	_show(Icon.SOUND_LEGACY if value == SoundSet.Set.LEGACY else Icon.SOUND_CURRENT)
 
 
 func _show(icon: Icon) -> void:
@@ -52,8 +46,6 @@ func _draw() -> void:
 			_pixel_ring(r, col)
 		Icon.VECTOR:
 			_vector_ring(r, col, alpha)
-		Icon.SOUND_CURRENT, Icon.SOUND_LEGACY:
-			_speaker(r, col, _icon == Icon.SOUND_LEGACY)
 
 
 ## The same ring rasterised on a coarse grid.
@@ -76,31 +68,3 @@ func _vector_ring(r: float, col: Color, alpha: float) -> void:
 	draw_rect(Rect2(node - Vector2.ONE * 4.0, Vector2.ONE * 8.0), col, false, 2.0)
 	for side in [-1, 1]:
 		Shapes.circle(self, node + Vector2(r * 0.6 * side, 0), 3.0, col)
-
-
-func _speaker(r: float, col: Color, legacy: bool) -> void:
-	var o := CENTER + Vector2(-r * 0.3, 0)
-	draw_rect(Rect2(o + Vector2(-r * 0.5, -r * 0.22), Vector2(r * 0.25, r * 0.44)), col)
-	draw_colored_polygon(PackedVector2Array([
-		o + Vector2(-r * 0.3, -r * 0.22), o + Vector2(r * 0.05, -r * 0.55),
-		o + Vector2(r * 0.05, r * 0.55), o + Vector2(-r * 0.3, r * 0.22)]), col)
-	if legacy:
-		# An arrow turning back anticlockwise: the earlier sounds.
-		var c := o + Vector2(r * 0.65, 0)
-		var rr := r * 0.42
-		Shapes.arc(self, c, rr, -PI * 0.75, PI * 0.85, 24, col, r * 0.13, true)
-		var tip := c + Vector2.from_angle(-PI * 0.75) * rr
-		var along := Vector2.from_angle(-PI * 0.75).orthogonal() * -1.0 # anticlockwise
-		var side := Vector2.from_angle(-PI * 0.75) * r * 0.2
-		draw_colored_polygon(PackedVector2Array([tip + along * r * 0.25, tip + side, tip - side]), col)
-	else:
-		# Sound waves and a sparkle: the current sounds.
-		for i in 2:
-			Shapes.arc(self, o + Vector2(r * 0.05, 0), r * (0.4 + 0.3 * i), -PI * 0.3, PI * 0.3, 12, col, r * 0.12, true)
-		_sparkle(o + Vector2(r * 0.95, -r * 0.6), r * 0.22, col)
-
-
-func _sparkle(p: Vector2, s: float, col: Color) -> void:
-	draw_colored_polygon(PackedVector2Array([
-		p + Vector2(0, -s), p + Vector2(s * 0.25, -s * 0.25), p + Vector2(s, 0), p + Vector2(s * 0.25, s * 0.25),
-		p + Vector2(0, s), p + Vector2(-s * 0.25, s * 0.25), p + Vector2(-s, 0), p + Vector2(-s * 0.25, -s * 0.25)]), col)

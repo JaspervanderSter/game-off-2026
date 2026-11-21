@@ -536,6 +536,11 @@ The user played the journey and listed 22 changes, handled one at a time.
   full-board warning turns the player's rims red. Chosen among four proposals
   (pawns, pennants, gems, portraits) tried in the real duel. The merge-progress
   circles stay as they are. See [[Journey and Opponents]].
+- **Sound effects:** the sounds from before 14 November (the synthesised set,
+  rendered to files) are the game's sounds again; the recordings integrated
+  that day for hits, placement, victory, defeat, bless, hex, click, fight start,
+  purchase and missing gold were deleted from the game, as was the in-game
+  comparison between the two sets (21 November).
 
 ## Playtest plan and completion criteria
 

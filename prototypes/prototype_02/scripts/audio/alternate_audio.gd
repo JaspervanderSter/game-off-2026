@@ -68,7 +68,7 @@ func set_active(value: bool) -> void:
 		reload_workspace()
 		transition_to(music.current)
 	else:
-		SoundSet.apply()
+		Sfx.set_overlay("")
 		music.transition_to(music.current)
 		for voice: MusicVoice in voices.values():
 			voice.target = 0.0

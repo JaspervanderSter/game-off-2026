@@ -18,6 +18,9 @@ extends Node
 ## too. Runs from the Godot editor read the project's `sfx/` folder straight
 ## from disk. Either way, changed files reload when the game window regains
 ## focus. Definition: tools/tuning_fork/docs/ in the repository.
+##
+## Debug aid: with the project setting LOG_SETTING on, every play prints its
+## event and the file it played to the output. Release builds never print.
 
 var DIR: String = "res://" + str(ProjectSettings.get_setting("tuning_fork/sfx_directory", "sfx")).trim_suffix("/") + "/"
 const GROUPS_FILE := "groups.json"
@@ -50,10 +53,15 @@ const LOOP_FADE := 0.25
 const INFO_KEYS := ["description"]
 ## Command-line user argument (after `--`) that silences all game audio.
 const NO_SOUND_ARG := "--no-sound"
+## Project setting that prints each play (event, file played, or why nothing
+## played) to the output. Registered by the addon; read in debug builds only.
+const LOG_SETTING := "audio/tuning_fork/log_plays"
 
 ## False when launched with --no-sound: nothing is loaded or played and the
 ## master bus is muted (music included).
 var enabled := true
+## True when each play is printed (LOG_SETTING, debug builds only).
+var log_plays := false
 ## Settings of each event by path, packed values with replacement values on top.
 var _settings := {}
 ## Own sound files of each event by path, loaded, in file order.
@@ -89,6 +97,7 @@ var _signature := ""
 
 
 func _ready() -> void:
+	log_plays = OS.is_debug_build() and bool(ProjectSettings.get_setting(LOG_SETTING, false))
 	for i in VOICES:
 		_players.append(_new_voice())
 	if NO_SOUND_ARG in OS.get_cmdline_user_args():
@@ -112,11 +121,15 @@ func _notification(what: int) -> void:
 ## Plays the event at `path`. A looping event starts from the beginning of one
 ## of its files, unless already playing, and keeps going until stop().
 func play(path: String) -> void:
-	if not enabled or not _exists(path):
+	if not enabled:
+		return
+	if not _exists(path):
+		_log_play(path, "no such event")
 		return
 	var streams := files_of(path)
 	if streams.is_empty():
 		_warn_once(path, "Sound event %s has no sound file" % path)
+		_log_play(path, "no sound file")
 		return
 	if bool(setting(path, "loop")):
 		_start_loop(path, streams)
@@ -124,6 +137,7 @@ func play(path: String) -> void:
 	# Avoid machine-gun stacking of identical sounds in the same instant.
 	var now := Time.get_ticks_msec()
 	if now - int(_last_played.get(path, -100000)) < int(setting(path, "cooldown_ms")):
+		_log_play(path, "skipped, cooldown")
 		return
 	_last_played[path] = now
 	var p: AudioStreamPlayer
@@ -139,6 +153,7 @@ func play(path: String) -> void:
 	p.volume_db = float(setting(path, "volume_db")) + randf_range(-volume_jitter, volume_jitter)
 	p.pitch_scale = maxf(0.01, float(setting(path, "pitch")) + randf_range(-pitch_jitter, pitch_jitter))
 	p.play()
+	_log_play(path, _source_of(p.stream))
 
 
 ## Fades the looping event at `path` out over LOOP_FADE seconds.
@@ -453,12 +468,13 @@ func _list_times(dir: String, parts: PackedStringArray) -> void:
 
 
 ## A sound file, loaded once per modification; the file name is kept as the
-## stream's "sfx_file" meta.
+## stream's "sfx_file" meta and its full path as the "sfx_source" meta.
 func _load_file(path: String, from_disk: bool) -> AudioStream:
 	if not from_disk:
 		var packed: AudioStream = load(path)
 		if packed != null:
 			packed.set_meta("sfx_file", path.trim_prefix(DIR))
+			packed.set_meta("sfx_source", path)
 		return packed
 	var time := FileAccess.get_modified_time(path)
 	var cached: Array = _file_cache.get(path, [])
@@ -469,6 +485,7 @@ func _load_file(path: String, from_disk: bool) -> AudioStream:
 		push_warning("Could not load sound file %s" % path)
 		return null if cached.is_empty() else cached[1]
 	stream.set_meta("sfx_file", path.get_file())
+	stream.set_meta("sfx_source", ProjectSettings.localize_path(path))
 	_file_cache[path] = [time, stream]
 	return stream
 
@@ -478,6 +495,17 @@ func _exists(path: String) -> bool:
 		return true
 	_warn_once(path, "No sound event %s under %s" % [path, DIR])
 	return false
+
+
+## Prints one play of the event at `path` and what it played (log_plays).
+func _log_play(path: String, what: String) -> void:
+	if log_plays:
+		print("[Sfx] %8.2fs  %s  ->  %s" % [Time.get_ticks_msec() / 1000.0, path, what])
+
+
+## The file a stream was loaded from, as _load_file recorded it.
+static func _source_of(stream: AudioStream) -> String:
+	return str(stream.get_meta("sfx_source", stream.get_meta("sfx_file", "?")))
 
 
 func _warn_once(key: String, message: String) -> void:
@@ -515,3 +543,4 @@ func _start_loop(path: String, streams: Array) -> void:
 			stream.loop = true
 		p.stream = stream
 		p.play()
+		_log_play(path, _source_of(stream) + " (loop)")
