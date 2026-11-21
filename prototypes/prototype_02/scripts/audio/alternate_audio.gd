@@ -32,8 +32,8 @@ func _notification(what: int) -> void:
 		reload_workspace()
 
 func reload_workspace() -> void:
-	catalog.open(root.path_join("music"))
-	var config := catalog.find("alternate.json")
+	catalog.open(root.path_join("custom/music"))
+	var config := catalog.find("workspace.json")
 	if not config.is_empty() and config.error == "":
 		manifest = config.data.duplicate(true)
 	for role: String in voices:
@@ -153,7 +153,7 @@ func _build_dialog() -> Control:
 	panel.add_child(row)
 	for choice in [false, true]:
 		var button := Button.new()
-		button.text = "Cobiora" if choice else "Default"
+		button.text = "Custom" if choice else "Default"
 		button.tooltip_text = "Windows audio workspace" if choice else "Original game audio"
 		button.custom_minimum_size = Vector2(160, 96)
 		button.icon = _music_icon(choice)

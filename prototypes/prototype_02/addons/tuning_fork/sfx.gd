@@ -6,20 +6,20 @@ extends Node
 ##   Sfx.stop("abilities/bard_song")   fades a looping event out
 ##   Sfx.set_group_volume("ui", -6.0)  the game's own volume change of a group
 ##
-## An event is `res://sfx/<folders>/<name>.json` with its sound files beside it,
+## An event is `res://default/sfx/<folders>/<name>.json` with its sound files beside it,
 ## `<name>.ogg` then `<name>_2.ogg`, `<name>_3.ogg`... Its path is
 ## "<folders>/<name>". The JSON settings say how it plays (SOUND_DEFAULTS);
-## `res://sfx/groups.json` lists the mixing groups, each an audio bus.
+## `res://default/sfx/groups.json` lists the mixing groups, each an audio bus.
 ## A missing event or file is silence and one warning, never an error.
 ##
-## Exported desktop builds also read `sfx/` beside the executable: a sound file
+## Exported desktop builds also read the configured SFX folder beside the executable: a sound file
 ## there replaces all the packed files of its event, a JSON file there applies
 ## over the packed values key by key, and an event that exists only there plays
 ## too. Runs from the Godot editor read the project's `sfx/` folder straight
 ## from disk. Either way, changed files reload when the game window regains
 ## focus. Definition: tools/tuning_fork/docs/ in the repository.
 
-const DIR := "res://sfx/"
+var DIR: String = "res://" + str(ProjectSettings.get_setting("tuning_fork/sfx_directory", "sfx")).trim_suffix("/") + "/"
 const GROUPS_FILE := "groups.json"
 ## Voices shared by the events that are neither looping nor protected; when
 ## all are busy, the oldest sound stops.
@@ -100,7 +100,7 @@ func _ready() -> void:
 	else:
 		_add_root(DIR, false)
 	if OS.has_feature("template") and not OS.has_feature("web"):
-		_add_root(OS.get_executable_path().get_base_dir().path_join("sfx"), true)
+		_add_root(OS.get_executable_path().get_base_dir().path_join(DIR.trim_prefix("res://")), true)
 	reload()
 
 

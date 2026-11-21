@@ -17,7 +17,7 @@ and its project window.
   the original SFX-only scope; [[Music]] defines this addition. Game-specific
   phase bindings, map synchronization and fallback generators remain game code.
   Tuning Fork does not synthesize or bake arbitrary runtime code. Shapeshifters
-  Duel supplies its 160-second map reference and separate Windows workspace.
+  Duel supplies its 160-second map reference and separate `default/` and `custom/` Windows workspaces. The editor discovers their music and SFX independently.
 - **Music preview:** configuration buttons preview transitions between tracks;
   the tool does not reproduce the game's sky visuals or frenzy progression.
 - **Conversion:** the packaged oggenc remains the preferred WAV encoder.

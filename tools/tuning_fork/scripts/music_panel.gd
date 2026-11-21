@@ -1,6 +1,8 @@
 class_name MusicPanel
 extends HSplitContainer
 ## Generic music browser/editor. No game names, phases or track paths here.
+var game_root := ""
+var _workspace: OptionButton
 var catalog := MusicCatalog.new()
 var current := {}
 var voice: MusicVoice
@@ -24,6 +26,15 @@ func _ready() -> void:
 	var left := VBoxContainer.new()
 	left.custom_minimum_size.x = 290
 	add_child(left)
+	_workspace = OptionButton.new()
+	_workspace.tooltip_text = "Independent music workspace"
+	_workspace.item_selected.connect(func(index: int) -> void:
+		if not unsaved_paths().is_empty():
+			_status.text = "Save or revert music changes before switching workspace."
+			_workspace.select(_music_folders().find(catalog.root.trim_prefix(game_root + "/")))
+			return
+		_open_folder(game_root.path_join(_workspace.get_item_text(index))))
+	left.add_child(_workspace)
 	_filter = LineEdit.new()
 	_filter.placeholder_text = "Filter music and configurations"
 	_filter.text_changed.connect(func(_text: String) -> void: _rebuild_list())
@@ -60,10 +71,21 @@ func _ready() -> void:
 	add_child(_timer)
 	_show_current()
 
-func open(game_root: String) -> void:
+func _music_folders() -> Array[String]:
+	return SoundLibrary.workspace_folders(game_root, "music")
+
+func open(folder: String) -> void:
+	game_root = folder
+	_workspace.clear()
+	var folders := _music_folders()
+	for workspace in folders:
+		_workspace.add_item(workspace)
+	_open_folder(game_root.path_join(folders[0] if not folders.is_empty() else "music"))
+
+func _open_folder(folder: String) -> void:
 	stop()
 	current = {}
-	catalog.open(game_root.path_join("music"))
+	catalog.open(folder)
 	_signature = catalog.signature()
 	_rebuild_list()
 	if not catalog.entries.is_empty():

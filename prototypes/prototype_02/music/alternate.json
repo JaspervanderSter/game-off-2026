@@ -1,8 +1,0 @@
-{
-	"description": "Windows-only alternate workspace. Paths are relative to music/; SFX directory is relative to the game folder. Default and Web playback ignore this file.",
-	"label": "Cobiora",
-	"prep": "Cobiora/loadout_loop.ogg",
-	"battle": "Cobiora/battle_loop.ogg",
-	"ambience": "Cobiora/world_map_cycle.ogg",
-	"sfx_directory": "sfx_cobiora"
-}

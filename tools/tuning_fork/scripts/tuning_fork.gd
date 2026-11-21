@@ -209,7 +209,7 @@ func _hide_picker() -> void:
 
 func _on_project_chosen(game: String) -> void:
 	game = ProjectPicker.normalized(game)
-	if SoundLibrary.event_count(game) < 0 and not DirAccess.dir_exists_absolute(game.path_join("music")):
+	if SoundLibrary.event_count(game) < 0 and SoundLibrary.workspace_folders(game, "music").is_empty():
 		_picker.show_message("No sfx/ folder in %s" % game)
 		return
 	_open_root(game, _remembered_selection(game))
@@ -265,16 +265,11 @@ func _open_root(root: String, select := "") -> void:
 		library.folder_name = "sfx"
 	var error := library.open(root)
 	_sfx_workspace.clear()
-	var folders: Array[String] = []
-	if DirAccess.dir_exists_absolute(root):
-		for folder in DirAccess.get_directories_at(root):
-			if folder == "sfx" or folder.begins_with("sfx_"):
-				folders.append(folder)
-	folders.sort()
+	var folders := SoundLibrary.workspace_folders(root, "sfx")
 	for folder in folders:
 		_sfx_workspace.add_item(folder)
 	_sfx_workspace.select(folders.find(library.folder_name))
-	if _music_panel.catalog.root != root.path_join("music"):
+	if _music_panel.game_root != root:
 		_music_panel.open(root)
 	else:
 		_music_panel.check_disk()

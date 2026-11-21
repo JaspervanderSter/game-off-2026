@@ -39,7 +39,7 @@ def bake():
 
     rng = np.random.default_rng(20261121)
     mix = np.zeros((count, 2), dtype=np.float64)
-    source = GAME / 'music/ambience'
+    source = GAME / 'default/music/ambience'
     for name, levels in {
         'wind_day': [1, .75, .35, 0],
         'wind_night': [0, .25, .6, 1],
@@ -92,7 +92,7 @@ def bake():
     peak = float(np.max(np.abs(mix)))
     if peak > .98:
         raise RuntimeError(f'Reference clips ({peak}); adjust the source mix, not normalization')
-    output = GAME / 'music/Cobiora/world_map_cycle.ogg'
+    output = GAME / 'custom/music/world_map_cycle.ogg'
     with tempfile.TemporaryDirectory(prefix='gameoff-ambience-') as temporary:
         wav = Path(temporary) / 'cycle.wav'
         with wave.open(str(wav), 'wb') as stream:

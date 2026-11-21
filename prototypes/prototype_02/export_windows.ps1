@@ -4,8 +4,8 @@
 #   .\export_windows.ps1 [-Godot <path to Godot_v4.x_console.exe>] [-Out <folder>]
 #
 # Produces <Out>\ShapeshiftersDuel.exe (with the game icon and version info),
-# <Out>\sfx\ (every sound event's .json and .ogg files, groups.json),
-# <Out>\music\ (tracks, sidecars and alternate bindings), <Out>\sfx_cobiora\ and
+# <Out>\default\sfx\ (every sound event's .json and .ogg files, groups.json),
+# <Out>\default\music\ (tracks, sidecars and alternate bindings), <Out>\custom\ (music and SFX) and
 # <Out>-Windows.zip, which unpacks into a single ShapeshiftersDuel folder.
 param(
 	[string]$Godot = "",
@@ -33,7 +33,7 @@ function Find-Godot {
 
 $exe = Find-Godot
 if (Test-Path $Out) { Remove-Item -Recurse -Force $Out }
-New-Item -ItemType Directory -Force (Join-Path $Out "sfx"), (Join-Path $Out "music") | Out-Null
+New-Item -ItemType Directory -Force (Join-Path $Out "default"), (Join-Path $Out "custom") | Out-Null
 
 & $exe --headless --audio-driver Dummy --path $project --script res://tools/make_windows_icon.gd
 if ($LASTEXITCODE -ne 0) { throw "Icon generation failed." }
@@ -42,25 +42,14 @@ if ($LASTEXITCODE -ne 0) { throw "Godot import failed. Check the errors above." 
 & $exe --headless --audio-driver Dummy --path $project --export-release "Windows Desktop" (Join-Path $Out "ShapeshiftersDuel.exe")
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $Out "ShapeshiftersDuel.exe"))) { throw "Godot export failed." }
 
-# Sound events, their files and groups.json, keeping the folders.
-$sfx = Join-Path $project "sfx"
-Get-ChildItem $sfx -Recurse -File -Include *.ogg, *.json | ForEach-Object {
-	$target = Join-Path (Join-Path $Out "sfx") $_.FullName.Substring($sfx.Length + 1)
-	New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
-	Copy-Item $_.FullName $target
-}
-# Expose all music dynamically, preserving subfolders and adjacent settings.
-$music = Join-Path $project "music"
-Get-ChildItem $music -Recurse -File -Include *.ogg, *.wav, *.json | ForEach-Object {
-	$target = Join-Path (Join-Path $Out "music") $_.FullName.Substring($music.Length + 1)
-	New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
-	Copy-Item -LiteralPath $_.FullName -Destination $target
-}
-$alternateSfx = Join-Path $project "sfx_cobiora"
-Get-ChildItem $alternateSfx -Recurse -File -Include *.ogg, *.json | ForEach-Object {
-	$target = Join-Path (Join-Path $Out "sfx_cobiora") $_.FullName.Substring($alternateSfx.Length + 1)
-	New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
-	Copy-Item -LiteralPath $_.FullName -Destination $target
+# Keep independent default and custom audio workspaces beside the executable.
+foreach ($workspace in @("default", "custom")) {
+	$source = Join-Path $project $workspace
+	Get-ChildItem -LiteralPath $source -Recurse -File | Where-Object { $_.Extension -in @(".ogg", ".wav", ".json") } | ForEach-Object {
+		$target = Join-Path (Join-Path $Out $workspace) $_.FullName.Substring($source.Length + 1)
+		New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+		Copy-Item -LiteralPath $_.FullName -Destination $target
+	}
 }
 Copy-Item -LiteralPath (Join-Path $project "AUDIO_WORKSPACE.md") -Destination $Out
 @"
@@ -115,7 +104,7 @@ seconds (fade_seconds) and the battle music speed-up for each of the 5
 frenzy levels (frenzy_speed_per_level: 0.05 = 5 % faster per level). It also sets the
 loudness of the world map's nature ambience (ambience_volume_db) and its fade
 time when the map shows or hides (ambience_fade_seconds).
-"@ | Set-Content -Encoding utf8 (Join-Path $Out "sfx\README.txt")
+"@ | Set-Content -Encoding utf8 (Join-Path $Out "default\sfx\README.txt")
 
 $zip = "$Out-Windows.zip"
 if (Test-Path $zip) { Remove-Item -Force $zip }

@@ -10,7 +10,7 @@ Sfx.stop("abilities/bard_song")    # fades a looping event out
 Sfx.set_group_volume("ui", -6.0)   # the game's own change of a group's volume
 ```
 
-Events live in `res://sfx/`: `<folder>/<name>.json` with `<name>.ogg`,
+Events live in `res://default/sfx/`: `<folder>/<name>.json` with `<name>.ogg`,
 `<name>_2.ogg`... beside it, and `groups.json` for the mixing groups. The
 format and the rules are defined in the Tuning Fork docs
 (`tools/tuning_fork/docs/` in the repository this addon comes from).

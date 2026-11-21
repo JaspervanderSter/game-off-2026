@@ -7,16 +7,16 @@ extends Node
 ## while the map is shown and out while it is hidden; the menu and the duels
 ## have none. Like the music, it is the game's own system, apart from the
 ## Tuning Fork sound events: its volume and fade time are ambience_volume_db and
-## ambience_fade_seconds in music/music.json. tools/make_map_ambience.gd
-## synthesises the sounds in music/ambience/.
+## ambience_fade_seconds in default/music/music.json. tools/make_map_ambience.gd
+## synthesises the sounds in default/music/ambience/.
 ## Design: docs/design/Prototype 02.md, "Sky, sound and entry point".
 
 const SkyCycle := preload("res://scripts/ui/day_night_sky.gd")
 
 const BEDS := {
-	"wind_day": preload("res://music/ambience/wind_day.ogg"),
-	"wind_night": preload("res://music/ambience/wind_night.ogg"),
-	"crickets": preload("res://music/ambience/crickets.ogg"),
+	"wind_day": preload("res://default/music/ambience/wind_day.ogg"),
+	"wind_night": preload("res://default/music/ambience/wind_night.ogg"),
+	"crickets": preload("res://default/music/ambience/crickets.ogg"),
 }
 ## Loudness of each bed (linear, 0 to 1) in each sky state: day, golden mist,
 ## dusk, night. The cycle blends between neighbouring states.
@@ -27,15 +27,15 @@ const BED_LEVELS := {
 }
 const CALLS := {
 	"bird": [
-		preload("res://music/ambience/bird_1.ogg"), preload("res://music/ambience/bird_2.ogg"),
-		preload("res://music/ambience/bird_3.ogg"), preload("res://music/ambience/bird_4.ogg"),
-		preload("res://music/ambience/bird_5.ogg"), preload("res://music/ambience/bird_6.ogg"),
+		preload("res://default/music/ambience/bird_1.ogg"), preload("res://default/music/ambience/bird_2.ogg"),
+		preload("res://default/music/ambience/bird_3.ogg"), preload("res://default/music/ambience/bird_4.ogg"),
+		preload("res://default/music/ambience/bird_5.ogg"), preload("res://default/music/ambience/bird_6.ogg"),
 	],
 	"chime": [
-		preload("res://music/ambience/chime_1.ogg"), preload("res://music/ambience/chime_2.ogg"),
-		preload("res://music/ambience/chime_3.ogg"),
+		preload("res://default/music/ambience/chime_1.ogg"), preload("res://default/music/ambience/chime_2.ogg"),
+		preload("res://default/music/ambience/chime_3.ogg"),
 	],
-	"owl": [preload("res://music/ambience/owl_1.ogg"), preload("res://music/ambience/owl_2.ogg")],
+	"owl": [preload("res://default/music/ambience/owl_1.ogg"), preload("res://default/music/ambience/owl_2.ogg")],
 }
 ## Calls per minute in each sky state (day, golden mist, dusk, night).
 const CALL_RATES := {

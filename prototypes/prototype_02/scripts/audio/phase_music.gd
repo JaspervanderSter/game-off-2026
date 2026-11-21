@@ -2,12 +2,12 @@ class_name PhaseMusic
 extends Node
 ## Two independent voices allow reversible crossfades without restarting a
 ## playing loop. Only stop a voice once its fade has reached complete silence.
-## Volume, fade time and frenzy speed-up come from music/music.json. The music
+## Volume, fade time and frenzy speed-up come from default/music/music.json. The music
 ## is the game's own system, apart from the Tuning Fork sound events (Sfx).
-## Exported desktop builds apply a music/music.json beside the executable over
+## Exported desktop builds apply a default/music/music.json beside the executable over
 ## the packed values; the settings reload when the game window regains focus.
 
-const SETTINGS := "res://music/music.json"
+const SETTINGS := "res://default/music/music.json"
 const DEFAULTS := {
 	"volume_db": -16.0,
 	"fade_seconds": 1.2,
@@ -18,8 +18,8 @@ const DEFAULTS := {
 const INFO_KEYS := ["description"]
 
 const TRACKS := {
-	"prep": preload("res://music/cartoon_magic.ogg"),
-	"battle": preload("res://music/marching_beat.ogg"),
+	"prep": preload("res://default/music/cartoon_magic.ogg"),
+	"battle": preload("res://default/music/marching_beat.ogg"),
 }
 
 var players: Dictionary = {}
@@ -35,7 +35,7 @@ var replacement: Node
 static func load_settings() -> Dictionary:
 	var paths := [SETTINGS]
 	if OS.has_feature("template") and not OS.has_feature("web"):
-		paths.append(OS.get_executable_path().get_base_dir().path_join("music/music.json"))
+		paths.append(OS.get_executable_path().get_base_dir().path_join("default/music/music.json"))
 	var merged := {}
 	for path: String in paths:
 		if not FileAccess.file_exists(path):

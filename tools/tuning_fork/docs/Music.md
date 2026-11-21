@@ -6,7 +6,7 @@ or file names in the tool.
 
 ## Files and discovery
 
-Recursively discover every OGG/WAV in the project's `music/` folder. Each
+Recursively discover every OGG/WAV in the project's `music/` folder, or independent `<workspace>/music/` folders selected in the Music tab. Each
 recording has an adjacent JSON with the same basename. A recording without a
 JSON appears with default values; Save creates its sidecar. Other JSON files
 are project configurations, with controls derived from their values. Unknown

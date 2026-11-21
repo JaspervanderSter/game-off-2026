@@ -34,7 +34,7 @@ func _game_folder() -> String:
 	var folders := Array(DirAccess.get_directories_at(prototypes))
 	folders.sort()
 	for folder: String in folders:
-		if DirAccess.dir_exists_absolute(prototypes.path_join(folder).path_join("sfx")):
+		if SoundLibrary.event_count(prototypes.path_join(folder)) >= 0:
 			found = prototypes.path_join(folder)
 	return found
 
@@ -44,7 +44,7 @@ func _game_folder() -> String:
 func _test_projects(game: String) -> void:
 	var found := ProjectPicker.detect()
 	_check(not found.is_empty() and found[0] == game, "the newest prototype is found first beside the tool")
-	_check(found.all(func(path: String) -> bool: return DirAccess.dir_exists_absolute(path.path_join("sfx"))),
+	_check(found.all(func(path: String) -> bool: return SoundLibrary.event_count(path) >= 0),
 		"only folders holding sfx/ are found")
 	var library := SoundLibrary.new()
 	library.open(game)
@@ -124,7 +124,7 @@ func _test_borrowed_files(game: String) -> void:
 
 
 func _test_waveform(game: String) -> void:
-	var stream := AudioStreamOggVorbis.load_from_file(game.path_join("sfx/combat/hit.ogg"))
+	var stream := AudioStreamOggVorbis.load_from_file(game.path_join("default/sfx/combat/hit.ogg"))
 	var peaks := WaveCard.peaks_of(stream, 60)
 	var loudest := 0.0
 	var ordered := true
@@ -148,7 +148,7 @@ func _test_editing_and_saving() -> void:
 	var dir := _scratch("test_library")
 	DirAccess.make_dir_recursive_absolute(dir.path_join("sfx/combat"))
 	_write(dir.path_join("sfx/combat/hit.json"), '{"pitch": 1.0, "description": "Hit.", "extra": true}')
-	DirAccess.copy_absolute(_game_folder().path_join("sfx/combat/hit.ogg"), dir.path_join("sfx/combat/swing.ogg"))
+	DirAccess.copy_absolute(_game_folder().path_join("default/sfx/combat/hit.ogg"), dir.path_join("sfx/combat/swing.ogg"))
 	var library := SoundLibrary.new()
 	_check(library.open(dir) == "", "a scratch folder opens")
 	var hit := library.find("combat/hit")
@@ -179,7 +179,7 @@ func _test_sound_files() -> void:
 	var dir := _scratch("test_files")
 	var combat := dir.path_join("sfx/combat")
 	DirAccess.make_dir_recursive_absolute(combat)
-	var game_combat := _game_folder().path_join("sfx/combat")
+	var game_combat := _game_folder().path_join("default/sfx/combat")
 	DirAccess.copy_absolute(game_combat.path_join("hit.ogg"), combat.path_join("hit.ogg"))
 	DirAccess.copy_absolute(game_combat.path_join("death.ogg"), combat.path_join("hit_2.ogg"))
 	DirAccess.copy_absolute(game_combat.path_join("shoot.ogg"), combat.path_join("hit_3.ogg"))
@@ -236,7 +236,7 @@ func _test_events() -> void:
 		and roar.data.get("description") == "The boss roars before it charges." and not roar.is_dirty(),
 		"a created event has its JSON file with its description")
 	_check(library.create_event("enemies/boss/roar", "") != "", "an existing path cannot be created again")
-	var source := _game_folder().path_join("sfx/combat/hit.ogg")
+	var source := _game_folder().path_join("default/sfx/combat/hit.ogg")
 	roar.add_file(source)
 	roar.add_file(source)
 	library.create_event("enemies/boss/growl", "Quieter roar.")

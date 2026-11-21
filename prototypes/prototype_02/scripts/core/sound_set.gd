@@ -1,7 +1,7 @@
 class_name SoundSet
 extends RefCounted
 ## Chooses which sound effects the game plays, to compare them before and after
-## a change: the current ones in res://sfx/ (the default), or the earlier ones
+## a change: the current ones in res://default/sfx/ (the default), or the earlier ones
 ## in LEGACY_DIR laid over them (Sfx.set_overlay). The choice is toggled in
 ## game (see main.gd) and survives restarts through `save_path`.
 ##
@@ -11,7 +11,7 @@ extends RefCounted
 
 enum Set { CURRENT, LEGACY }
 
-const LEGACY_DIR := "res://sfx_legacy/"
+const LEGACY_DIR := "res://default/sfx_legacy/"
 
 static var save_path := "user://sound_set.cfg"
 static var _set := -1 # -1 until loaded from save_path

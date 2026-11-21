@@ -1,6 +1,6 @@
 extends SceneTree
 ## Synthesises the journey map's nature ambience (see MapAmbience) and encodes
-## it to OGG Vorbis in music/ambience/: three seamless looping beds (day wind,
+## it to OGG Vorbis in default/music/ambience/: three seamless looping beds (day wind,
 ## night wind, crickets) and short one-shot variants (birds, wind chimes, owl).
 ## Every sound is seeded, so a new run rewrites identical files. Needs oggenc
 ## (OGGENC, %USERPROFILE%/Tools/oggenc/oggenc2.exe, Tuning Fork's vendored copy
@@ -11,7 +11,7 @@ extends SceneTree
 const RATE := 22050
 const LOOP_SECONDS := 32.0
 const CROSSFADE := 2.0 # seconds of the tail blended into the start of a loop
-const OUT_DIR := "res://music/ambience/"
+const OUT_DIR := "res://default/music/ambience/"
 
 
 func _init() -> void:

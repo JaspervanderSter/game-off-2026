@@ -23,6 +23,10 @@ config/windows_native_icon="res://icon.ico"
 
 Sfx="*res://addons/tuning_fork/sfx.gd"
 
+[tuning_fork]
+
+sfx_directory="default/sfx"
+
 [audio]
 
 general/default_playback_type.web=0

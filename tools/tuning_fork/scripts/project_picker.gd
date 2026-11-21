@@ -183,7 +183,7 @@ static func detect(start := "") -> Array[String]:
 			folders.sort()
 			folders.reverse()
 			for folder: String in folders:
-				if DirAccess.dir_exists_absolute(prototypes.path_join(folder).path_join("sfx")) or DirAccess.dir_exists_absolute(prototypes.path_join(folder).path_join("music")):
+				if SoundLibrary.event_count(prototypes.path_join(folder)) >= 0 or not SoundLibrary.workspace_folders(prototypes.path_join(folder), "music").is_empty():
 					found.append(prototypes.path_join(folder))
 			break
 		dir = dir.get_base_dir()
@@ -229,7 +229,7 @@ func _section(shape: String, text: String) -> Control:
 ## One folder: icon, name, path, number of events; recent ones can be removed.
 func _card(game: String, recent: bool) -> Control:
 	var count := SoundLibrary.event_count(game)
-	var present := count >= 0 or DirAccess.dir_exists_absolute(game.path_join("music"))
+	var present := count >= 0 or not SoundLibrary.workspace_folders(game, "music").is_empty()
 	if present and count < 0:
 		count = 0
 	var style := _flat(CARD, 8)

@@ -378,7 +378,7 @@ weight, and the layout rules.
 
 ## Music
 
-`scripts/audio/phase_music.gd` plays the supplied looping OGG tracks in `music/`
+`scripts/audio/phase_music.gd` plays the supplied looping OGG tracks in `default/music/`
 only during duels. The menu and world map have no music; preparation music starts
 when a stage is selected:
 
@@ -394,10 +394,10 @@ preserves its playback position. Both streams loop in Godot, and combat x2 does
 not change music speed. Music volume is initially -16 dB to leave room for effects.
 
 Music is the game's own system, apart from the sound events below and from
-Tuning Fork. `music/music.json` holds `volume_db`, `fade_seconds`,
+Tuning Fork. `default/music/music.json` holds `volume_db`, `fade_seconds`,
 `frenzy_speed_per_level`, `ambience_volume_db` and `ambience_fade_seconds`; unknown keys are reported as warnings. It reloads
 when the game window regains focus, and an exported build applies a
-`music/music.json` beside its executable over the packed values, key by key.
+`default/music/music.json` beside its executable over the packed values, key by key.
 
 ### Map ambience (21 November 2026)
 
@@ -424,9 +424,9 @@ with `AudioStreamPlayer2D`), with ±2 dB and ±5 % pitch variation:
 The ambience fades in over `ambience_fade_seconds` (1.5 s) when the map shows
 and out when it hides; it stops once silent, and each visit resumes the loops
 at a random point. Its loudness at full presence is `ambience_volume_db`
-(-14 dB) in `music/music.json`. The menu and duels have none.
+(-14 dB) in `default/music/music.json`. The menu and duels have none.
 
-The sounds in `music/ambience/` are synthesised by
+The sounds in `default/music/ambience/` are synthesised by
 `tools/make_map_ambience.gd`: filtered noise winds, pulsed cricket tones,
 chirped bird calls, inharmonic chime partials and vibrato owl hoots, 22,050 Hz
 mono. The beds are 32-second loops whose tail is crossfaded into their start.
@@ -447,9 +447,9 @@ is the addon `addons/tuning_fork/` (autoload `Sfx`), which knows nothing about
 this game: the game calls `Sfx.play("<path>")`, and `Sfx.stop("<path>")` for
 the looping bard song.
 
-An event is `sfx/<folder>/<name>.json` with one or more OGG Vorbis files beside
+An event is `default/sfx/<folder>/<name>.json` with one or more OGG Vorbis files beside
 it, `<name>.ogg` then `<name>_2.ogg`, `<name>_3.ogg`...; its path is
-`<folder>/<name>`. Every event under `sfx/` is found by itself; adding a
+`<folder>/<name>`. Every event under `default/sfx/` is found by itself; adding a
 numbered file adds a take the game picks among. A different use of a sound,
 even slightly, is its own event; `files_from` lets an event play another
 event's files with its own settings instead of copying them. The first
@@ -461,7 +461,7 @@ How each event plays is data, not code. Its JSON file holds:
 | Key | Meaning |
 |---|---|
 | `description` | When the game plays the event (for reading only) |
-| `group` | Mixing group from `sfx/groups.json`: `effects` or `ui` |
+| `group` | Mixing group from `default/sfx/groups.json`: `effects` or `ui` |
 | `loop` | Plays until stopped instead of once |
 | `protected` | Plays on a voice of its own that no other sound can take |
 | `files_from` | Plays the files of this other event instead of its own |
@@ -481,7 +481,7 @@ file always plays it. Missing keys fall back to `Sfx.SOUND_DEFAULTS`; unknown
 keys are reported as warnings. A path with no event, or an event without a
 file, plays nothing and warns once.
 
-`sfx/groups.json` lists the groups and their volume in dB; each group is a
+`default/sfx/groups.json` lists the groups and their volume in dB; each group is a
 Godot audio bus of that name sent to Master. `Sfx.set_group_volume(group, db)`
 adds the game's own change (an options menu, for example).
 
@@ -489,16 +489,16 @@ adds the game's own change (an options menu, for example).
 these files without opening them. Its copy of the defaults, file naming and
 playback rules must follow any change to `addons/tuning_fork/sfx.gd`.
 
-In a run from the Godot editor, the addon reads `sfx/` straight from disk:
+In a run from the Godot editor, the addon reads `default/sfx/` straight from disk:
 settings, groups, sound files and events saved while the game runs reload when
 the game window regains focus.
 
 The Windows build can be re-voiced and re-tuned without Godot.
 `export_windows.ps1` exports `export/ShapeshiftersDuel/` and
 `export/ShapeshiftersDuel-Windows.zip` at the repository root:
-`ShapeshiftersDuel.exe`, an `sfx/` folder with every event's `.json` and `.ogg`
+`ShapeshiftersDuel.exe`, an `default/sfx/` folder with every event's `.json` and `.ogg`
 files and `groups.json`, plus a `README.txt` explaining the values, and
-`music/music.json`. The executable carries the game icon, `icon.ico`, which the
+`default/music/music.json`. The executable carries the game icon, `icon.ico`, which the
 script first regenerates from `icon.svg` with `tools/make_windows_icon.gd`; after
 changing `icon.svg`, run that script before exporting from the editor. An
 exported desktop build reads these files beside its executable on top of the
@@ -512,7 +512,7 @@ and effects (`audio/general/default_playback_type.web = 0`), bypassing the
 browser's default Sample playback. This override does not affect Windows.
 The Web preset includes the earlier sound set's JSON files as well, so the
 in-game sound comparison works with packed resources. Approved replacements
-are copied back into the project's `sfx/` and `music/` folders.
+are copied back into the project's `default/sfx/` and `default/music/` folders.
 
 | Event | Group | Played when |
 |---|---|---|
@@ -580,9 +580,9 @@ sounds, a speaker with a turning-back arrow for the earlier ones. The choice is
 saved in `user://sound_set.cfg`, so it stays across restarts. Releases include
 both sets.
 
-`sfx_legacy/` holds the sounds as they were before the duel sound effects of
-14 November 2026 (commit `b770cb4`), laid out like `sfx/`. `SoundSet`
-(`scripts/core/sound_set.gd`) lays it over `sfx/` with `Sfx.set_overlay`: a
+`default/sfx_legacy/` holds the sounds as they were before the duel sound effects of
+14 November 2026 (commit `b770cb4`), laid out like `default/sfx/`. `SoundSet`
+(`scripts/core/sound_set.gd`) lays it over `default/sfx/` with `Sfx.set_overlay`: a
 sound file there replaces all the files of its event, and a JSON file there
 applies key by key.
 
@@ -600,8 +600,8 @@ applies key by key.
   the purchase sound instead of the click. The earlier set compares the sounds,
   not those changes.
 
-A sound event added later has nothing in `sfx_legacy/` and sounds the same in
-both sets. The tests fail when a file in `sfx_legacy/` matches no current event.
+A sound event added later has nothing in `default/sfx_legacy/` and sounds the same in
+both sets. The tests fail when a file in `default/sfx_legacy/` matches no current event.
 
 ## Choices made for this prototype (3 November 2026)
 

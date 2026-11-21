@@ -59,13 +59,37 @@ var _structure := ""
 func open(path: String) -> String:
 	root = path.simplify_path()
 	sounds.clear()
-	if not DirAccess.dir_exists_absolute(sfx_dir()) and not DirAccess.dir_exists_absolute(root.path_join("music")):
+	if not DirAccess.dir_exists_absolute(sfx_dir()):
+		var folders := workspace_folders(root, "sfx")
+		if not folders.is_empty():
+			folder_name = folders[0]
+	if not DirAccess.dir_exists_absolute(sfx_dir()) and workspace_folders(root, "music").is_empty():
 		return "No sfx/ folder in %s" % root
 	_scan(sfx_dir(), "")
 	_sort()
 	load_groups()
 	_structure = structure_signature()
 	return ""
+
+
+## Discover conventional audio folders at the root and in independent workspaces.
+static func workspace_folders(game: String, kind: String) -> Array[String]:
+	var result: Array[String] = []
+	if not DirAccess.dir_exists_absolute(game):
+		return result
+	for parent in [""] + Array(DirAccess.get_directories_at(game)):
+		if str(parent).begins_with("."):
+			continue
+		var base := game.path_join(parent)
+		for child in DirAccess.get_directories_at(base):
+			if child == kind or (kind == "sfx" and child.begins_with("sfx_")):
+				result.append(str(parent).path_join(child) if parent != "" else child)
+	result.sort()
+	var preferred := "default/" + kind
+	if result.has(preferred):
+		result.erase(preferred)
+		result.push_front(preferred)
+	return result
 
 
 func sfx_dir() -> String:
@@ -481,9 +505,10 @@ static func event_names_at(dir: String, top: bool) -> Array[String]:
 ## Number of events in the game folder `game` (holding sfx/), counted without
 ## loading them; -1 when it has no sfx/ folder.
 static func event_count(game: String) -> int:
-	var sfx := game.path_join("sfx")
-	if not DirAccess.dir_exists_absolute(sfx):
+	var folders := workspace_folders(game, "sfx")
+	if folders.is_empty():
 		return -1
+	var sfx := game.path_join(folders[0])
 	return _count_events(sfx, true)
 
 
