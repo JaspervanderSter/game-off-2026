@@ -16,7 +16,10 @@ const ZONE_LEVELS := [Difficulty.APPRENTICE, Difficulty.ADEPT, Difficulty.ARCHMA
 ## player_pack: the player's opening when a lesson needs a precise team, dealt
 ## instead of a choice of compositions (the thief's merge lesson starts with
 ## three shield guardians in the front line to merge into a star, and two more
-## coins: playtest, 21 November 2026).
+## coins: playtest, 21 November 2026); ai: EnemyAI profile keys this opponent
+## plays differently from its zone's AI level (the thief keeps at most two
+## starred creatures, so it does not out-merge the player it teaches: playtest,
+## 21 November 2026).
 const OPPONENTS := [
 	{"id": "hunter", "name": "Hunter", "magic": false, "rule": "", "pack": "", "hearts": 1},
 	{"id": "druid", "name": "Druid", "magic": true, "rule": Ruleset.WAND, "pack": ""},
@@ -26,7 +29,8 @@ const OPPONENTS := [
 	{"id": "merchant", "name": "Merchant", "magic": false, "rule": Ruleset.TRADE, "pack": "Troupe"},
 	{"id": "innkeeper", "name": "Innkeeper", "magic": false, "rule": Ruleset.HARVEST, "pack": "Tavern"},
 	{"id": "thief", "name": "Thief", "magic": false, "rule": Ruleset.MERGE, "pack": "Shadows",
-		"player_pack": {"forms": ["guardian", "guardian", "guardian"], "bonus_gold": 2}},
+		"player_pack": {"forms": ["guardian", "guardian", "guardian"], "bonus_gold": 2},
+		"ai": {"max_starred": 2}},
 	{"id": "court_mage", "name": "Court mage", "magic": true, "rule": Ruleset.CASTERS, "pack": "Arcane"},
 	{"id": "king", "name": "King", "magic": false, "rule": Ruleset.FRENZY, "pack": "Crusade"},
 	{"id": "apprentice", "name": "Apprentice", "magic": true, "rule": "upgrade_recharge", "pack": "Village"},
@@ -112,6 +116,12 @@ static func zone(index: int) -> int:
 
 static func ai_level(index: int) -> int:
 	return ZONE_LEVELS[zone(index)]
+
+
+## EnemyAI profile keys that opponent `index` plays differently from its AI
+## level, or {} (also outside the journey).
+static func ai_overrides(index: int) -> Dictionary:
+	return OPPONENTS[index].get("ai", {}) if index >= 0 else {}
 
 
 static func is_boss(index: int) -> bool:

@@ -51,6 +51,7 @@ func _ready() -> void:
 	_test_combat_click_casts()
 	_test_blizzard_and_recharge_upgrade()
 	_test_ai_strategy()
+	_test_opponent_ai_profile()
 	_test_difficulty()
 	_test_journey_rules()
 	_test_forest_lessons()
@@ -1962,6 +1963,48 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 		var outcomes := CreatureDB.outcomes(id)
 		check(outcomes[0].chance == 0.55 and outcomes[1].chance == 0.30 and outcomes[2].chance == 0.15,
 			"ordered decreasing probabilities for " + id)
+
+
+## A journey opponent can play its own strategy over its AI level: the thief
+## keeps at most two starred creatures, so it no longer out-merges the player.
+func _test_opponent_ai_profile() -> void:
+	check(OpponentDB.ai_overrides(7) == {"max_starred": 2} and OpponentDB.ai_overrides(6).is_empty()
+		and OpponentDB.ai_overrides(-1).is_empty(), "only the thief has its own AI strategy")
+	var game = load("res://main.tscn").instantiate()
+	var progress := "user://thief_ai_test_%d.cfg" % OS.get_process_id()
+	game.difficulty_progress_path = progress
+	add_child(game)
+	game.journey.completed.assign(range(Journey.stage_count()))
+	game.choose_stage(7)
+	var profile: Dictionary = EnemyAI.profile_of(game.enemy)
+	var level_profile: Dictionary = EnemyAI.profile_for(game.enemy.ai_level)
+	check(profile.max_starred == 2 and profile.merged(level_profile) == profile and profile.size() == level_profile.size() + 1,
+		"the thief plays its level's strategy plus its star limit")
+	game.new_duel()
+	game.choose_stage(6)
+	check(EnemyAI.profile_of(game.enemy) == EnemyAI.profile_for(game.enemy.ai_level),
+		"the next duel's opponent drops the thief's strategy")
+	game.free()
+	DirAccess.remove_absolute(progress)
+	# The same seeded thief, with and without its limit, over a long rich duel.
+	for capped in [true, false]:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 21
+		var thief := WizardState.new(1)
+		thief.rules = OpponentDB.ruleset(7)
+		thief.ai_level = OpponentDB.ai_level(7)
+		thief.ai_overrides = OpponentDB.ai_overrides(7) if capped else {}
+		thief.take_starting_pack(OpponentDB.packs_for(7)[OpponentDB.pack_index(7)])
+		var most := 0
+		for round_num in range(1, 16):
+			thief.gold += Rules.income(round_num) + 6
+			thief.refresh_offers(rng)
+			EnemyAI.shop(thief, rng)
+			most = maxi(most, thief.creatures.filter(func(c: OwnedCreature) -> bool: return c.stars > 0).size())
+		if capped:
+			check(most == 2, "the thief's AI keeps at most two starred creatures, and still merges (%d)" % most)
+		else:
+			check(most > 2, "without its limit the same AI stars more creatures (%d)" % most)
 
 
 func _test_ai_strategy() -> void:

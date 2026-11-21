@@ -13,6 +13,9 @@ var shift_recharge_upgraded: bool:
 	set(value):
 		upgrades["recharge"] = 1 if value else 0
 var ai_level := Difficulty.ARCHMAGE # opponent strength; the player ignores it
+## EnemyAI profile keys this opponent plays differently from its level
+## (OpponentDB.ai_overrides); see EnemyAI.profile_of.
+var ai_overrides := {}
 ## Rules of the duel, shared by both wizards (complete outside the journey).
 var rules := Ruleset.new()
 ## False for journey opponents without magic: they never cast.

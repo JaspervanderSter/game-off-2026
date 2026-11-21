@@ -300,6 +300,7 @@ func _start_duel() -> void:
 	board_view.show()
 	hud.show()
 	enemy.ai_level = difficulty
+	enemy.ai_overrides = OpponentDB.ai_overrides(opponent)
 	for state in states:
 		state.rules = ruleset
 		state.learning_duel = OpponentDB.is_learning_encounter(opponent)

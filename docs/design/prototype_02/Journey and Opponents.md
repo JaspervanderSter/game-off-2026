@@ -254,7 +254,11 @@ defaults and can be revised.
   start with the listed composition; the archmage draws from its deck. Outside
   forest, player cards contain only creatures already allowed.
 - **AI strength:** forest uses the guided behaviour above, town uses Adept AI and
-  school uses Archmage AI. Opponents without magic never cast.
+  school uses Archmage AI. Opponents without magic never cast. An opponent can
+  adjust its level's strategy with its own settings. **Confirmed after a playtest
+  (21 November 2026):** the thief merged too much and was too strong for the
+  duel that teaches merging; it now keeps **at most two creatures with a star**
+  (past two, it stops merging unstarred copies and buying copies to merge).
 - **Duels outside the journey** (tests, balance tools) use the complete rules.
 
 ## Map

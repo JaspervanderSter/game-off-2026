@@ -918,6 +918,11 @@ but browsers reserve it for reloading the page without clearing saved progress.
   peasants, a benched starred creature it dislikes) while still merging copies.
 - **Sparring** (`Difficulty.SPARRING`) is never offered in the game. It keeps the
   Apprentice settings from before whims as a fixed reference for balancing.
+- A journey opponent can play its level's strategy with a few keys of its own
+  (`"ai"` in `OpponentDB`, stored in `WizardState.ai_overrides`; the AI and the
+  battle read `EnemyAI.profile_of(state)`). The thief sets `"max_starred": 2`:
+  past two creatures with a star, it neither merges unstarred copies nor buys
+  copies to merge, so it no longer out-merges the player it teaches.
 
 Apprentice calibration (13 November 2026, `training/arena.sh`, live rules):
 the Apprentice beats Sparring 23.9% of 1,760 duels (whims ±60: 32%, ±100: 26%,

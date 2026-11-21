@@ -519,6 +519,9 @@ The user played the journey and listed 22 changes, handled one at a time.
   front line (no choice of composition) and two more coins; the demonstration
   merges the three into a one-star guardian and lasts until the player's first
   star. See [[Journey and Opponents]].
+- **Thief's AI:** it merged too much; it now keeps at most two creatures with a
+  star, through a per-opponent AI setting rather than a special case. See
+  [[Journey and Opponents]].
 
 ## Playtest plan and completion criteria
 
