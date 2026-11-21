@@ -1,6 +1,7 @@
 extends Node
 ## Windows-only experiment. Default playback never reads this workspace.
 signal mode_changed
+static var save_path := "user://audio_mode.cfg"
 var active := false
 var phase := ""
 var music: PhaseMusic
@@ -12,6 +13,7 @@ var root := ""
 var _map_was_visible := false
 var _frenzy := 0
 var _dialog: Control
+var _map_input_was_enabled := false
 
 func _ready() -> void:
 	root = ProjectSettings.globalize_path("res://") if OS.has_feature("editor") else OS.get_executable_path().get_base_dir()
@@ -56,10 +58,25 @@ func apply_sfx() -> void:
 		Sfx.set_overlay(root.path_join(folder))
 		Sfx.reload()
 
-func set_active(value: bool) -> void:
+func restore_mode() -> void:
+	var config := ConfigFile.new()
+	var mode := "custom" if not OS.has_feature("editor") else "default"
+	if config.load(save_path) == OK:
+		var saved = config.get_value("audio", "mode", mode)
+		if saved in ["default", "custom"]:
+			mode = saved
+	set_active(mode == "custom")
+
+func set_active(value: bool, persist := false) -> void:
 	# This guard also prevents a saved setting or caller enabling it in Web.
 	if not OS.has_feature("windows") or OS.has_feature("web"):
 		return
+	if persist:
+		var config := ConfigFile.new()
+		config.set_value("audio", "mode", "custom" if value else "default")
+		var error := config.save(save_path)
+		if error != OK:
+			push_warning("Could not save audio mode (error %d)." % error)
 	if active == value:
 		return
 	active = value
@@ -121,16 +138,26 @@ func advance(dt: float) -> void:
 		voice.advance(dt)
 
 func toggle_dialog() -> void:
-	_dialog.visible = not _dialog.visible
 	if _dialog.visible:
-		_dialog.modulate.a = 0.0
-		create_tween().tween_property(_dialog, "modulate:a", 1.0, 0.15)
+		close_dialog()
+		return
+	# The map handles pointer events in _input, before GUI buttons receive them.
+	# Suspend it while this modal owns input, including an unfinished map swipe.
+	_map_input_was_enabled = map.is_processing_input()
+	map.set_process_input(false)
+	map._clear_touch()
+	_dialog.show()
+	_dialog.modulate.a = 0.0
+	create_tween().tween_property(_dialog, "modulate:a", 1.0, 0.15)
 
 func dialog_visible() -> bool:
 	return _dialog.visible
 
 func close_dialog() -> void:
+	if not _dialog.visible:
+		return
 	_dialog.hide()
+	map.set_process_input(_map_input_was_enabled)
 
 func _build_dialog() -> Control:
 	var shade := ColorRect.new()
@@ -161,7 +188,7 @@ func _build_dialog() -> Control:
 		button.button_pressed = active == choice
 		mode_changed.connect(func() -> void: button.set_pressed_no_signal(active == choice))
 		button.pressed.connect(func() -> void:
-			set_active(choice)
+			set_active(choice, true)
 			close_dialog())
 		row.add_child(button)
 	return shade

@@ -7,7 +7,12 @@ exported for Windows, that needs neither Godot nor the game's code.
 
 After choosing a project, **SFX** and **Music** are separate tabs. Music
 discovers recordings and adjacent settings dynamically; see [[Music]]. The SFX
-tab can open independent `sfx_*` folders without mixing their edits with `sfx/`.
+tab and Music tab open the same project-configured audio root directly.
+There is no audio-mode or workspace selector. An optional `tuning_fork.json`
+at the selected project root sets `audio_root` to a relative subfolder;
+without it, `sfx/` and `music/` are read directly from the selected folder.
+Sibling audio folders are never discovered. Shapeshifters Duel configures
+its editable audio root separately from its original game audio.
 
 - **Starts on the project window**, never on a game by itself: the user
   picks the game folder (the one holding `sfx/`). The window lists the

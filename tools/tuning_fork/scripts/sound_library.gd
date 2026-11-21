@@ -41,7 +41,7 @@ const VALUE_ORDER := ["group", "loop", "protected", "files_from", "volume_db", "
 
 ## The game folder (holding sfx/), as an absolute path.
 var root := ""
-## A project may expose several independent SFX workspaces.
+## SFX folder relative to the selected project, resolved from its configuration.
 var folder_name := "sfx"
 ## Events, sorted by path.
 var sounds: Array[SoundEntry] = []
@@ -59,12 +59,9 @@ var _structure := ""
 func open(path: String) -> String:
 	root = path.simplify_path()
 	sounds.clear()
-	if not DirAccess.dir_exists_absolute(sfx_dir()):
-		var folders := workspace_folders(root, "sfx")
-		if not folders.is_empty():
-			folder_name = folders[0]
+	folder_name = audio_root(root).path_join("sfx")
 	if not DirAccess.dir_exists_absolute(sfx_dir()) and workspace_folders(root, "music").is_empty():
-		return "No sfx/ folder in %s" % root
+		return "No audio folders at the configured audio root in %s" % root
 	_scan(sfx_dir(), "")
 	_sort()
 	load_groups()
@@ -72,23 +69,26 @@ func open(path: String) -> String:
 	return ""
 
 
-## Discover conventional audio folders at the root and in independent workspaces.
+## The project chooses one editable audio root; the tool knows no game modes.
+static func audio_root(game: String) -> String:
+	var config_path := game.path_join("tuning_fork.json")
+	if not FileAccess.file_exists(config_path):
+		return ""
+	var config = JSON.parse_string(FileAccess.get_file_as_string(config_path))
+	if not config is Dictionary or not config.get("audio_root") is String:
+		return "__invalid_audio_root__"
+	var folder: String = config.audio_root.replace("\\", "/")
+	if folder.is_empty() or folder.is_absolute_path() or folder.contains(":") or ".." in folder.split("/"):
+		return "__invalid_audio_root__"
+	return folder.simplify_path()
+
+
+## Only direct audio folders of the configured root are exposed.
 static func workspace_folders(game: String, kind: String) -> Array[String]:
+	var folder := audio_root(game).path_join(kind)
 	var result: Array[String] = []
-	if not DirAccess.dir_exists_absolute(game):
-		return result
-	for parent in [""] + Array(DirAccess.get_directories_at(game)):
-		if str(parent).begins_with("."):
-			continue
-		var base := game.path_join(parent)
-		for child in DirAccess.get_directories_at(base):
-			if child == kind or (kind == "sfx" and child.begins_with("sfx_")):
-				result.append(str(parent).path_join(child) if parent != "" else child)
-	result.sort()
-	var preferred := "default/" + kind
-	if result.has(preferred):
-		result.erase(preferred)
-		result.push_front(preferred)
+	if DirAccess.dir_exists_absolute(game.path_join(folder)):
+		result.append(folder)
 	return result
 
 

@@ -1,15 +1,20 @@
 # Windows audio workspace
 
-The game always starts with its original audio. **Ctrl+Shift+M** opens the
+The Windows export starts in **Custom** when no audio preference has been saved.
+Editor runs start in **Default** when no preference exists. **Ctrl+Shift+M** opens the
 Default / Custom dialog on Windows only; Escape closes it. Switching audio
-does not restart the duel. The choice is deliberately not saved. Web exports
+does not restart the duel. Selecting either mode saves it immediately in the user's
+`audio_mode.cfg`; subsequent launches restore that choice. Web exports
 have no selector and do not include the alternate tracks or SFX workspace.
 
 Open this game folder in Tuning Fork. It needs neither Godot nor game source.
+`tuning_fork.json` points the editor to the editable audio root. Both tabs open
+it directly; the original audio is not offered in the editor. The audio mode
+choice belongs only to the game.
 
 ## Music
 
-The Music tab discovers every OGG/WAV under the selected `default/music/` or `custom/music/` workspace, recursively. A track's
+The Music tab discovers every OGG/WAV under `custom/music/`, recursively. A track's
 settings are in the adjacent JSON with the same basename. A track without a
 sidecar appears too; Save creates its JSON. Other JSON files appear as editable
 project configurations. Unknown settings are preserved. New files appear while
@@ -60,7 +65,7 @@ matches the procedural mix's -14 dB level; it is not peak-normalized.
 
 ## SFX and generated sounds
 
-In SFX, choose **custom/sfx** to edit the alternate workspace. Its initial
+The SFX tab opens `custom/sfx` directly. Its initial
 files are baked copies of the current sound events. `default/sfx` remains the original
 workspace. A file saved in
 `custom/sfx` affects only the alternate mode. Settings and recordings reload

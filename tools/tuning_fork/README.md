@@ -158,3 +158,12 @@ deletion; and group creation, renaming, removal and saving.
 `--tab=music --select=<relative audio or JSON path>` opens a music entry.
 `--screenshot=<file.png>` plays the selected event a few times muted, saves
 the window and quits; without `--root` it saves the project window.
+
+## Project audio root
+
+The SFX and Music tabs edit one audio root, with no workspace or game-mode
+selectors. An optional `tuning_fork.json` in the selected project folder sets
+`audio_root` to a relative subfolder, for example `{"audio_root": "audio"}`.
+Without this file, the tool opens `sfx/` and `music/` directly in the selected
+folder. It does not search sibling folders. Shapeshifters Duel supplies this
+configuration in source and Windows exports to expose only its editable audio.

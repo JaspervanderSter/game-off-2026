@@ -100,7 +100,6 @@ var _rename_error: Label
 var _delete_dialog: ConfirmationDialog
 var _tabs: TabContainer
 var _music_panel: MusicPanel
-var _sfx_workspace: OptionButton
 
 
 func _ready() -> void:
@@ -261,14 +260,7 @@ func _open_root(root: String, select := "") -> void:
 	_stop_all()
 	current = null
 	showing_groups = false
-	if library.root != root:
-		library.folder_name = "sfx"
 	var error := library.open(root)
-	_sfx_workspace.clear()
-	var folders := SoundLibrary.workspace_folders(root, "sfx")
-	for folder in folders:
-		_sfx_workspace.add_item(folder)
-	_sfx_workspace.select(folders.find(library.folder_name))
 	if _music_panel.game_root != root:
 		_music_panel.open(root)
 	else:
@@ -1148,14 +1140,6 @@ func _build_ui() -> void:
 	var sfx_page := VBoxContainer.new()
 	sfx_page.name = "SFX"
 	_tabs.add_child(sfx_page)
-	_sfx_workspace = OptionButton.new()
-	_sfx_workspace.tooltip_text = "Independent sound workspace. Default audio uses sfx; alternate modes can use their own folder."
-	_sfx_workspace.item_selected.connect(func(index: int) -> void:
-		var folder := _sfx_workspace.get_item_text(index)
-		_confirm_unsaved(func() -> void:
-			library.folder_name = folder
-			_open_root(library.root)))
-	sfx_page.add_child(_sfx_workspace)
 	var split := HSplitContainer.new()
 	split.size_flags_vertical = SIZE_EXPAND_FILL
 	sfx_page.add_child(split)

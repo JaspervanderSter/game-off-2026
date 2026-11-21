@@ -1,6 +1,6 @@
 # File format
 
-Everything is plain files under one `sfx/` folder at the game's root,
+Everything is plain files under one `sfx/` folder at the configured audio root,
 readable without the [[Tool]] and friendly to version control
 ([[Principles]]).
 
@@ -49,3 +49,12 @@ shown by the tool, which creates the JSON on the first save.
 
 OGG Vorbis, named after the event and numbered from 2
 ([[Sound files]]).
+
+## Editor project configuration
+
+An optional `tuning_fork.json` at the selected project root chooses the editable
+audio folder, using a relative `audio_root` path. Without this file, the selected
+folder itself is the audio root. Both tabs open its `sfx/` and `music/` folders;
+no sibling audio roots are offered. This configuration belongs to the editor,
+not to the game runtime. Include it beside the executable when distributing a
+game whose editable audio lives in a subfolder.

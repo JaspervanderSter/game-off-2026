@@ -18,12 +18,39 @@ static func run(host: Node, check: Callable) -> void:
 		return
 	var alternate: Node = game.alternate_audio
 	alternate.set_process(false)
-	check.call(not alternate.active and alternate.catalog.entries.is_empty(), "Windows starts in default mode without loading alternate audio")
+	check.call(alternate.active == not OS.has_feature("editor"), "only exported Windows starts in Custom without a saved preference")
 	game._input(event)
 	check.call(alternate.dialog_visible(), "Ctrl+Shift+M opens the mode dialog")
+	check.call(not game.map_screen.is_processing_input(), "audio dialog suspends map pointer interception")
+	# Send real pointer events through the viewport, rather than calling pressed.
+	await host.get_tree().process_frame
+	await host.get_tree().process_frame
+	var buttons: Array[Node] = alternate._dialog.find_children("*", "Button", true, false)
+	for index in [1, 0]:
+		var button: Button = buttons[index]
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.position = button.get_global_rect().get_center()
+		click.pressed = true
+		host.get_viewport().push_input(click, true)
+		click = click.duplicate()
+		click.pressed = false
+		host.get_viewport().push_input(click, true)
+		check.call(alternate.active == (index == 1) and not alternate.dialog_visible(), "pointer selects %s and closes the dialog" % button.text)
+		check.call(game.map_screen.is_processing_input(), "closing audio dialog restores map input")
+		game._input(event)
+		check.call(button.button_pressed, "reopening audio dialog shows selected %s mode" % button.text)
+		var restarted = load("res://main.tscn").instantiate()
+		host.add_child(restarted)
+		check.call(restarted.alternate_audio.active == (index == 1), "restarting restores the selected %s mode" % button.text)
+		restarted.free()
+		# Each controller shares Sfx; reapply the live game's overlay after freeing it.
+		if alternate.active:
+			alternate.apply_sfx()
 	event.keycode = KEY_ESCAPE
 	game._input(event)
 	check.call(not alternate.dialog_visible(), "Escape closes the mode dialog")
+	check.call(game.map_screen.is_processing_input(), "Escape restores map input")
 	game.music.transition_to("prep")
 	game.music.advance_fades(2.0)
 	alternate.set_active(true)
@@ -66,5 +93,6 @@ static func run(host: Node, check: Callable) -> void:
 	game.free()
 	var fresh = load("res://main.tscn").instantiate()
 	host.add_child(fresh)
-	check.call(not fresh.alternate_audio.active, "the next launch starts in default mode again")
+	check.call(not fresh.alternate_audio.active, "saved Default overrides the Windows startup default")
 	fresh.free()
+	DirAccess.remove_absolute(preload("res://scripts/audio/alternate_audio.gd").save_path)

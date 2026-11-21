@@ -13,6 +13,8 @@ func _ready() -> void:
 	# Nor do they read or change the player's art style.
 	ArtStyle.save_path = "user://art_style_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
 	ArtStyle.reload()
+	# Audio mode checks must never read or overwrite the player's preference.
+	preload("res://scripts/audio/alternate_audio.gd").save_path = "user://audio_mode_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
 	_test_art_style()
 	_test_restored_sounds()
 	_test_shape_atlas()
@@ -31,7 +33,7 @@ func _ready() -> void:
 	_test_round_frieze()
 	_test_shop_drag_and_enemy_preparation()
 	_test_phase_music()
-	preload("res://tests/audio_workspace_tests.gd").run(self, check)
+	await preload("res://tests/audio_workspace_tests.gd").run(self, check)
 	_test_result_recordings()
 	_test_sound_files()
 	_test_round_reset_and_damage()

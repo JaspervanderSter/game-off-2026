@@ -51,6 +51,7 @@ foreach ($workspace in @("default", "custom")) {
 		Copy-Item -LiteralPath $_.FullName -Destination $target
 	}
 }
+Copy-Item -LiteralPath (Join-Path $project "tuning_fork.json") -Destination $Out
 Copy-Item -LiteralPath (Join-Path $project "AUDIO_WORKSPACE.md") -Destination $Out
 @"
 Sound effects of Shapeshifters Duel

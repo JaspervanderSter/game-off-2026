@@ -11,25 +11,21 @@ config_version=5
 [application]
 
 config/name="Shapeshifters Duel"
-config/description="Prototype 02: auto-battler duel loop with single-target shapeshifting."
+config/description="Shapeshifter Duel is an auto-battler where you shapeshift creatures mid-fight."
 config/version="0.2.0"
 run/main_scene="res://main.tscn"
-run/main_scene.web_benchmark="res://tests/perf_benchmark.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 config/windows_native_icon="res://icon.ico"
-
-[autoload]
-
-Sfx="*res://addons/tuning_fork/sfx.gd"
-
-[tuning_fork]
-
-sfx_directory="default/sfx"
+run/main_scene.web_benchmark="res://tests/perf_benchmark.tscn"
 
 [audio]
 
 general/default_playback_type.web=0
+
+[autoload]
+
+Sfx="*res://addons/tuning_fork/sfx.gd"
 
 [display]
 
@@ -37,12 +33,16 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/tuning_fork/plugin.cfg")
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.16, 0.12, 0.1, 1)
 
-[editor_plugins]
+[tuning_fork]
 
-enabled=PackedStringArray("res://addons/tuning_fork/plugin.cfg")
+sfx_directory="default/sfx"

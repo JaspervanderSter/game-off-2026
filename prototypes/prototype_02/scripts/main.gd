@@ -134,6 +134,7 @@ func _ready() -> void:
 		alternate_audio.map = map_screen
 		add_child(alternate_audio)
 		music.replacement = alternate_audio
+		alternate_audio.restore_mode()
 	new_duel()
 	# The game opens on the title, in the sky above the journey's islands.
 	show_menu(true)
