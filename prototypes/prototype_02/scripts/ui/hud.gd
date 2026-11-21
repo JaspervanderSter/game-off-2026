@@ -75,6 +75,16 @@ const UPGRADE_STEP := 44.0
 const FIGHT_GLINT_PERIOD := 4.0
 const FIGHT_GLINT_SWEEP := 0.72
 const FIGHT_HOVER_SCALE := 1.07
+# Reroll button: while a reroll makes sense (main.reroll_sensible), a glint
+# sweeps across it every REROLL_GLINT_PERIOD, the first one REROLL_GLINT_DELAY
+# after it starts making sense. A reroll turns each replaced offer over on a
+# horizontal axis: the old offer, its plain wooden back, the new offer.
+const REROLL_GLINT_DELAY := 0.5
+const REROLL_GLINT_PERIOD := 3.0
+const REROLL_GLINT_SWEEP := 0.75
+const OFFER_FLIP_TIME := 0.5
+const OFFER_FLIP_STAGGER := 0.08
+const OFFER_BACK := Color(0.33, 0.22, 0.13)
 # Wand upgrade tooltip: two scene panels, current level then next level.
 const TOOLTIP_SIZE := Vector2(300, 132)
 const TOOLTIP_PANEL := Vector2(120, 112)
@@ -116,6 +126,10 @@ var font: Font
 var loss_rewards: Array[Dictionary] = []
 var reward_time := 0.0
 var harvest_time := 0.0
+## Offers turning over after a reroll: {"slot", "from" (the replaced offer, ""
+## for an empty slot), "start"}, timed by offer_flip_time.
+var offer_flips: Array[Dictionary] = []
+var offer_flip_time := 0.0
 var harvest_sources: Array[Dictionary] = []
 var harvest_coins: Array[Dictionary] = []
 var harvest_speed := 1.0
@@ -165,6 +179,7 @@ func _ready() -> void:
 func _process(dt: float) -> void:
 	advance_loss_rewards(dt)
 	advance_harvest(dt)
+	advance_offer_flips(dt)
 	advance_round_frieze(dt)
 	if game.phase == game.Phase.OVER:
 		victory.advance(dt)
@@ -627,6 +642,8 @@ func _shop_key() -> Array:
 		key.append(Time.get_ticks_msec()) # the glint crosses the fight button
 	else:
 		key.append(-1)
+	if not offer_flips.is_empty() or reroll_glint(game.reroll_sense_time) >= 0.0:
+		key.append(Time.get_ticks_msec()) # offers turn over, or the glint crosses the reroll button
 	return key
 
 
@@ -1139,20 +1156,16 @@ func _draw_shop() -> void:
 	for i in Rules.SHOP_SIZE:
 		var r := offer_rect(i)
 		var id: String = game.player.offers[i] if i < game.player.offers.size() else ""
-		if id == "":
-			_ci.draw_rect(r, Color(0.1, 0.08, 0.07, 0.6))
-			_ci.draw_rect(r, Color(0.35, 0.25, 0.18), false, 2.0)
+		var flip := _offer_flip(i)
+		if not flip.is_empty():
+			_draw_turning_offer(r, flip, id)
 			continue
-		var affordable: bool = game.player.gold >= CreatureDB.get_form(id).price
+		if id == "":
+			_draw_empty_offer(r)
+			continue
 		# Shown read-only during the fight: no purchase highlight.
 		var hovered: bool = r.has_point(get_global_mouse_position()) and not selling and game.phase == game.Phase.PREP
-		_panel(r, Color(0.2, 0.14, 0.1) if hovered and affordable else Color(0.14, 0.1, 0.08))
-		Icons.token(_ci, id, r.position + Vector2(48, 38), 30, 0, hovered and affordable)
-		var price: int = CreatureDB.get_form(id).price
-		for j in price:
-			Icons.coin(_ci, r.position + Vector2(112 + j * 32, 38), 13)
-		if not affordable:
-			_ci.draw_rect(r, Color(0, 0, 0, 0.55))
+		_draw_offer(r, id, hovered)
 		if game.player.locked[i]:
 			_ci.draw_rect(r.grow(-2), Icons.GOLD, false, 3.0)
 			Icons.padlock(_ci, r.position + Vector2(266, 19))
@@ -1165,6 +1178,9 @@ func _draw_shop() -> void:
 	_ci.draw_string(font, reroll_rect().position + Vector2(134, 25), str(Rules.REROLL_COST), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Icons.GOLD)
 	if not reroll_ok:
 		_ci.draw_rect(reroll_rect(), Color(0, 0, 0, 0.35))
+	var glint := reroll_glint(game.reroll_sense_time)
+	if glint >= 0.0:
+		_draw_reroll_glint(reroll_rect(), glint)
 	if selling:
 		var r := shop_rect()
 		var over := r.has_point(get_global_mouse_position())
@@ -1172,6 +1188,101 @@ func _draw_shop() -> void:
 		_ci.draw_rect(r, Icons.GOLD, false, 3.0)
 		Icons.coin(_ci, r.get_center(), 34)
 		Icons.arrow_right(_ci, r.get_center() + Vector2(0, -60), 22, Icons.GOLD)
+
+
+func _draw_empty_offer(r: Rect2) -> void:
+	_ci.draw_rect(r, Color(0.1, 0.08, 0.07, 0.6))
+	_ci.draw_rect(r, Color(0.35, 0.25, 0.18), false, 2.0)
+
+
+## An offer card: the creature and its price in coins, dimmed when too dear.
+func _draw_offer(r: Rect2, id: String, hovered := false) -> void:
+	var price: int = CreatureDB.get_form(id).price
+	var affordable: bool = game.player.gold >= price
+	_panel(r, Color(0.2, 0.14, 0.1) if hovered and affordable else Color(0.14, 0.1, 0.08))
+	Icons.token(_ci, id, r.position + Vector2(48, 38), 30, 0, hovered and affordable)
+	for j in price:
+		Icons.coin(_ci, r.position + Vector2(112 + j * 32, 38), 13)
+	if not affordable:
+		_ci.draw_rect(r, Color(0, 0, 0, 0.55))
+
+
+## Starts turning over the offers a reroll replaced, left to right; a locked
+## offer stays. `before` holds the offers as they were.
+func begin_reroll_flip(before: Array) -> void:
+	offer_flips.clear()
+	offer_flip_time = 0.0
+	for i in mini(before.size(), game.player.offers.size()):
+		if game.player.offers[i] != before[i]:
+			offer_flips.append({"slot": i, "from": before[i], "start": offer_flips.size() * OFFER_FLIP_STAGGER})
+
+
+func advance_offer_flips(dt: float) -> void:
+	if offer_flips.is_empty():
+		return
+	offer_flip_time += dt
+	if offer_flip_time >= float(offer_flips[-1].start) + OFFER_FLIP_TIME:
+		offer_flips.clear()
+
+
+func _offer_flip(slot: int) -> Dictionary:
+	for flip in offer_flips:
+		if flip.slot == slot:
+			return flip
+	return {}
+
+
+## An offer turning over on a horizontal axis: the replaced offer (an empty
+## slot shows nothing there), its plain wooden back, then the new offer,
+## darker as the card turns edge-on.
+func _draw_turning_offer(r: Rect2, flip: Dictionary, id: String) -> void:
+	_draw_empty_offer(r)
+	var u := clampf((offer_flip_time - float(flip.start)) / OFFER_FLIP_TIME, 0.0, 1.0)
+	var old_side := u < 0.25
+	var back := not old_side and u < 0.75
+	if (old_side and flip.from == "") or (not old_side and not back and id == ""):
+		return # nothing on that side: the empty slot shows
+	var squash := absf(cos(u * TAU))
+	if squash < 0.03:
+		return
+	# The shop column only slides sideways, so its transform is a translation.
+	var column := Shapes.current_transform(_ci).origin
+	Shapes.set_transform(_ci, column + r.get_center(), 0.0, Vector2(1.0, squash))
+	var card := Rect2(-r.size * 0.5, r.size)
+	if back:
+		_ci.draw_rect(card, OFFER_BACK)
+		_ci.draw_rect(card, Color(0.54, 0.38, 0.22), false, 3.0)
+		_ci.draw_rect(card.grow(-7), Color(0.26, 0.17, 0.1), false, 2.0)
+	else:
+		_draw_offer(card, flip.from if old_side else id)
+	_ci.draw_rect(card, Color(0, 0, 0, (1.0 - squash) * 0.45))
+	Shapes.set_transform(_ci, column)
+
+
+## Progress (0 to 1) of the glint across the reroll button after a reroll has
+## made sense for `sense_time` seconds, or -1 between two sweeps.
+static func reroll_glint(sense_time: float) -> float:
+	if sense_time < REROLL_GLINT_DELAY:
+		return -1.0
+	var phase := fmod(sense_time - REROLL_GLINT_DELAY, REROLL_GLINT_PERIOD)
+	return phase / REROLL_GLINT_SWEEP if phase < REROLL_GLINT_SWEEP else -1.0
+
+
+## Two slanted bands of light cross the reroll button, clipped to it, and its
+## frame catches the light as they pass: it draws the eye without the dimming
+## of a rule spotlight, which made a reroll feel compulsory.
+func _draw_reroll_glint(r: Rect2, sweep: float) -> void:
+	var k := smoothstep(0.0, 1.0, sweep)
+	var box := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
+	var along := Vector2.from_angle(-PI * 0.5 + deg_to_rad(25.0)) * r.size.y * 1.6
+	# Each band: offset behind the leading one, width, opacity.
+	for band in [Vector3(0.0, 16.0, 0.4), Vector3(-34.0, 5.0, 0.3)]:
+		var mid := Vector2(lerpf(r.position.x - 40.0, r.end.x + 40.0, k) + band.x, r.get_center().y)
+		var across := Vector2(band.y * 0.5, 0.0)
+		var shape := PackedVector2Array([mid - along - across, mid + along - across, mid + along + across, mid - along + across])
+		for piece in Geometry2D.intersect_polygons(box, shape):
+			_ci.draw_colored_polygon(piece, Color(1.0, 0.97, 0.85, band.z))
+	_ci.draw_rect(r, Color(Icons.GOLD, 0.7 * sin(PI * k)), false, 2.0)
 
 
 func _draw_fight_button() -> void:

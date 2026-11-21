@@ -522,6 +522,13 @@ The user played the journey and listed 22 changes, handled one at a time.
 - **Thief's AI:** it merged too much; it now keeps at most two creatures with a
   star, through a per-opponent AI setting rather than a special case. See
   [[Journey and Opponents]].
+- **Trading lesson:** the merchant's duel no longer spotlights the reroll button
+  when the stall opens, which pushed a pointless reroll and felt compulsory.
+  In every duel with trading, the button glints (a band of light, no dimming,
+  no sound) only while a reroll makes sense: nothing left to buy, coins for the
+  reroll and a creature, and room for one. A reroll turns the stall's panels
+  over on a horizontal axis, the old offer, a plain back, the new one; locked
+  offers stay. See [[Journey and Opponents]].
 
 ## Playtest plan and completion criteria
 

@@ -379,7 +379,7 @@ blocked, and combat slows to a quarter speed while the dimming is full.
 | Shop (lumberjack) | Creature stall | Shop in place |
 | Hex (swamp witch) | First enemy creature, followed | First fight |
 | Animal bonus (archdruid) | The creature, followed | First allied shapeshift into a bonus form |
-| Trading (merchant) | Reroll button | Shop in place |
+| Trading (merchant) | No spotlight: the reroll button glints (see "Trading lesson") | Whenever a reroll makes sense |
 | Harvest (innkeeper) | The harvester's coins, followed into the purse | First fight with a harvester |
 | Merging (thief) | The three shield guardians (or the first identical pair) | Shop in place with copies |
 | Casters (court mage) | The caster, followed | First spell channel |
@@ -442,6 +442,39 @@ beside the counter (a number, since it is a game value). Implementation
 choices: the player's harvester is preferred, the first harvest plays at 0.6
 speed, and the light rests 0.9 s on the purse. Rejected: two lights linked by a
 dotted arc, a giant coin without dimming, a light on the purse only.
+
+### Trading lesson — playtest revision, 21 November 2026
+
+The user found the merchant's introduction of the reroll misleading: the
+spotlight lit the reroll button as soon as the stall opened, when a reroll is
+pointless (fresh offers nobody has looked at), and its dimming, ring and chime
+made pressing the button feel compulsory. Confirmed after two rounds of playable
+proposals in the real merchant duel:
+
+- **No spotlight for trading.** The merchant's duel opens like any other.
+- **The reroll button glints only while a reroll makes sense:** nothing left on
+  the stall can be bought (it is empty, or what is left is too dear), the gold
+  still covers the reroll and the cheapest creature the stall could deal, and
+  there is room for a creature. With the stall in place and nothing dragged, a
+  slanted band of light crosses the button and its frame catches the light,
+  every few seconds while that lasts; no dimming, no sound. It draws the eye
+  without asking for a press. It applies in every duel with trading, not only
+  the merchant's. In the town before the court mage, every offer costs at most
+  two coins, so in practice it means an emptied stall with two coins or more.
+- **A reroll turns the stall's panels over** on a horizontal axis: each replaced
+  offer flips to a plain wooden back (no icon), then to the new offer, left to
+  right; a slot emptied by a purchase swings in from its back; a locked offer
+  stays still, which also shows what the lock does.
+- **A new round's offers are already on the stall** as it slides in.
+
+Implementation choices: the glint starts 0.5 s after a reroll starts making
+sense and crosses the button in 0.75 s every 3 s; a panel turns in 0.5 s, 0.08 s
+after its left neighbour. Rejected: the reroll arrows turning on the button; the
+merchant rerolling first beside her purse; a button "awake" (arrows turning
+slowly) whenever useful; the stall dealing its offers face down and turning them
+at each round, with the arrows flying from the cards to the button; an icon on
+the panels' backs; and a new round's stall arriving empty, its offers popping in
+one by one.
 
 ### Merge lesson — playtest revision, 20 November 2026
 

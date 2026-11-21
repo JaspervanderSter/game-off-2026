@@ -56,6 +56,7 @@ func _ready() -> void:
 	_test_journey_rules()
 	_test_forest_lessons()
 	_test_rule_spotlight()
+	_test_reroll_glint()
 	_test_learning_pause()
 	_test_learning_cue_spares_tank()
 	_test_abandon_replay()
@@ -3090,6 +3091,73 @@ func _test_learning_cue_spares_tank() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://learning_cue_tank_test_%d.cfg" % OS.get_process_id()))
 
 
+## Trading is shown without a spotlight (playtest, 21 November 2026): the reroll
+## button glints only while a reroll makes sense, and a reroll turns the
+## replaced offers over.
+func _test_reroll_glint() -> void:
+	var s := WizardState.new(0)
+	s.rules = OpponentDB.ruleset(5)
+	var cheapest := ""
+	for id in s.rules.shop_ids():
+		if cheapest == "" or CreatureDB.get_form(id).price < CreatureDB.get_form(cheapest).price:
+			cheapest = id
+	var low: int = CreatureDB.get_form(cheapest).price
+	s.offers.assign([cheapest, "", ""])
+	s.gold = 5
+	check(not s.reroll_makes_sense(), "no reroll glint while an offer can still be bought")
+	s.offers.assign(["", "", ""])
+	check(s.reroll_makes_sense(), "an emptied stall with coins to spare makes a reroll sensible")
+	s.gold = Rules.REROLL_COST + low - 1
+	check(not s.reroll_makes_sense(), "no glint when the reroll would leave too little for any creature")
+	# Offers too dear to buy: three-coin creatures arrive with the court mage.
+	var school := WizardState.new(0)
+	school.rules = OpponentDB.ruleset(14)
+	school.gold = Rules.REROLL_COST + low
+	school.offers.assign(["pyromancer", "pyromancer", ""])
+	check(CreatureDB.get_form("pyromancer").price > school.gold and school.reroll_makes_sense(),
+		"offers too dear to buy make a reroll sensible")
+	s.gold = 5
+	while s.has_space():
+		s.add_creature(cheapest)
+	check(not s.reroll_makes_sense(), "no glint without room for another creature")
+	var before_trade := WizardState.new(0)
+	before_trade.rules = OpponentDB.ruleset(4)
+	before_trade.gold = 9
+	check(not before_trade.reroll_makes_sense(), "no glint before the merchant introduces trading")
+	check(Hud.reroll_glint(Hud.REROLL_GLINT_DELAY - 0.1) < 0.0 and Hud.reroll_glint(Hud.REROLL_GLINT_DELAY + 0.1) >= 0.0
+		and Hud.reroll_glint(Hud.REROLL_GLINT_DELAY + Hud.REROLL_GLINT_SWEEP + 0.1) < 0.0
+		and Hud.reroll_glint(Hud.REROLL_GLINT_DELAY + Hud.REROLL_GLINT_PERIOD + 0.1) >= 0.0,
+		"the glint waits a moment, then crosses the button every few seconds")
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.difficulty_progress_path = "user://reroll_glint_test_%d.cfg" % OS.get_process_id()
+	game.journey.completed.assign(range(5))
+	game.choose_stage(5)
+	game.choose_pack(0)
+	game.shop_out = 0.0
+	game.enemy_preparing = false
+	game.player.gold = 5
+	game.player.offers.assign([cheapest, "", cheapest])
+	game.player.locked.assign([false, false, true])
+	check(not game.reroll_sensible(), "the merchant's stall opens without a glint while its offers can be bought")
+	game._left_press(Hud.reroll_rect().get_center())
+	var hud: Hud = game.hud
+	var turned := hud.offer_flips.map(func(f: Dictionary) -> int: return f.slot)
+	check(turned == [0, 1] and hud.offer_flips[1].from == "" and game.player.offers[2] == cheapest,
+		"a reroll turns over the replaced offer and the empty slot, never a locked one")
+	hud.advance_offer_flips(Hud.OFFER_FLIP_TIME + Hud.OFFER_FLIP_STAGGER * 2.0)
+	check(hud.offer_flips.is_empty(), "the turned offers settle")
+	game.player.offers.assign(["", "", ""])
+	game.player.locked.assign([false, false, false])
+	game.player.gold = 5
+	check(game.reroll_sensible(), "the emptied stall's reroll button glints")
+	game.drag = game.player.creatures[0]
+	check(not game.reroll_sensible(), "no glint while a creature is dragged")
+	game.drag = null
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://reroll_glint_test_%d.cfg" % OS.get_process_id()))
+
+
 ## A journey duel spotlights its opponent's rule once, when it first shows up;
 ## merge pips stay hidden until merging exists.
 func _test_rule_spotlight() -> void:
@@ -3104,17 +3172,17 @@ func _test_rule_spotlight() -> void:
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
 	game.difficulty_progress_path = "user://rule_spotlight_test_%d.cfg" % OS.get_process_id()
-	game.journey.completed.assign(range(5))
+	game.journey.completed.assign(range(2))
 	game.journey.introduced.clear()
-	game.choose_stage(5)
+	game.choose_stage(2)
 	game.choose_pack(0)
-	check(game.spotlight.rule == Ruleset.TRADE and game.spotlight.pending(), "the merchant's duel waits to show trading")
+	check(game.spotlight.rule == Ruleset.SHOP and game.spotlight.pending(), "the lumberjack's duel waits to show the shop")
 	game.shop_out = 0.0
 	game.enemy_preparing = false
 	game._watch_rule_spotlight()
-	check(game.spotlight.active() and Ruleset.TRADE in game.journey.introduced,
-		"the reroll button is spotlit as soon as the shop is in place, and remembered")
-	check(game.spotlight.center == Hud.reroll_rect().get_center(), "the spotlight opens on the reroll button")
+	check(game.spotlight.active() and Ruleset.SHOP in game.journey.introduced,
+		"the stall is spotlit as soon as it is in place, and remembered")
+	check(game.spotlight.center == Hud.stall_rect().get_center(), "the spotlight opens on the stall")
 	game.spotlight.advance(RuleSpotlight.FADE_IN)
 	check(game.spotlight.time_scale() < 0.5, "the duel slows while the spotlight is on")
 	game.spotlight.advance(RuleSpotlight.DURATION)
@@ -3148,10 +3216,15 @@ func _test_rule_spotlight() -> void:
 	check(not game.spotlight.active() and hud.harvest_lesson.is_empty() and hud.harvest_speed == 1.0,
 		"the harvest lesson ends and the harvest plays at its normal speed again")
 	hud.set_process(true)
+	game.journey.completed.assign(range(2))
+	game.new_duel()
+	game.choose_stage(2)
+	check(not game.spotlight.pending(), "a rule already introduced is not spotlit again")
 	game.journey.completed.assign(range(5))
 	game.new_duel()
 	game.choose_stage(5)
-	check(not game.spotlight.pending(), "a rule already introduced is not spotlit again")
+	check(not game.spotlight.pending() and Ruleset.TRADE not in game.journey.introduced,
+		"the merchant's trading has no spotlight: the reroll button glints when a reroll makes sense")
 	game.choose_pack(0)
 	var hovered: OwnedCreature = game.player.creatures[0]
 	game.hover_info = {"owned": hovered}
@@ -3162,7 +3235,7 @@ func _test_rule_spotlight() -> void:
 	var config := ConfigFile.new()
 	game.journey.save(config)
 	restored.restore(config, Difficulty.APPRENTICE)
-	check(Ruleset.TRADE in restored.introduced, "introduced rules are saved")
+	check(Ruleset.SHOP in restored.introduced, "introduced rules are saved")
 	game.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://rule_spotlight_test_%d.cfg" % OS.get_process_id()))
 

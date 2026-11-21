@@ -224,6 +224,15 @@ All confirmed rules and delegated defaults of the design note, notably:
 - Reroll costs 1 gold and replaces all unlocked offers, including sold slots.
   Right-click toggles an offer lock, retained across rerolls and round refreshes;
   buying clears that slot's lock. All-locked rerolls consume nothing.
+- A reroll turns each replaced offer over on a horizontal axis (old offer, plain
+  wooden back, new offer, left to right, 0.5 s each); a locked offer stays
+  still. A new round's offers are already on the stall as it slides in.
+- The reroll button glints only while a reroll makes sense
+  (`WizardState.reroll_makes_sense`): nothing left on the stall can be bought,
+  the gold covers the reroll and the cheapest creature the stall could deal, and
+  there is room for one. With the stall in place and nothing dragged, a band of
+  light crosses the button 0.5 s after that starts, then every 3 s; no dimming
+  and no sound, so it never makes a reroll feel compulsory.
 - Manually drop a creature onto an identical form of the same star rank, on the
   board or bench. Two copies form a group with two of three circles filled,
   without any health or damage bonus. The third copy completes the group and
@@ -866,11 +875,14 @@ door. Those further back are drawn slightly smaller, and the road winds between 
 The first time a rule shows up in a journey duel, `RuleSpotlight` dims the screen
 around the new element, rings it in gold with orbiting sparkles, and lifts the
 dimming after about 2.7 seconds, without text or blocking input. Interface rules
-are shown as soon as their element is on screen (stall, reroll, upgrade row);
+are shown as soon as their element is on screen (stall, upgrade row);
 the others when they happen: charge crystals at the druid's first fight, the first
 enemy creature for hexes, the first allied bonus shapeshift, the first harvest,
 the first mergeable pair, the first caster channelling, and the timer bar when
 frenzy starts. Combat slows to a quarter speed while the dimming is full.
+Trading (the merchant) has no spotlight: lighting the reroll button as the stall
+opened pushed a pointless reroll. The reroll button's glint, played only while a
+reroll makes sense (see the shop rules above), shows it instead.
 
 The harvest shows the coin rather than the peasant: the opening starts on a
 harvester (the player's first one when it has any) and its coin fan, follows its

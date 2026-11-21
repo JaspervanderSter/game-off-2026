@@ -122,6 +122,10 @@ func _ready() -> void:
 		await _capture_harvest_lesson()
 		get_tree().quit()
 		return
+	if "--trade-lesson-only" in OS.get_cmdline_user_args():
+		await _capture_trade_lesson()
+		get_tree().quit()
+		return
 	get_viewport().warp_mouse(Hud.difficulty_rect(Difficulty.ADEPT).get_center())
 	await _frames(4)
 	await _shot("00_difficulty")
@@ -448,6 +452,43 @@ func _capture_harvest_lesson() -> void:
 		await _seconds(t - elapsed)
 		elapsed = t
 		await _shot("harvest_lesson_%03d" % roundi(t * 100))
+
+
+## The merchant's duel, first visit: the stall opens without a spotlight, a
+## reroll turns the offers over (an empty slot too, a locked one stays), and
+## the reroll button glints once the stall has nothing left to buy.
+func _capture_trade_lesson() -> void:
+	game.difficulty_progress_path = capture_dir.path_join("trade_progress.cfg")
+	game.journey.completed.assign(range(5))
+	for index in 5:
+		var rule: String = OpponentDB.get_opponent(index).rule
+		if rule != "" and rule not in game.journey.introduced:
+			game.journey.introduced.append(rule)
+			game.journey.lessons_done.append(rule)
+	game.journey.introduced.append(game.FIGHT_LESSON)
+	game.journey.lessons_done.append(game.FIGHT_LESSON)
+	game.choose_stage(5)
+	game.choose_pack(0)
+	while game.enemy_preparing or game.shop_out > 0.0:
+		await _frames(1)
+	get_viewport().warp_mouse(Vector2(640, 690))
+	await _seconds(0.6)
+	await _shot("trade_0_stall")
+	game.player.gold = 9
+	game.player.buy(1)
+	game.player.locked[2] = true
+	game._left_press(Hud.reroll_rect().get_center())
+	for n in 4:
+		await _seconds(0.11)
+		await _shot("trade_1_flip_%d" % n)
+	await _seconds(0.4)
+	game.player.locked[2] = false
+	for i in Rules.SHOP_SIZE:
+		game.player.buy(i)
+	game.player.gold = 3
+	while Hud.reroll_glint(game.reroll_sense_time) < 0.3:
+		await _frames(1)
+	await _shot("trade_2_glint")
 
 
 func _frames(n: int) -> void:

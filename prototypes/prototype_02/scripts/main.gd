@@ -39,6 +39,9 @@ var merge_lesson_done := false
 ## drop refused because the board already holds Rules.FIELD_CAP creatures.
 var field_full_flash := 0.0
 const FIELD_FULL_FLASH := 0.9
+## Seconds a reroll has made sense for (WizardState.reroll_makes_sense, with the
+## stall in place); the reroll button glints meanwhile (Hud.reroll_glint).
+var reroll_sense_time := 0.0
 ## Spotlight on the rule this duel's opponent introduces, the first time it shows.
 var spotlight := RuleSpotlight.new()
 ## True while a replayed duel waits, paused, for the player to confirm leaving it.
@@ -204,6 +207,13 @@ func new_duel() -> void:
 		show_map()
 
 
+## True while a reroll makes sense with the stall in place and nothing dragged:
+## the reroll button then glints, without pushing a reroll at any other time.
+func reroll_sensible() -> bool:
+	return phase == Phase.PREP and ruleset.has(Ruleset.TRADE) and shop_out <= 0.0 and drag == null \
+		and not abandon_asked and player.reroll_makes_sense()
+
+
 ## True while the hunter's preparation waits for the player's very first fight.
 func fight_lesson_waiting() -> bool:
 	return opponent == 0 and phase == Phase.PREP and 0 not in journey.completed \
@@ -283,6 +293,11 @@ func _start_duel() -> void:
 	merge_lesson_done = false
 	field_full_flash = 0.0
 	var rule := journey.rule_to_introduce(opponent)
+	if rule == Ruleset.TRADE:
+		# Trading has no spotlight: it pushed a reroll as soon as the stall
+		# opened, when a reroll is pointless. The reroll button glints instead,
+		# in every duel, while a reroll makes sense (playtest, 21 November 2026).
+		rule = ""
 	if opponent == 0 and 0 not in journey.completed and FIGHT_LESSON not in journey.introduced:
 		rule = FIGHT_LESSON
 	spotlight.reset(rule)
@@ -840,7 +855,9 @@ func _left_press(pos: Vector2) -> void:
 						Sfx.play("ui/fail")
 					return
 			if ruleset.has(Ruleset.TRADE) and Hud.reroll_rect().has_point(pos):
+				var before := player.offers.duplicate()
 				if player.reroll(rng):
+					hud.begin_reroll_flip(before)
 					Sfx.play("ui/purchase_confirmed")
 				elif player.gold < Rules.REROLL_COST:
 					Sfx.play("ui/insufficient_gold")
@@ -993,6 +1010,7 @@ func _process(dt: float) -> void:
 	if not abandon_asked:
 		spotlight.advance(dt)
 	field_full_flash = maxf(0.0, field_full_flash - dt)
+	reroll_sense_time = reroll_sense_time + dt if reroll_sensible() else 0.0
 	var mouse := get_global_mouse_position()
 	hover_info = {}
 	if abandon_asked:
@@ -1109,8 +1127,6 @@ func _watch_rule_spotlight() -> void:
 		_spotlight(Rules.FIGHT_CENTER, Vector2(66, 66))
 	elif rule == Ruleset.SHOP and shop_shown:
 		_spotlight(Hud.stall_rect().get_center(), Hud.STALL_RECT.size * 0.54)
-	elif rule == Ruleset.TRADE and shop_shown:
-		_spotlight(Hud.reroll_rect().get_center(), Vector2(Hud.REROLL_RECT.size.x * 0.56, 34))
 	elif rule.begins_with("upgrade_") and shop_shown and scroll_open >= 1.0:
 		var row := Rules.WAND_UPGRADES.find(rule.trim_prefix("upgrade_"))
 		_spotlight(Hud.upgrade_rect(row, ruleset).get_center(), Vector2(Hud.UPGRADE_SIZE.x * 0.58, 32))
