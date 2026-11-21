@@ -417,6 +417,11 @@ among four proposals:
   button just right of the bench (closer to the fight, answering "should the
   button be nearer the board?"). Rejected: an enlarged board, the opponent drawn
   full length in the empty shop space, top and bottom bands.
+  **Revised (21 November 2026):** the fight button now sits right of the bench
+  from the very first duel too. Centred under the board for the hunter and the
+  druid, it moved once the shop arrived, so the duels meant to teach the
+  controls taught a special case. The bench and the button keep the same place
+  under the board in every duel; only the board itself shifts left with the shop.
 - **Wizard medallions** replace the old panels: the portrait in a round
   medallion, the hearts on an arc above it, the charge crystals on an arc below,
   the gold in a pill on the right. The hearts keep a **fixed spacing** whatever

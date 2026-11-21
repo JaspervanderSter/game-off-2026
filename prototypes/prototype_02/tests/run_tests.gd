@@ -3251,8 +3251,8 @@ func _test_rule_spotlight() -> void:
 func _test_screen_layout() -> void:
 	Hud.layout_screen(OpponentDB.ruleset(0))
 	var shopless_board := Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE)
-	check(absf(Rules.FIGHT_CENTER.x - shopless_board.get_center().x) < 0.5 and Rules.FIGHT_CENTER.y - Rules.FIGHT_RADIUS > shopless_board.end.y,
-		"before the shop the fight button sits under the board's centre")
+	var shopless_fight := Rules.FIGHT_CENTER - shopless_board.position
+	var shopless_bench := Rules.RESERVE_POS - shopless_board.position
 	var left := Hud.medallion_centers[0].x - Hud.MEDALLION_RADIUS
 	check(absf((left + shopless_board.end.x) * 0.5 - 640.0) < 30.0, "before the shop the board and the medallions are centred together")
 	for team in 2:
@@ -3264,6 +3264,8 @@ func _test_screen_layout() -> void:
 	check(board.position.x < shopless_board.position.x and Rules.FIGHT_CENTER.x - Rules.FIGHT_RADIUS > bench_end.x
 		and Rules.FIGHT_CENTER.x + Rules.FIGHT_RADIUS * Hud.FIGHT_HOVER_SCALE < Hud.stall_rect().position.x,
 		"with the shop the fight button sits right of the bench, clear of the stall")
+	check((Rules.FIGHT_CENTER - board.position).is_equal_approx(shopless_fight) and (Rules.RESERVE_POS - board.position).is_equal_approx(shopless_bench),
+		"the fight button and the bench keep the same place under the board before and with the shop")
 	for count in [1, 3, 6, 10]:
 		var gaps: Array[float] = []
 		var inner: int = count if count <= Hud.HEART_ARC else ceili(count / 2.0)

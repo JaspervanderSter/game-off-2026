@@ -16,10 +16,9 @@ const CRYSTAL_SPACING := 26.0
 const CRYSTAL_RING := 24.0 # from the medallion edge to the crystal arc
 const PILL_GAP := 10.0 # from the medallion edge to the gold pill
 const PILL_DROP := 24.0 # the pill sits this far below the medallion centre
-# Before the shop, the board and the medallions are centred together and the
-# fight button sits under the board; with the shop, the board takes its final
-# place between the medallions and the stall, with the bench and then the
-# fight button under it.
+# Before the shop, the board and the medallions are centred together; with the
+# shop, the board takes its final place between the medallions and the stall.
+# In both, the bench and then the fight button share the row under the board.
 const SHOPLESS_BOARD_X := 410.0
 const SHOPLESS_MEDALLION_X := 333.0
 const SHOP_BOARD_X := 352.0
@@ -463,14 +462,12 @@ static func layout_screen(rules: Ruleset) -> void:
 	var medallion_x := SHOP_MEDALLION_X if shop else SHOPLESS_MEDALLION_X
 	Rules.BOARD_POS = Vector2(board_x, Rules.BOARD_POS.y)
 	medallion_centers = [Vector2(medallion_x, PLAYER_MEDALLION_Y), Vector2(medallion_x, ENEMY_MEDALLION_Y)]
+	# The bench and the fight button share the row under the board in every
+	# duel, so the button the first duels teach stays where it will always be.
 	var bench_width := Rules.CELL * Rules.RESERVE_CAP
-	var fight_x := board_x + Rules.BOARD_SIZE.x * 0.5
-	var bench_x := board_x + (Rules.BOARD_SIZE.x - bench_width) * 0.5
-	if shop:
-		# The bench and the fight button share the row under the board.
-		var row := bench_width + FIGHT_BENCH_GAP + Rules.FIGHT_RADIUS * 2.0
-		bench_x = board_x + (Rules.BOARD_SIZE.x - row) * 0.5
-		fight_x = bench_x + bench_width + FIGHT_BENCH_GAP + Rules.FIGHT_RADIUS
+	var row := bench_width + FIGHT_BENCH_GAP + Rules.FIGHT_RADIUS * 2.0
+	var bench_x := board_x + (Rules.BOARD_SIZE.x - row) * 0.5
+	var fight_x := bench_x + bench_width + FIGHT_BENCH_GAP + Rules.FIGHT_RADIUS
 	Rules.RESERVE_POS = Vector2(bench_x, BENCH_Y)
 	Rules.FIGHT_CENTER = Vector2(fight_x, FIGHT_Y)
 	layout_column(rules)

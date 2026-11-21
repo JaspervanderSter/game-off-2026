@@ -133,12 +133,15 @@ when a duel starts; `Rules.BOARD_POS`, `Rules.RESERVE_POS` and
 `Rules.FIGHT_CENTER` are set per duel):
 
 - **Before the shop** (hunter, druid): the board and the two medallions are
-  centred together (board at x 410, medallions at x 333) and the fight button
-  sits under the board's centre. The right of the screen stays free.
+  centred together (board at x 410, medallions at x 333). The right of the
+  screen stays free.
 - **With the shop** (from the lumberjack, and every duel outside the journey):
   the medallions stand in the left column (x 130), the board at x 352, the stall
-  and the scroll on the right; the bench and the fight button share the row
-  under the board, the button just right of the bench.
+  and the scroll on the right.
+
+In both, the bench and the fight button share the row under the board, the
+button just right of the bench: the button the first duels teach never moves
+relative to the board.
 
 Each wizard is a **medallion**: a dark disc ringed in its team colour and gold,
 holding its portrait, with its hearts on arcs above it (`Hud.heart_pos`: fixed

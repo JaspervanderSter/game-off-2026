@@ -492,8 +492,8 @@ The user played the journey and listed 22 changes, handled one at a time.
   their transformation chains into vector-stroke letters; the island medallion
   pans the camera down to the islands. Splash screen deferred.
 - **Screen layout:** the duel screen grows with the introduced rules (board and
-  wizards centred before the shop, fight button under the board, then right of
-  the bench); the wizard panels became medallions with hearts on fixed-spacing
+  wizards centred before the shop, fight button right of the bench in every
+  duel); the wizard panels became medallions with hearts on fixed-spacing
   arcs; the fight button is spotlit before the very first fight. See
   [[Journey and Opponents]].
 - **Map ambience:** nature sounds follow the sky cycle on the map (wind and
