@@ -4,8 +4,17 @@ const SkyCycle := preload("res://scripts/ui/day_night_sky.gd")
 const Island := preload("res://scripts/ui/map_island.gd")
 const Bridge := preload("res://scripts/ui/map_bridge.gd")
 signal path_point_appeared(stage: int, point_index: int)
-const REVEAL_DURATION := 4.0
 const TRACE_DURATION := 3.6
+## After the trace, the new opponent springs out of the ground: a gold ring
+## opens at the end of the path, the opponent jumps out of it (hidden below the
+## ground line while it rises) with a squash and stretch, and bits themed on its
+## island fly out. It becomes playable once it stands.
+const APPEAR_DURATION := 0.8
+const REVEAL_DURATION := TRACE_DURATION + APPEAR_DURATION
+const RISE_START := 0.12 # the ground opens first
+const RISE_TIME := 0.42
+const BURST_DURATION := 1.4 # the island bits settle after the opponent is playable
+const RISE_TOP := 96.0 # room above the button for the clipped figure
 const GOLD := Color("ddba70")
 const LANDSCAPE_SIZE := Vector2(1280, 720)
 const PORTRAIT_SIZE := Vector2(680, 1180)
@@ -39,12 +48,17 @@ var roads: Node2D
 var islands: Array[Node2D] = []
 var bridges: Array[Node2D] = []
 var buttons: Array[Button] = [] # one icon-only opponent per stage
+var figures: Array[Control] = [] # each opponent's drawing, clipped at the ground while it rises
 var map_scale := 1.0
 var focus_stage := 0
 var age := 0.0
 var discovered: Array[int] = []
 var revealing := -1
 var reveal_elapsed := 0.0
+## Stage springing out of the ground, kept after its reveal until its bits settle.
+var appearing := -1
+var appear_elapsed := 0.0
+var _appear_sound_played := false
 var _discovery_initialized := false
 var _pending: Array[int] = []
 var _paths := {} # destination stage -> evenly spaced points, in world coordinates
@@ -85,6 +99,11 @@ func _ready() -> void:
 		button.focus_entered.connect(_stage_focused.bind(index))
 		button.draw.connect(_draw_stage.bind(index, button))
 		buttons.append(button)
+		var figure := Control.new()
+		figure.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		figure.draw.connect(_draw_figure.bind(index, figure))
+		button.add_child(figure)
+		figures.append(figure)
 	_layout()
 
 func _button(parent: Node, rect: Rect2) -> Button:
@@ -131,6 +150,8 @@ func _sync_discovery() -> void:
 				discovered.erase(index)
 		if revealing >= 0 and not game.journey.available(revealing):
 			revealing = -1
+		if appearing >= 0 and not game.journey.available(appearing):
+			appearing = -1
 		_pending = _pending.filter(func(index): return game.journey.available(index))
 		for index in buttons.size():
 			if game.journey.available(index) and index not in discovered and index != revealing and index not in _pending:
@@ -156,10 +177,22 @@ func visible_path_points(stage: int) -> int:
 	return _paths[stage].size() if stage in discovered else 0
 
 func advance_discovery(dt: float) -> void:
+	if appearing >= 0 and appearing != revealing:
+		appear_elapsed += maxf(0.0, dt)
+		if appear_elapsed >= BURST_DURATION:
+			appearing = -1
 	if revealing < 0:
 		return
 	var stage := revealing
 	reveal_elapsed += maxf(0.0, dt)
+	if reveal_elapsed >= TRACE_DURATION:
+		if appearing != stage:
+			appearing = stage
+			_appear_sound_played = false
+		appear_elapsed = reveal_elapsed - TRACE_DURATION
+		if not _appear_sound_played and appear_elapsed >= RISE_START:
+			_appear_sound_played = true
+			Sfx.play("ui/map_opponent_appear")
 	var count := visible_path_points(stage)
 	if count > _emitted_points:
 		for index in range(_emitted_points, count):
@@ -183,9 +216,8 @@ func _refresh_discovery() -> void:
 		var button := buttons[index]
 		button.visible = index in discovered
 		button.disabled = not button.visible or not game.journey.available(index) or index == revealing
-		var pop := smoothstep(TRACE_DURATION, REVEAL_DURATION, reveal_elapsed) if index == revealing else 1.0
-		button.modulate = Color(1, 1, 1, pop)
-		button.scale = Vector2.ONE * lerpf(0.85, 1.0, pop)
+		# Only a rising figure is cut at the ground line; a standing one never is.
+		figures[index].clip_contents = _rise(_appear_age(index)) < 1.0
 
 static func stage_island(index: int) -> int:
 	return OpponentDB.zone(index)
@@ -235,6 +267,9 @@ func _layout() -> void:
 		buttons[index].size = target_size
 		buttons[index].position = stage_offset(index) - target_size * 0.5
 		buttons[index].pivot_offset = target_size * 0.5
+		# The figure's box ends at the ground line (the button's centre).
+		figures[index].position = Vector2(0, -RISE_TOP)
+		figures[index].size = Vector2(target_size.x, target_size.y * 0.5 + RISE_TOP)
 	_rebuild_paths()
 	if revealing >= 0:
 		_emitted_points = visible_path_points(revealing)
@@ -325,9 +360,24 @@ func _process(dt: float) -> void:
 	var state: Dictionary = sky.colors()
 	for island in islands:
 		island.cloud_color = state.cloud
-	for button in buttons:
-		button.queue_redraw()
+	for index in buttons.size():
+		buttons[index].queue_redraw()
+		figures[index].queue_redraw()
 	roads.queue_redraw()
+
+## Seconds since the ground began to open under a stage's opponent; INF once
+## it has long stood there.
+func _appear_age(index: int) -> float:
+	return appear_elapsed if index == appearing else INF
+
+## How far a rising opponent is out of the ground, 0 to 1 (overshooting into a
+## small hop near the end).
+func _rise(u: float) -> float:
+	var v := clampf((u - RISE_START) / RISE_TIME, 0.0, 1.0)
+	if v >= 1.0:
+		return 1.0
+	var c := 1.9 # ease-out-back overshoot
+	return 1.0 + (c + 1.0) * pow(v - 1.0, 3) + c * pow(v - 1.0, 2)
 
 func _draw_stage(index: int, button: Button) -> void:
 	var p := button.size * 0.5
@@ -335,16 +385,103 @@ func _draw_stage(index: int, button: Button) -> void:
 	var won: bool = index in game.journey.completed
 	var hot := open and (button.is_hovered() or button.has_focus())
 	var k := depth_scale(index)
-	Shapes.ellipse(button, p, 32 * k, 10 * k, Color(0.12, 0.08, 0.06, 0.2))
+	var u := _appear_age(index)
+	Shapes.ellipse(button, p, 32 * k * clampf(_rise(u), 0.0, 1.0), 10 * k, Color(0.12, 0.08, 0.06, 0.2))
+	if u < BURST_DURATION:
+		_draw_opening(button, p, k, u)
 	if hot or won:
 		Shapes.ellipse(button, p, (33 + sin(age * 2) * 2) * k, 12 * k, Color(GOLD, 0.45))
-	# Full-length opponents stand on the path spot; creatures remain on the board.
-	var size := OPPONENT_SIZE * k
-	Icons.opponent(button, OpponentDB.get_opponent(index).id,
-		p + Vector2(0, -size * 0.94 + sin(age * 1.8 + index) * 1.2), size, age)
+	if u < BURST_DURATION:
+		_draw_burst(button, p, k, u, stage_island(index))
 	if hot:
 		var q := p + Vector2(0, -63 * k + sin(age * 3) * 3)
 		button.draw_colored_polygon(PackedVector2Array([q + Vector2(-7, -7), q + Vector2(7, -7), q]), GOLD)
+
+## Full-length opponents stand on the path spot; creatures remain on the board.
+## A rising opponent starts below the ground line (its box ends there),
+## stretches as it shoots up, hops slightly and lands with a short squash.
+func _draw_figure(index: int, figure: Control) -> void:
+	var u := _appear_age(index)
+	var rise := _rise(u)
+	if rise <= 0.0:
+		return
+	var k := depth_scale(index)
+	var size := OPPONENT_SIZE * k
+	var feet := buttons[index].size * 0.5 + Vector2(0, RISE_TOP)
+	var v := clampf((u - RISE_START) / RISE_TIME, 0.0, 1.0)
+	var stretch := 0.0
+	if v < 1.0:
+		stretch = 0.18 * sin(v * PI)
+	elif u < BURST_DURATION:
+		var w := u - RISE_START - RISE_TIME
+		stretch = -0.14 * exp(-6.0 * w) * sin(w * 18.0)
+	var squash := Vector2(1.0 / sqrt(1.0 + stretch), 1.0 + stretch)
+	Shapes.set_transform(figure, feet + Vector2(0, (1.0 - rise) * size * 2.4), 0.0, squash)
+	Icons.opponent(figure, OpponentDB.get_opponent(index).id,
+		Vector2(0, -size * 0.94 + sin(age * 1.8 + index) * 1.2), size, age)
+	Shapes.set_transform(figure, Vector2.ZERO)
+
+## The ground opens under a rising opponent: a dark hole inside a widening gold
+## ring; the hole closes once the opponent stands and the ring fades.
+func _draw_opening(ci: CanvasItem, p: Vector2, k: float, u: float) -> void:
+	var hole := smoothstep(0.0, RISE_START + 0.08, u) * (1.0 - smoothstep(RISE_START + RISE_TIME, APPEAR_DURATION + 0.2, u))
+	if hole > 0.0:
+		Shapes.ellipse(ci, p, 22 * k * hole, 7 * k * hole, Color(0.1, 0.06, 0.04, 0.55 * hole))
+	var ring := smoothstep(0.0, 0.2, u)
+	var fade := 1.0 - smoothstep(0.6, BURST_DURATION, u)
+	if fade > 0.0:
+		_ellipse_ring(ci, p, (14 + 16 * ring) * k, (4.5 + 5 * ring) * k, Color(GOLD, 0.95 * fade), 2.5 * k)
+	# A shock wave leaves the ground as the opponent jumps out.
+	var shock := (u - RISE_START) / 0.35
+	if shock > 0.0 and shock < 1.0:
+		_ellipse_ring(ci, p, (24 + 34 * shock) * k, (8 + 11 * shock) * k,
+			Color(1.0, 0.95, 0.75, 0.9 * (1.0 - shock)), 3.0 * k * (1.0 - shock) + 1.0)
+
+## Bits of the island fly out as the opponent springs up: leaves in the forest,
+## stone chips and rolling dust in the town, violet and gold sparks at the school.
+func _draw_burst(ci: CanvasItem, p: Vector2, k: float, u: float, zone: int) -> void:
+	var w := u - RISE_START
+	if w <= 0.0:
+		return
+	var life := BURST_DURATION - RISE_START
+	var fade := 1.0 - smoothstep(life * 0.45, life, w)
+	if zone == 1:
+		var spread := 1.0 - exp(-4.0 * w)
+		for i in 4:
+			var side := -1.0 if i % 2 == 0 else 1.0
+			var at := p + Vector2(side * (10 + spread * (18 + i * 6)), -3 - spread * (4 + i * 2)) * k
+			Shapes.ellipse(ci, at, (5 + spread * 7) * k, (3.5 + spread * 4) * k, Color(0.85, 0.8, 0.7, 0.45 * fade))
+	for i in 14:
+		var a := lerpf(-PI * 0.92, -PI * 0.08, i / 13.0) + sin(i * 12.9898) * 0.12
+		var speed := (95.0 + (i % 3) * 32.0) * k
+		var gravity := 300.0 * k
+		if zone == 2:
+			speed *= 0.6
+			gravity = -40.0 * k # sparks drift up
+		var q := p + Vector2(0, -4 * k) + Vector2(cos(a), sin(a)) * speed * w + Vector2(0, 0.5 * gravity * w * w)
+		var spin := w * 9.0 + i
+		match zone:
+			0:
+				var leaf: Color = [Color("b5dc7a"), Color("f0d860"), Color("e8a24a")][i % 3]
+				Shapes.ellipse(ci, q, 6.0 * k, 2.8 * k, Color(leaf, fade), spin)
+			1:
+				var stone: Color = [Color("eee8da"), Color("6f685d"), Color("d2c6ab")][i % 3]
+				var r := (3.0 + (i % 2) * 1.4) * k
+				var chip := PackedVector2Array()
+				for corner in 4:
+					var c := spin + corner * TAU / 4.0
+					chip.append(q + Vector2(cos(c), sin(c)) * r * (1.0 if corner % 2 == 0 else 0.7))
+				ci.draw_colored_polygon(chip, Color(stone, fade))
+			_:
+				var spark: Color = [GOLD, Color("fff3c4"), Color("d2b0ff")][i % 3]
+				Icons.star(ci, q, (4.5 + 2.0 * sin(age * 12.0 + i)) * k, Color(spark, fade))
+
+func _ellipse_ring(ci: CanvasItem, c: Vector2, rx: float, ry: float, col: Color, width: float) -> void:
+	var points := PackedVector2Array()
+	for i in 41:
+		var a := TAU * i / 40.0
+		points.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+	Shapes.polyline(ci, points, col, width)
 
 func _append_curve(points: PackedVector2Array, a: Vector2, b: Vector2, c: Vector2, d: Vector2) -> PackedVector2Array:
 	for index in 33:

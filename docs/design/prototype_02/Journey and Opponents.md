@@ -260,6 +260,13 @@ smaller. It fits the whole screen with no scroll or header. Both bridges
 are complete and visible from the start. Only the first opponent is visible on a
 new journey. Winning discovers the immediate successor: only the route dots
 animate over about four seconds, with muffled taps, before its opponent appears.
+Confirmed after a playtest (21 November 2026): the opponent **springs out of the
+ground** at the end of the path, with more juice than the former fade-in: a gold
+ring opens, the opponent jumps out with a squash and stretch, a shock wave and a
+burst of island-themed bits (leaves, stone chips and dust, magic sparks) and a
+pop (the chosen proposal among four: drop from the sky, pillar of light, rise from
+the ground, spotlight and greeting). The bits per island are implementation
+choices.
 Unknown opponents and paths have no silhouette, label, tooltip or padlock. The
 player's wizard is not represented on the map. Beaten opponents stand on a soft gold ring;
 the star they used to carry was removed after a playtest (21 November 2026):

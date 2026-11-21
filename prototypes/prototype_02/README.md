@@ -414,6 +414,7 @@ are copied back into the project's `sfx/` and `music/` folders.
 | Event | Group | Played when |
 |---|---|---|
 | `ui/map_step` | ui | Soft, muffled tap as a new journey-path point appears |
+| `ui/map_opponent_appear` | ui | The next journey opponent springs out of the ground at the end of its path (plays the files of `coins/pop`, lower) |
 | `ui/click` | ui | Interface click: difficulty, picking up or reselecting a creature, offer lock, enemy reroll, restart |
 | `ui/fail` | ui | Unavailable or invalid action, such as a locked difficulty, fizzled cast or invalid drop |
 | `ui/buy` | ui | Starting composition, player sale, enemy purchase or wand upgrade |
@@ -662,8 +663,14 @@ only the first opponent. Winning a full duel completes that stage and discovers
 its immediate successor. On return to the map, the curved route draws itself
 point by point in about four seconds, with soft taps (`ui/map_step`) as the dots
 appear. Both complete bridges are always present from startup; only the dots
-animate across their decks. The next opponent appears at the
-end of the route, then becomes selectable after its short appearance animation.
+animate across their decks. At the end of the route the next opponent springs
+out of the ground (`world_map.gd`, `APPEAR_DURATION`): a gold ring opens on a dark
+hole, the opponent shoots up through it (cut at the ground line while it rises),
+stretching, hops slightly and lands with a short squash, while a shock wave
+leaves the ground and bits of the island fly out: leaves in the forest, stone
+chips and rolling dust in the town, gold and violet sparks at the school. A pop
+(`ui/map_opponent_appear`) marks the jump. The opponent becomes selectable once
+it stands, 4.4 s after the trace began; the bits settle a moment later.
 Revisiting the map keeps known paths in place; leaving pauses an unfinished trace.
 A defeat discovers nothing. Completed stages remain replayable. Old branching
 saves are migrated to preserve their furthest earned stage. Every stage starts a

@@ -2464,12 +2464,20 @@ func _test_journey_discovery() -> void:
 	game.show_map()
 	check(map.reveal_elapsed == elapsed and map.revealing == 1,
 		"returning resumes the same reveal without replaying its beginning")
+	Sfx._last_played.erase("ui/map_opponent_appear")
 	map.advance_discovery(map.TRACE_DURATION - elapsed + 0.001)
 	check(map.buttons[1].visible and map.buttons[1].disabled,
 		"the opponent appears only when the path reaches it")
-	map.advance_discovery(0.5)
-	check(map.revealing == -1 and not map.buttons[1].disabled,
-		"the four-second reveal finishes with a playable opponent")
+	check(map.appearing == 1 and map.figures[1].clip_contents and map._rise(map.appear_elapsed) == 0.0,
+		"the opponent starts below the ground at the end of its path")
+	map.advance_discovery(map.RISE_START + 0.05)
+	check(not Sfx.enabled or Sfx._last_played.has("ui/map_opponent_appear"), "the opponent pops out of the ground")
+	map.advance_discovery(map.REVEAL_DURATION - map.TRACE_DURATION)
+	check(map.revealing == -1 and not map.buttons[1].disabled and not map.figures[1].clip_contents,
+		"the reveal finishes with a playable opponent standing on the ground")
+	check(map.appearing == 1, "its island bits still settle once it is playable")
+	map.advance_discovery(map.BURST_DURATION)
+	check(map.appearing == -1, "the appearance ends once its bits have settled")
 	var old_ticks := ticks.size()
 	game.new_duel()
 	check(map.revealing == -1 and ticks.size() == old_ticks,

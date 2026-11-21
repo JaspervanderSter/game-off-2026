@@ -453,6 +453,9 @@ The user played the journey and listed 22 changes, handled one at a time.
 
 - **Map:** beaten opponents no longer carry a star; their gold ring and the
   drawn route already show the win.
+- **Map:** the next opponent springs out of the ground at the end of its path
+  (gold ring, jump with squash and stretch, island-themed bits, pop), chosen
+  among four animated proposals. See [[Journey and Opponents]].
 
 ## Playtest plan and completion criteria
 

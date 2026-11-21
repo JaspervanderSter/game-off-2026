@@ -1,0 +1,14 @@
+{
+	"description": "The next journey opponent springs out of the ground at the end of its path.",
+	"group": "ui",
+	"loop": false,
+	"protected": false,
+	"files_from": "coins/pop",
+	"volume_db": -7.0,
+	"volume_jitter_db": 0.0,
+	"pitch": 0.82,
+	"pitch_jitter": 0.0,
+	"cooldown_ms": 40,
+	"pick": "shuffle",
+	"shuffle_refill_after": 0
+}

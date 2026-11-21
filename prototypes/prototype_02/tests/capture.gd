@@ -25,6 +25,10 @@ func _ready() -> void:
 		await _capture_forest()
 		get_tree().quit()
 		return
+	if "--map-reveal-only" in OS.get_cmdline_user_args():
+		await _capture_map_reveal()
+		get_tree().quit()
+		return
 	get_viewport().warp_mouse(Hud.difficulty_rect(Difficulty.ADEPT).get_center())
 	await _frames(4)
 	await _shot("00_difficulty")
@@ -261,6 +265,44 @@ func _capture_forest() -> void:
 			await _shot("forest_1_transformation")
 		game.new_duel()
 		await _frames(3)
+
+
+## The next opponent springing out of the ground on each island, frame by frame:
+## the whole map, then a close-up (three times larger) around the opponent.
+func _capture_map_reveal() -> void:
+	game.difficulty_progress_path = capture_dir.path_join("map_progress.cfg")
+	var map: Node2D = game.map_screen
+	for stage in [1, 6, 11]:
+		game.journey.completed.assign(range(stage))
+		game.show_map()
+		map.set_process(false)
+		# Only `stage` is left to discover, whatever the save already knew.
+		map.revealing = -1
+		map._pending.clear()
+		map.discovered.assign(range(stage))
+		map._sync_discovery()
+		map.advance_discovery(map.TRACE_DURATION - map.reveal_elapsed)
+		var elapsed := 0.0
+		for u in [0.04, 0.14, 0.22, 0.3, 0.38, 0.5, 0.62, 0.8, 1.1]:
+			map.age += u - elapsed
+			map.advance_discovery(u - elapsed)
+			elapsed = u
+			for index in map.buttons.size():
+				map.buttons[index].queue_redraw()
+				map.figures[index].queue_redraw()
+			await _frames(2)
+			await RenderingServer.frame_post_draw
+			var image := get_viewport().get_texture().get_image()
+			var at: Vector2 = map.get_global_transform_with_canvas() * map.stage_position(stage)
+			var region := Rect2i(Vector2i(at) - Vector2i(70, 95), Vector2i(140, 120)).intersection(Rect2i(Vector2i.ZERO, image.get_size()))
+			var close := image.get_region(region)
+			close.resize(region.size.x * 3, region.size.y * 3, Image.INTERPOLATE_NEAREST)
+			var path := capture_dir.path_join("map_reveal_%02d_%03d.png" % [stage, roundi(u * 100)])
+			close.save_png(path)
+			print("saved ", ProjectSettings.globalize_path(path))
+		await _shot("map_reveal_%02d_full" % stage)
+		map.advance_discovery(map.BURST_DURATION)
+		map.set_process(true)
 
 
 func _frames(n: int) -> void:
