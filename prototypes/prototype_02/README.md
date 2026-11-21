@@ -30,7 +30,7 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 | Place / move / swap | Drag between your half of the board (bottom) and the reserve slots |
 | Combine / merge | Drag onto an identical creature of the same star rank; gold highlights show compatible targets |
 | Sell | Drag a creature onto the creature stall (refund = price) |
-| Start combat | Round sword-and-wand button in the bottom-right corner (or Space) |
+| Start combat | Round sword-and-wand button under the board, right of the bench once the shop exists (or Space) |
 | Toggle fullscreen | Alt+Enter |
 | Toggle performance counter | Shift+F8 (click the game first in a browser) |
 | Shapeshift | Left-click (or tap) any living creature during combat, friend or foe |
@@ -42,11 +42,12 @@ the latest frame interval, and the longest frame interval since it was enabled
 can itself produce a large interval. It does no sampling while hidden and does
 not intercept mouse input.
 
-Reading the board: blue ring = yours, red ring = the AI's. The opponent's panel
-shows the hat of the chosen difficulty. Purple crystals = spell
+Reading the board: blue ring = yours, red ring = the AI's. Each wizard is a medallion beside the board: the opponent's shows its portrait
+(or the hat of the chosen difficulty outside the journey), the player's the blue
+wizard hat. Purple crystals = spell
 charges: hexagonal prisms pointed at both ends, dark glass when empty, filling with
 magic from the bottom as they recharge, bright with a white reflection when full;
-the same crystal stands for a charge in the panels, under the board in combat,
+the same crystal stands for a charge under the medallions, under the board in combat,
 in the wand upgrade icons and in their tooltips. Base creatures have no stars. Gold stars (1–3) show permanent merge upgrades.
 Three small circles show progress towards the next star: a single copy fills one,
 a manually combined pair fills two. A pair has no combat-stat bonus.
@@ -59,12 +60,44 @@ A white dashed ring = shapeshift immunity. Small pips beside a creature = status
 effects (green rim positive, red rim negative). Hearts = wizard health.
 A half-filled heart represents 0.5 health. Each wizard starts with 3 hearts on
 the forest, 6 in the town and 10 at the magic school. Only that duel's heart
-capacity is drawn, including empty and half-filled hearts after damage.
+capacity is drawn, including empty and half-filled hearts after damage. Hearts
+stand on arcs above their medallion at a fixed spacing: up to six on one arc,
+more split evenly over two concentric arcs (ten = five + five), the inner one
+first; hearts are lost from the end, the outer arc first.
 The round frieze above the board shows the current round as a numbered gold
 medallion, the last seven finished rounds as pips in the winner's colour (grey
 for a draw) and the next rounds as fading dashed rings. When a round resolves,
 the medallion's ring takes the winner's colour; when the next round starts, the
 frieze slides one step left.
+
+## Screen layout (21 November 2026)
+
+The duel screen grows with the rules the journey has introduced instead of
+keeping empty places for the ones still to come (`Hud.layout_screen`, called
+when a duel starts; `Rules.BOARD_POS`, `Rules.RESERVE_POS` and
+`Rules.FIGHT_CENTER` are set per duel):
+
+- **Before the shop** (hunter, druid): the board and the two medallions are
+  centred together (board at x 410, medallions at x 333) and the fight button
+  sits under the board's centre. The right of the screen stays free.
+- **With the shop** (from the lumberjack, and every duel outside the journey):
+  the medallions stand in the left column (x 130), the board at x 352, the stall
+  and the scroll on the right; the bench and the fight button share the row
+  under the board, the button just right of the bench.
+
+Each wizard is a **medallion**: a dark disc ringed in its team colour and gold,
+holding its portrait, with its hearts on arcs above it (`Hud.heart_pos`: fixed
+spacing, up to six per arc, two balanced concentric arcs beyond), its charge
+crystals on an arc below once the wand exists (`Hud.crystal_pos`) and its gold
+in a pill on its right once the shop exists (`Hud.gold_pos`), followed for the
+player by the next income. A lost heart flashes the disc red and shakes it.
+The round frieze and the composition cards centre on the board.
+
+The fight button is introduced like a rule: the hunter's first preparation
+spotlights it, then a gold halo breathes around it until the player's very
+first fight (`main.FIGHT_LESSON`, saved in `journey.introduced` and
+`journey.lessons_done`; a save that already beat the hunter skips it). During
+combat the button drops below the bottom edge instead of sliding right.
 
 ## Rules implemented
 
@@ -112,17 +145,17 @@ All confirmed rules and delegated defaults of the design note, notably:
   creature offers and the reroll; below it, a purple scroll between two
   gold-knobbed rods holds the wand upgrades. The stall and scroll move down
   together (`Hud.layout_column`): centred on the board's height when they fit,
-  otherwise as low as the fight button allows, and always clear of the round
+  otherwise as low as the screen allows, and always clear of the round
   frieze. The board's six capacity pips sit in a row under its right edge,
-  clear of the column. The round fight button sits alone in
-  the bottom-right corner: a medallion split vertically, red on the left and wand
+  clear of the column. The round fight button sits under the board, right of
+  the bench (see "Screen layout" below): a medallion split vertically, red on the left and wand
   purple on the right, behind a sword (tip up-left) crossed with a wand (star
   up-right), both outlined in dark. When a click would start the fight, a band of
   light sweeps across it every 4 s (0.72 s sweep) and hovering enlarges it by 7%
   and brightens its gold ring. Otherwise it is grey and still, with a turning arc
   while the opponent prepares.
-- When the fight begins, the shop column (stall, scroll, fight button) slides off
-  the right edge and the bench shrinks to half size and docks at the bottom of
+- When the fight begins, the shop column (stall, scroll) slides off the right
+  edge, the fight button drops below the bottom edge and the bench shrinks to half size and docks at the bottom of
   the screen, where hovering it still shows the creature card. Both stay away
   during the result and slide back when the next shop opens (0.45 s each way).
   The scroll then unrolls downward over 0.5 s, each upgrade row appearing as the

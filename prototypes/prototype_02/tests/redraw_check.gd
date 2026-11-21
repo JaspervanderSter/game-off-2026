@@ -40,7 +40,7 @@ static func run(game: Node) -> Dictionary:
 	var worst := 0.0
 	var where := Vector2i.ZERO
 	var to_screen := Vector2(1280, 720) / Vector2(before.get_size())
-	var fight_center := Rules.FIGHT_CENTER + Vector2(Hud.SHOP_SLIDE * smoothstep(0.0, 1.0, float(game.shop_out)), 0)
+	var fight_center := Rules.FIGHT_CENTER + Vector2(0, Hud.FIGHT_SLIDE * smoothstep(0.0, 1.0, float(game.shop_out)))
 	for y in range(0, before.get_height(), 2):
 		for x in range(0, before.get_width(), 2):
 			var p := Vector2(x, y) * to_screen

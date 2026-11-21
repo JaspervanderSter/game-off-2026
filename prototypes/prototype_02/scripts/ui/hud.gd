@@ -2,10 +2,37 @@ class_name Hud
 extends Node2D
 ## Side panels, buttons, overlays and the hover card.
 
-const ENEMY_BLOCK := Rect2(24, 84, 300, 140)
-const PLAYER_BLOCK := Rect2(24, 376, 300, 156)
+# Each wizard is a medallion beside the board (playtest decision, 21 November
+# 2026): its portrait, its hearts on arcs above it at a fixed spacing (up to
+# HEART_ARC on one arc, otherwise two balanced concentric arcs), its charge
+# crystals on an arc below, and its gold in a pill on its right. Hud.layout_screen
+# places the medallions with the board.
+const MEDALLION_RADIUS := 40.0
+const HEART_SPACING := 22.0 # between two heart centres, along their arc
+const HEART_ARC := 6 # most hearts on one arc
+const HEART_INNER := 18.0 # from the medallion edge to the inner arc
+const HEART_ROW_GAP := 19.0 # between the two arcs
+const CRYSTAL_SPACING := 26.0
+const CRYSTAL_RING := 24.0 # from the medallion edge to the crystal arc
+const PILL_GAP := 10.0 # from the medallion edge to the gold pill
+const PILL_DROP := 24.0 # the pill sits this far below the medallion centre
+# Before the shop, the board and the medallions are centred together and the
+# fight button sits under the board; with the shop, the board takes its final
+# place between the medallions and the stall, with the bench and then the
+# fight button under it.
+const SHOPLESS_BOARD_X := 410.0
+const SHOPLESS_MEDALLION_X := 333.0
+const SHOP_BOARD_X := 352.0
+const SHOP_MEDALLION_X := 130.0
+const ENEMY_MEDALLION_Y := 170.0
+const PLAYER_MEDALLION_Y := 442.0
+const BENCH_Y := 556.0
+const FIGHT_Y := 600.0
+const FIGHT_BENCH_GAP := 18.0
+## Medallion centres, player then opponent (team order), set by layout_screen.
+static var medallion_centers: Array[Vector2] = [Vector2(SHOP_MEDALLION_X, PLAYER_MEDALLION_Y), Vector2(SHOP_MEDALLION_X, ENEMY_MEDALLION_Y)]
 # Round frieze centred above the board, clear of the combat timer bar (y 50).
-const FRIEZE_CENTER := Vector2(640, 23)
+const FRIEZE_Y := 23.0
 const FRIEZE_STEP := 36.0
 const FRIEZE_PAST := 7 # finished rounds shown left of the current one
 const FRIEZE_FUTURE := 3
@@ -57,6 +84,7 @@ const DIFFICULTY_CARD_SIZE := Vector2i(168, 260)
 const CHOICE_HALO_MARGIN := 12
 const CHOICE_HALO_FADE := 0.16
 const SHOP_SLIDE := 360.0 # pushes the whole shop column past the right edge
+const FIGHT_SLIDE := 180.0 # drops the fight button past the bottom edge
 const HEART_STAGGER := 0.26
 const HEART_BURST := 0.20
 const COIN_FLIGHT := 0.62
@@ -378,14 +406,57 @@ func displayed_gold(state: WizardState) -> int:
 	return value
 
 
-static func heart_pos(team: int, index: int) -> Vector2:
-	var block := PLAYER_BLOCK if team == 0 else ENEMY_BLOCK
-	return block.position + Vector2(92 + index * 20.5, 36)
+## Centre of heart `index` of a wizard showing `count` hearts: up to HEART_ARC
+## on one arc above the medallion; more split evenly over two concentric arcs,
+## the inner one first (hearts are lost from the end, the outer arc first).
+## Hearts keep the same spacing along their arc whatever their number.
+static func heart_pos(team: int, index: int, count: int) -> Vector2:
+	var row := 0
+	var in_row := count
+	var first := 0
+	if count > HEART_ARC:
+		var inner := ceili(count / 2.0)
+		row = 0 if index < inner else 1
+		in_row = inner if row == 0 else count - inner
+		first = 0 if row == 0 else inner
+	var radius := MEDALLION_RADIUS + HEART_INNER + row * HEART_ROW_GAP
+	var step := HEART_SPACING / radius
+	var angle := -PI * 0.5 + (index - first - (in_row - 1) * 0.5) * step
+	return medallion_centers[team] + Vector2.from_angle(angle) * radius
 
 
+## Centre of charge crystal `index` (0 to 2, left to right) under a medallion.
+static func crystal_pos(team: int, index: int) -> Vector2:
+	var radius := MEDALLION_RADIUS + CRYSTAL_RING
+	var angle := PI * 0.5 + (1 - index) * CRYSTAL_SPACING / radius
+	return medallion_centers[team] + Vector2.from_angle(angle) * radius
+
+
+## Centre of the coin in a wizard's gold pill, right of its medallion.
 static func gold_pos(team: int) -> Vector2:
-	var block := PLAYER_BLOCK if team == 0 else ENEMY_BLOCK
-	return block.position + Vector2(42, 124)
+	return medallion_centers[team] + Vector2(MEDALLION_RADIUS + PILL_GAP + 16, PILL_DROP)
+
+
+## Places the board, the bench, the fight button and the medallions for a
+## duel's rules, then the shop column: the screen grows with the rules the
+## journey has introduced instead of leaving their places empty.
+static func layout_screen(rules: Ruleset) -> void:
+	var shop := rules.has(Ruleset.SHOP)
+	var board_x := SHOP_BOARD_X if shop else SHOPLESS_BOARD_X
+	var medallion_x := SHOP_MEDALLION_X if shop else SHOPLESS_MEDALLION_X
+	Rules.BOARD_POS = Vector2(board_x, Rules.BOARD_POS.y)
+	medallion_centers = [Vector2(medallion_x, PLAYER_MEDALLION_Y), Vector2(medallion_x, ENEMY_MEDALLION_Y)]
+	var bench_width := Rules.CELL * Rules.RESERVE_CAP
+	var fight_x := board_x + Rules.BOARD_SIZE.x * 0.5
+	var bench_x := board_x + (Rules.BOARD_SIZE.x - bench_width) * 0.5
+	if shop:
+		# The bench and the fight button share the row under the board.
+		var row := bench_width + FIGHT_BENCH_GAP + Rules.FIGHT_RADIUS * 2.0
+		bench_x = board_x + (Rules.BOARD_SIZE.x - row) * 0.5
+		fight_x = bench_x + bench_width + FIGHT_BENCH_GAP + Rules.FIGHT_RADIUS
+	Rules.RESERVE_POS = Vector2(bench_x, BENCH_Y)
+	Rules.FIGHT_CENTER = Vector2(fight_x, FIGHT_Y)
+	layout_column(rules)
 
 
 # --- Geometry used for hit tests -------------------------------------------------
@@ -399,20 +470,21 @@ static func offer_rect(i: int) -> Rect2:
 static var column_dy := 0.0
 ## Least offset: keeps the awning clear of the round frieze.
 const COLUMN_MIN_DY := 10.0
-## Space kept between the bottom of the column and the fight button.
-const COLUMN_FIGHT_GAP := 12.0
+## Space kept between the bottom of the column and the screen edge (the fight
+## button now sits under the board, left of the column).
+const COLUMN_BOTTOM_GAP := 12.0
 
 
 ## Places the stall (and the scroll, once introduced) for a duel's rules:
-## centred on the board's height when it fits, otherwise as low as the fight
-## button allows, and never against the frieze.
+## centred on the board's height when it fits, otherwise as low as the screen
+## allows, and never against the frieze.
 static func layout_column(rules: Ruleset) -> void:
 	var top := AWNING_TOP
 	var bottom := STALL_RECT.end.y
 	if rules.any_upgrade():
 		bottom = SCROLL_TOP + scroll_length(rules) + 8.0 # lower rod
 	var centred := Rules.BOARD_POS.y + Rules.BOARD_SIZE.y * 0.5 - (top + bottom) * 0.5
-	var lowest := Rules.FIGHT_CENTER.y - Rules.FIGHT_RADIUS * FIGHT_HOVER_SCALE - COLUMN_FIGHT_GAP - bottom
+	var lowest := 720.0 - COLUMN_BOTTOM_GAP - bottom
 	column_dy = maxf(COLUMN_MIN_DY, minf(centred, lowest))
 
 
@@ -467,8 +539,9 @@ static func scroll_length(rules: Ruleset = null) -> float:
 	return SCROLL_LENGTH - hidden * UPGRADE_STEP
 
 
+## The three composition cards, centred on the board wherever it stands.
 static func pack_rect(i: int) -> Rect2:
-	return Rect2(Vector2(364 + i * 188, PACK_TOP), Vector2(PACK_CARD_SIZE))
+	return Rect2(Vector2(Rules.BOARD_POS.x + 12 + i * 188, PACK_TOP), Vector2(PACK_CARD_SIZE))
 
 
 static func difficulty_rect(i: int) -> Rect2:
@@ -546,6 +619,8 @@ func _shop_key() -> Array:
 	key.append(shop_rect().has_point(mouse))
 	if game.enemy_preparing:
 		key.append(Time.get_ticks_msec()) # the spinner around the fight button turns
+	elif game.fight_lesson_waiting():
+		key.append(Time.get_ticks_msec()) # the first fight's halo breathes
 	elif _fight_ready() and fight_glint(Time.get_ticks_msec() / 1000.0) >= 0.0:
 		key.append(Time.get_ticks_msec()) # the glint crosses the fight button
 	else:
@@ -559,8 +634,8 @@ func _draw_layer(layer_name: String, layer: CanvasItem) -> void:
 	_ci = layer
 	match layer_name:
 		"panels":
-			_draw_wizard(game.enemy, ENEMY_BLOCK)
-			_draw_wizard(game.player, PLAYER_BLOCK)
+			_draw_wizard(game.enemy)
+			_draw_wizard(game.player)
 		"base":
 			_draw_enemy_hat()
 			_draw_round_frieze()
@@ -689,10 +764,9 @@ func _wizard_pulse(team: int) -> Vector2:
 
 
 func _hat_position(team: int) -> Vector2:
-	var block := PLAYER_BLOCK if team == 0 else ENEMY_BLOCK
 	var impact := _wizard_pulse(team).x
 	var shake := Vector2(sin(reward_time * 95.0) * 5.0, cos(reward_time * 80.0) * 2.0) * impact
-	return block.position + Vector2(42, 48) + shake
+	return medallion_centers[team] + shake
 
 
 ## The opponent animates, so it is drawn every frame above its panel: a journey
@@ -702,38 +776,37 @@ func _draw_enemy_hat() -> void:
 	var impact := _wizard_pulse(1).x
 	if game.opponent >= 0:
 		var id: String = OpponentDB.get_opponent(game.opponent).id
-		Icons.opponent(_ci, id, _hat_position(1) + Vector2(0, 2), 22 * (1.0 + impact * 0.12), Time.get_ticks_msec() / 1000.0)
+		Icons.opponent(_ci, id, _hat_position(1) + Vector2(0, 2), 26 * (1.0 + impact * 0.12), Time.get_ticks_msec() / 1000.0)
 		return
-	Icons.difficulty_hat(_ci, shown_difficulty(), _hat_position(1) + Vector2(0, 5), 22 * (1.0 + impact * 0.12), Time.get_ticks_msec() / 1000.0)
+	Icons.difficulty_hat(_ci, shown_difficulty(), _hat_position(1) + Vector2(0, 5), 26 * (1.0 + impact * 0.12), Time.get_ticks_msec() / 1000.0)
 
 
-func _draw_wizard(state: WizardState, block: Rect2) -> void:
-	_panel(block)
+## A wizard's medallion: its portrait in a disc ringed in its team colour and
+## gold (the opponent's portrait is drawn over it by _draw_enemy_hat), its
+## hearts on arcs above, its charge crystals below and its gold on the right.
+func _draw_wizard(state: WizardState) -> void:
 	var team := state.team
 	var pulse := _wizard_pulse(team)
 	var impact := pulse.x
 	var coin_pulse := pulse.y
-	if impact > 0.0:
-		_ci.draw_rect(block, Color(1.0, 0.15, 0.2, 0.23 * impact))
 	var hat_pos := _hat_position(team)
-	if team == 1:
-		# The opponent wears the hat of the chosen difficulty (drawn by
-		# _draw_enemy_hat), over its red team glow.
-		Shapes.circle(_ci, hat_pos, 31, Color(Icons.team_color(1), 0.2))
-		Shapes.arc(_ci, hat_pos, 31, 0, TAU, 32, Color(Icons.team_color(1), 0.55), 2.0, true)
-	else:
-		Icons.wizard_hat(_ci, hat_pos, 26 * (1.0 + impact * 0.12), team)
+	var r := MEDALLION_RADIUS * (1.0 + impact * 0.08)
+	Shapes.circle(_ci, hat_pos, r, Color(0.1, 0.075, 0.07).lerp(Color(0.6, 0.08, 0.12), impact * 0.6))
+	Shapes.circle(_ci, hat_pos, r - 3, Color(Icons.team_color(team), 0.16))
+	Shapes.arc(_ci, hat_pos, r, 0, TAU, 40, Icons.team_color(team), 3.0, true)
+	Shapes.arc(_ci, hat_pos, r + 4, 0, TAU, 40, Icons.GOLD, 1.5, true)
+	if team == 0:
+		Icons.wizard_hat(_ci, hat_pos + Vector2(0, -2), 29 * (1.0 + impact * 0.12), team)
 	var shown_hp := displayed_hp(state)
 	for i in state.max_hp:
-		var p := block.position + Vector2(92 + i * 20.5, 36)
-		Icons.wizard_heart(_ci, p, 9, clampf(shown_hp - i, 0.0, 1.0))
+		Icons.wizard_heart(_ci, heart_pos(team, i, state.max_hp), 8, clampf(shown_hp - i, 0.0, 1.0))
 	# Spell charges (live in combat; the starting charges otherwise), for a
 	# wizard who casts in this duel.
 	var spell: ShiftSpell = null
 	if game.battle != null:
 		spell = game.battle.spells[team]
 	for i in (Rules.MAX_CHARGES if state.can_cast() else 0):
-		var p := block.position + Vector2(100 + i * 34, 84)
+		var p := crystal_pos(team, i)
 		var count: int = spell.charges if spell else state.start_charges()
 		var filled: bool = count > i
 		var prog := 0.0
@@ -742,21 +815,33 @@ func _draw_wizard(state: WizardState, block: Rect2) -> void:
 		Icons.charge_crystal(_ci, p, 14, filled, prog)
 	if not state.rules.has(Ruleset.SHOP):
 		return # no gold before the journey introduces the shop
-	Icons.coin(_ci, gold_pos(team), 15 * (1.0 + coin_pulse * 0.45))
-	_ci.draw_string(font, block.position + Vector2(66, 135 - coin_pulse * 5), str(displayed_gold(state)), HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Icons.GOLD.lerp(Color.WHITE, coin_pulse))
+	# The gold pill: the purse, its count and, for the player, the next income.
+	var coin := gold_pos(team)
+	var gold := str(displayed_gold(state))
+	var width := 46.0 + gold.length() * 16.0
+	var next_income := -1
 	if team == 0 and game.phase != game.Phase.PACK:
-		var next_income := Rules.income(game.round_num + 1)
+		next_income = Rules.income(game.round_num + 1)
 		if game.phase == game.Phase.PREP:
 			# The current board's harvest is paid when this round's fight begins.
 			next_income += state.harvest_total()
-		Icons.coin(_ci, block.position + Vector2(150, 124), 9)
-		_ci.draw_string(font, block.position + Vector2(163, 132), "+" + str(next_income), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.9, 0.8, 0.5, 0.7))
+		width += 22.0 + str(next_income).length() * 10.0
+	var pill := Rect2(coin - Vector2(22, 18), Vector2(width, 36))
+	Shapes.circle(_ci, pill.position + Vector2(18, 18), 18, Color(0.14, 0.1, 0.08))
+	Shapes.circle(_ci, pill.end - Vector2(18, 18), 18, Color(0.14, 0.1, 0.08))
+	_ci.draw_rect(Rect2(pill.position + Vector2(18, 0), Vector2(width - 36, 36)), Color(0.14, 0.1, 0.08))
+	Icons.coin(_ci, coin, 13 * (1.0 + coin_pulse * 0.45))
+	_ci.draw_string(font, coin + Vector2(18, 10 - coin_pulse * 5), gold, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Icons.GOLD.lerp(Color.WHITE, coin_pulse))
+	if next_income >= 0:
+		var at := coin + Vector2(24 + gold.length() * 16.0, 0)
+		Icons.coin(_ci, at + Vector2(8, 0), 7)
+		_ci.draw_string(font, at + Vector2(17, 6), "+" + str(next_income), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.9, 0.8, 0.5, 0.7))
 
 
 func _draw_loss_rewards() -> void:
 	for reward in loss_rewards:
 		var age: float = reward_time - reward.start
-		var origin := heart_pos(reward.team, reward.heart)
+		var origin := heart_pos(reward.team, reward.heart, game.states[reward.team].max_hp)
 		var dest := gold_pos(reward.team)
 		# Anticipation: the next heart swells and flashes before it breaks.
 		if age >= -0.16 and age < 0.0:
@@ -925,7 +1010,7 @@ func _draw_round_frieze() -> void:
 	var current := maxi(1, game.round_num)
 	var winners: Array[int] = game.round_winners
 	var k := smoothstep(0.0, 1.0, frieze_time / FRIEZE_SLIDE)
-	var center := FRIEZE_CENTER + Vector2(FRIEZE_STEP * (1.0 - k), 0)
+	var center := Vector2(Rules.BOARD_POS.x + Rules.BOARD_SIZE.x * 0.5, FRIEZE_Y) + Vector2(FRIEZE_STEP * (1.0 - k), 0)
 	# The oldest pip fades out while the frieze slides.
 	var oldest := maxi(1, current - FRIEZE_PAST - (1 if k < 1.0 else 0))
 	Shapes.line(_ci, center - Vector2((current - oldest) * FRIEZE_STEP, 0),
@@ -977,6 +1062,8 @@ func _draw_shop_column() -> void:
 		_draw_shop()
 	if game.ruleset.any_upgrade():
 		_draw_wand_scroll()
+	# The fight button sits under the board: it drops out of sight instead.
+	Shapes.set_transform(_ci, Vector2(0, FIGHT_SLIDE * k), 0.0, Vector2.ONE)
 	_draw_fight_button()
 	Shapes.set_transform(_ci, Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -1049,6 +1136,11 @@ func _draw_fight_button() -> void:
 	var hovered := ok and Rules.FIGHT_CENTER.distance_to(get_global_mouse_position()) < Rules.FIGHT_RADIUS
 	var c := Rules.FIGHT_CENTER
 	var r := Rules.FIGHT_RADIUS * (FIGHT_HOVER_SCALE if hovered else 1.0)
+	if game.fight_lesson_waiting():
+		# Until the very first fight, a gold halo breathes around the button.
+		var breath := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 4.0)
+		for ring in 4:
+			Shapes.circle(_ci, c, r + 6.0 + ring * 7.0 + breath * 4.0, Color(1.0, 0.84, 0.43, 0.1 + 0.06 * breath))
 	# Medallion split vertically: red combat half left, purple magic half right.
 	var left := Color(0.6, 0.16, 0.12) if ok else Color(0.25, 0.2, 0.2)
 	var right := Color(0.29, 0.16, 0.4) if ok else Color(0.22, 0.2, 0.25)
@@ -1269,7 +1361,7 @@ func _draw_enemy_preparation() -> void:
 		if k < 0.0 or k >= 1.0:
 			continue
 		var start := gold_pos(1)
-		var end := ENEMY_BLOCK.position + Vector2(42, 48)
+		var end := medallion_centers[1]
 		var p := start.lerp(end, k) + Vector2(sin(k * PI) * 45, 0)
 		Icons.coin(_ci, p, 9 * (1.0 - 0.35 * k))
 		Shapes.arc(_ci, p, 13, 0, TAU, 16, Color(1, 0.8, 0.2, 1.0 - k), 2, true)

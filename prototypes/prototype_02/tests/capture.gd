@@ -29,6 +29,10 @@ func _ready() -> void:
 		await _capture_map_reveal()
 		get_tree().quit()
 		return
+	if "--journey-only" in OS.get_cmdline_user_args():
+		await _capture_journey()
+		get_tree().quit()
+		return
 	if "--abandon-only" in OS.get_cmdline_user_args():
 		# A replayed duel: the island medallion, hovered, then the confirmation.
 		game.difficulty_progress_path = capture_dir.path_join("abandon_progress.cfg")
@@ -342,6 +346,39 @@ func _capture_map_reveal() -> void:
 		await _shot("map_reveal_%02d_full" % stage)
 		map.advance_discovery(map.BURST_DURATION)
 		map.set_process(true)
+
+
+## Every journey opponent's duel as a returning player sees it (rules already
+## introduced, lessons done): the composition choice, the preparation and the
+## fight, for screen-layout reviews.
+func _capture_journey() -> void:
+	game.difficulty_progress_path = capture_dir.path_join("journey_progress.cfg")
+	for stage in Journey.stage_count():
+		game.journey.completed.assign(range(stage))
+		for index in Journey.stage_count():
+			var rule: String = OpponentDB.get_opponent(index).rule
+			if rule != "" and rule not in game.journey.introduced:
+				game.journey.introduced.append(rule)
+				game.journey.lessons_done.append(rule)
+		for lesson in [game.FIGHT_LESSON]:
+			if lesson not in game.journey.introduced:
+				game.journey.introduced.append(lesson)
+				game.journey.lessons_done.append(lesson)
+		game.choose_stage(stage)
+		await _frames(4)
+		if game.phase == game.Phase.PACK:
+			await _shot("stage_%02d_0_pack" % (stage + 1))
+			game.choose_pack(0)
+		await _seconds(0.5)
+		while game.enemy_preparing:
+			await _frames(1)
+		await _seconds(1.2)
+		await _shot("stage_%02d_1_prep" % (stage + 1))
+		game.start_combat()
+		await _seconds(2.5)
+		await _shot("stage_%02d_2_combat" % (stage + 1))
+		game.new_duel()
+		await _frames(3)
 
 
 ## The innkeeper's first harvest: the light follows the coin into the purse.

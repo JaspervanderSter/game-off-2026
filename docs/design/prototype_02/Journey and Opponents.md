@@ -293,6 +293,7 @@ blocked, and combat slows to a quarter speed while the dimming is full.
 
 | Rule | Spotlit element | When |
 | --- | --- | --- |
+| Fight button (hunter) | The fight button, then a gold halo until the first fight | First preparation |
 | Wand (druid) | Charge crystals | First fight |
 | Shop (lumberjack) | Creature stall | Shop in place |
 | Hex (swamp witch) | First enemy creature, followed | First fight |
@@ -320,6 +321,35 @@ floating island). Esc does the same. It asks for confirmation without text: the 
 a dimmed screen with the medallion, a green check (leave) and a red cross
 (resume). Abandoning changes nothing on the journey. Enter and Esc confirm and
 cancel (implementation choice).
+
+### A screen that grows with the rules — playtest revision, 21 November 2026
+
+The user found the first duels full of empty space: every element stood at its
+final place long before its rule existed. Screenshots of all fifteen duels
+showed only five distinct screens (hunter; druid +crystals; lumberjack +gold,
+stall and bench; merchant +reroll; school +scroll). Confirmed choices, each
+among four proposals:
+
+- **Layout "fitted and centred":** before the shop the board and the two wizards
+  are centred together and the fight button sits under the board; once the shop
+  exists the board takes its final place, the bench is under it and the fight
+  button just right of the bench (closer to the fight, answering "should the
+  button be nearer the board?"). Rejected: an enlarged board, the opponent drawn
+  full length in the empty shop space, top and bottom bands.
+- **Wizard medallions** replace the old panels: the portrait in a round
+  medallion, the hearts on an arc above it, the charge crystals on an arc below,
+  the gold in a pill on the right. The hearts keep a **fixed spacing** whatever
+  their number; beyond six they form **two balanced concentric arcs** (ten =
+  five + five). Rejected: a compact plaque, a heraldic banner, a parchment strip;
+  a mirrored opponent, a full ring of hearts, a side arc; filling the inner arc
+  first, staggered rows, a single lengthening arc.
+- **First fight:** the fight button is introduced like a rule, with the same
+  spotlight at the hunter's first preparation, then a breathing gold halo until
+  the player's very first fight, ever. Rejected: a bouncing arrow, a giant
+  breathing button, a button that wakes up.
+
+Positions and sizes are implementation choices (see the prototype README,
+"Screen layout").
 
 ### Harvest lesson — playtest revision, 21 November 2026
 

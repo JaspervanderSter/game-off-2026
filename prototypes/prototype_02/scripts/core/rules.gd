@@ -55,11 +55,13 @@ const LEVEL_VISUAL_GROWTH := 0.15 # additive image scale per temporary level
 const MAX_LEVEL_VISUAL_SCALE := 1.6 # keep crowded fights readable
 const LEVEL_SCALE := 0.20 # max HP and basic damage per level above 1
 
-# Screen layout (1280 x 720).
-const BOARD_POS := Vector2(352, 84)
-const RESERVE_POS := Vector2(424, 548)
+# Screen layout (1280 x 720). The board, the bench and the fight button move
+# with the rules a journey duel has introduced (Hud.layout_screen); these
+# defaults are the complete layout, with the shop.
+static var BOARD_POS := Vector2(352, 84)
+static var RESERVE_POS := Vector2(369, 556)
 const SHOP_RECT := Rect2(968, 74, 288, 284) # creature offers and reroll; sell drop zone
-const FIGHT_CENTER := Vector2(1188, 664)
+static var FIGHT_CENTER := Vector2(865, 600)
 const FIGHT_RADIUS := 46.0
 
 

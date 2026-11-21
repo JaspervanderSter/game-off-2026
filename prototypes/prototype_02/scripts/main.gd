@@ -43,6 +43,11 @@ const FIELD_FULL_FLASH := 0.9
 var spotlight := RuleSpotlight.new()
 ## True while a replayed duel waits, paused, for the player to confirm leaving it.
 var abandon_asked := false
+## The fight button's lesson (first-pass rule spotlight, then a halo): the
+## hunter's first preparation spotlights the button, which then breathes in gold
+## until the player's very first fight. Saved in journey.introduced and
+## journey.lessons_done; a save that already beat the hunter skips it.
+const FIGHT_LESSON := "fight"
 var menu_screen: Node2D
 var map_screen: Node2D
 const PACK_CHOICES := 3
@@ -183,6 +188,12 @@ func new_duel() -> void:
 		show_map()
 
 
+## True while the hunter's preparation waits for the player's very first fight.
+func fight_lesson_waiting() -> bool:
+	return opponent == 0 and phase == Phase.PREP and 0 not in journey.completed \
+		and FIGHT_LESSON not in journey.lessons_done
+
+
 ## Only a replay of a beaten journey opponent can be abandoned; a first attempt
 ## is played to its end.
 func can_abandon() -> bool:
@@ -232,8 +243,13 @@ func _start_duel() -> void:
 	learning_cast_tried = false
 	merge_lesson_done = false
 	field_full_flash = 0.0
-	spotlight.reset(journey.rule_to_introduce(opponent))
-	Hud.layout_column(ruleset)
+	var rule := journey.rule_to_introduce(opponent)
+	if opponent == 0 and 0 not in journey.completed and FIGHT_LESSON not in journey.introduced:
+		rule = FIGHT_LESSON
+	spotlight.reset(rule)
+	Hud.layout_screen(ruleset)
+	board_view.position = Rules.BOARD_POS
+	fx.position = Rules.BOARD_POS
 	player.max_hp = Journey.hearts_for_stage(journey.selected)
 	enemy.max_hp = Journey.enemy_hearts_for_stage(journey.selected)
 	for state in states:
@@ -370,6 +386,9 @@ func start_combat() -> void:
 	if phase != Phase.PREP or enemy_preparing or drag != null or player.field_count() == 0:
 		Sfx.play("ui/fail")
 		return
+	if fight_lesson_waiting():
+		journey.lessons_done.append(FIGHT_LESSON)
+		_save_difficulty_progress(unlocked_difficulty)
 	hud.clear_loss_rewards()
 	battle = Battle.new()
 	battle.position = Rules.BOARD_POS
@@ -522,7 +541,7 @@ func _advance_enemy_preparation(dt: float) -> void:
 	enemy_action = action
 	_enemy_wait = ENEMY_ACTION_TIME
 	enemy_moves.clear()
-	var entrance := Hud.ENEMY_BLOCK.position + Vector2(42, 48) - Rules.BOARD_POS
+	var entrance := Hud.medallion_centers[1] - Rules.BOARD_POS
 	for c in enemy.fielded():
 		var dest := Rules.cell_center(c.cell)
 		var origin: Vector2 = before.get(c.uid, entrance)
@@ -983,7 +1002,9 @@ func _watch_rule_spotlight() -> void:
 		return
 	var rule := spotlight.rule
 	var shop_shown := phase == Phase.PREP and shop_out <= 0.0 and not enemy_preparing
-	if rule == Ruleset.SHOP and shop_shown:
+	if rule == FIGHT_LESSON and shop_shown:
+		_spotlight(Rules.FIGHT_CENTER, Vector2(66, 66))
+	elif rule == Ruleset.SHOP and shop_shown:
 		_spotlight(Hud.stall_rect().get_center(), Hud.STALL_RECT.size * 0.54)
 	elif rule == Ruleset.TRADE and shop_shown:
 		_spotlight(Hud.reroll_rect().get_center(), Vector2(Hud.REROLL_RECT.size.x * 0.56, 34))

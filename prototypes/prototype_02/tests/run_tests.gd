@@ -55,6 +55,7 @@ func _ready() -> void:
 	_test_rule_spotlight()
 	_test_learning_pause()
 	_test_abandon_replay()
+	_test_screen_layout()
 	_test_merge_lesson_and_full_board()
 	_test_scroll_shows_introduced_upgrades()
 	_test_day_night_cycle()
@@ -1896,7 +1897,9 @@ func _test_blizzard_and_recharge_upgrade() -> void:
 		"heal and hex upgrade shop rows work")
 	for i in Rules.WAND_UPGRADES.size():
 		var row := Hud.upgrade_rect(i)
-		check(not row.intersects(Hud.shop_rect()) and row.end.y < Rules.FIGHT_CENTER.y - Rules.FIGHT_RADIUS
+		var fight := Rules.FIGHT_RADIUS * Hud.FIGHT_HOVER_SCALE
+		check(not row.intersects(Hud.shop_rect()) and row.end.y <= 720.0
+			and not row.intersects(Rect2(Rules.FIGHT_CENTER - Vector2(fight, fight), Vector2(fight, fight) * 2.0))
 			and row.end.y <= Hud.scroll_top() + Hud.SCROLL_LENGTH, "wand upgrade row %d sits on the scroll" % i)
 	check(Rules.FIGHT_CENTER.x + Rules.FIGHT_RADIUS + 8 <= 1280 and Rules.FIGHT_CENTER.y + Rules.FIGHT_RADIUS + 8 <= 720,
 		"fight button fits in the bottom-right corner")
@@ -2858,6 +2861,63 @@ func _test_rule_spotlight() -> void:
 	check(Ruleset.TRADE in restored.introduced, "introduced rules are saved")
 	game.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://rule_spotlight_test_%d.cfg" % OS.get_process_id()))
+
+
+## The duel screen grows with the rules the journey has introduced: before the
+## shop the board and the medallions are centred together with the fight button
+## under the board; with the shop the bench and the fight button share the row
+## under the board. Hearts keep a fixed spacing on one or two arcs.
+func _test_screen_layout() -> void:
+	Hud.layout_screen(OpponentDB.ruleset(0))
+	var shopless_board := Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE)
+	check(absf(Rules.FIGHT_CENTER.x - shopless_board.get_center().x) < 0.5 and Rules.FIGHT_CENTER.y - Rules.FIGHT_RADIUS > shopless_board.end.y,
+		"before the shop the fight button sits under the board's centre")
+	var left := Hud.medallion_centers[0].x - Hud.MEDALLION_RADIUS
+	check(absf((left + shopless_board.end.x) * 0.5 - 640.0) < 30.0, "before the shop the board and the medallions are centred together")
+	for team in 2:
+		check(Hud.medallion_centers[team].x + Hud.MEDALLION_RADIUS + 4.0 < shopless_board.position.x,
+			"medallion %d stays clear of the board" % team)
+	Hud.layout_screen(OpponentDB.ruleset(5))
+	var board := Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE)
+	var bench_end := Rules.reserve_slot_rect(Rules.RESERVE_CAP - 1).end
+	check(board.position.x < shopless_board.position.x and Rules.FIGHT_CENTER.x - Rules.FIGHT_RADIUS > bench_end.x
+		and Rules.FIGHT_CENTER.x + Rules.FIGHT_RADIUS * Hud.FIGHT_HOVER_SCALE < Hud.stall_rect().position.x,
+		"with the shop the fight button sits right of the bench, clear of the stall")
+	for count in [1, 3, 6, 10]:
+		var gaps: Array[float] = []
+		var inner: int = count if count <= Hud.HEART_ARC else ceili(count / 2.0)
+		for i in count - 1:
+			if i + 1 != inner:
+				gaps.append(Hud.heart_pos(0, i, count).distance_to(Hud.heart_pos(0, i + 1, count)))
+		var even := gaps.all(func(g: float) -> bool: return absf(g - gaps[0]) < 1.5 and g > Hud.HEART_SPACING * 0.95)
+		check(gaps.is_empty() or even, "%d hearts keep a fixed spacing" % count)
+		check(Hud.heart_pos(1, count - 1, count).y > board.position.y - 4.0, "%d opponent hearts stay below the board's top" % count)
+	check(Hud.heart_pos(0, 9, 10).distance_to(Hud.medallion_centers[0]) > Hud.heart_pos(0, 0, 10).distance_to(Hud.medallion_centers[0]),
+		"ten hearts use two arcs, the last on the outer one")
+	check(Hud.crystal_pos(0, 2).y + 16.0 < board.end.y + 4.0, "the player's crystals stay above the board's bottom")
+	Hud.layout_screen(Ruleset.new())
+	# The fight button's lesson: spotlit at the hunter's first preparation, then a
+	# halo until the very first fight.
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.difficulty_progress_path = "user://fight_lesson_test_%d.cfg" % OS.get_process_id()
+	game._reset_difficulty_progress()
+	game.choose_stage(0)
+	game.choose_pack(0)
+	game.shop_out = 0.0
+	game.enemy_preparing = false
+	game._watch_rule_spotlight()
+	check(game.spotlight.active() and game.spotlight.center == Rules.FIGHT_CENTER and game.fight_lesson_waiting(),
+		"the hunter's first preparation spotlights the fight button, which waits for its first fight")
+	game.start_combat()
+	check(not game.fight_lesson_waiting() and game.FIGHT_LESSON in game.journey.lessons_done, "the first fight ends the fight lesson for good")
+	game.new_duel()
+	game.choose_stage(0)
+	game.choose_pack(0)
+	check(not game.spotlight.pending() and not game.fight_lesson_waiting(), "the fight button is not spotlit again")
+	game.free()
+	Hud.layout_screen(Ruleset.new())
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://fight_lesson_test_%d.cfg" % OS.get_process_id()))
 
 
 ## A replayed duel can be left for the map after a confirmation that pauses

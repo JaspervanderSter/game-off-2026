@@ -470,6 +470,11 @@ The user played the journey and listed 22 changes, handled one at a time.
   peasant into the purse, where "+N" rises; it no longer circles the peasant.
 - **Leaving a replay:** a replayed duel shows an island medallion (top left, or
   Esc) that pauses it under a check / cross confirmation and returns to the map.
+- **Screen layout:** the duel screen grows with the introduced rules (board and
+  wizards centred before the shop, fight button under the board, then right of
+  the bench); the wizard panels became medallions with hearts on fixed-spacing
+  arcs; the fight button is spotlit before the very first fight. See
+  [[Journey and Opponents]].
 - **Map ambience:** nature sounds follow the sky cycle on the map (wind and
   birds by day, chimes in the golden mist, crickets and an owl at night).
 - **Map icon:** every way back to the journey map (menu button, end of a duel,
