@@ -99,7 +99,9 @@ At most 10 effects play at once, plus looping and protected events.
 
 ..\music\music.json sets the music volume (volume_db), the fade time in
 seconds (fade_seconds) and the battle music speed-up for each of the 5
-frenzy levels (frenzy_speed_per_level: 0.05 = 5 % faster per level).
+frenzy levels (frenzy_speed_per_level: 0.05 = 5 % faster per level). It also sets the
+loudness of the world map's nature ambience (ambience_volume_db) and its fade
+time when the map shows or hides (ambience_fade_seconds).
 "@ | Set-Content -Encoding utf8 (Join-Path $Out "sfx\README.txt")
 
 $zip = "$Out-Windows.zip"

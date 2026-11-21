@@ -189,6 +189,16 @@ transitions. Start the project **directly on the world map**. Retain the menu
 scene for later work: deferring menu work does not make the journey decisions
 in this section temporary.
 
+**Confirmed after a playtest (21 November 2026): the map has a nature
+ambience that follows the sky cycle**, still without music. By day, a light
+wind and birds; in the golden mist, a softer wind, fewer birds and distant wind
+chimes; at dusk, the last birds and the first crickets over a darker wind; at
+night, crickets, an owl and the night wind. Looping beds blend with the sky;
+short calls come at random, more often in their time of day, from their island
+(birds from the forest and the town, chimes from the school, the owl from the
+forest). The sounds are synthesised for now (the user chose synthesis over
+recordings); the per-state levels and call rates are implementation choices.
+
 ### Implementation roadmap
 
 | Workstream | Status |
@@ -460,6 +470,8 @@ The user played the journey and listed 22 changes, handled one at a time.
   peasant into the purse, where "+N" rises; it no longer circles the peasant.
 - **Leaving a replay:** a replayed duel shows an island medallion (top left, or
   Esc) that pauses it under a check / cross confirmation and returns to the map.
+- **Map ambience:** nature sounds follow the sky cycle on the map (wind and
+  birds by day, chimes in the golden mist, crickets and an owl at night).
 - **Map icon:** every way back to the journey map (menu button, end of a duel,
   leaving a replay) shows the same sky-blue medallion with a floating island,
   replacing the folded paper map.

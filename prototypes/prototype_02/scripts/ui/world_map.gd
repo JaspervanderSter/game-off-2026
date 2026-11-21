@@ -45,6 +45,7 @@ var game
 var sky: Node2D
 var world: Node2D
 var roads: Node2D
+var ambience: MapAmbience
 var islands: Array[Node2D] = []
 var bridges: Array[Node2D] = []
 var buttons: Array[Button] = [] # one icon-only opponent per stage
@@ -105,6 +106,9 @@ func _ready() -> void:
 		button.add_child(figure)
 		figures.append(figure)
 	_layout()
+	ambience = MapAmbience.new()
+	ambience.map = self
+	add_child(ambience)
 
 func _button(parent: Node, rect: Rect2) -> Button:
 	var button := Button.new()

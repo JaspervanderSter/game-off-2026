@@ -333,10 +333,50 @@ preserves its playback position. Both streams loop in Godot, and combat x2 does
 not change music speed. Music volume is initially -16 dB to leave room for effects.
 
 Music is the game's own system, apart from the sound events below and from
-Tuning Fork. `music/music.json` holds `volume_db`, `fade_seconds` and
-`frenzy_speed_per_level`; unknown keys are reported as warnings. It reloads
+Tuning Fork. `music/music.json` holds `volume_db`, `fade_seconds`,
+`frenzy_speed_per_level`, `ambience_volume_db` and `ambience_fade_seconds`; unknown keys are reported as warnings. It reloads
 when the game window regains focus, and an exported build applies a
 `music/music.json` beside its executable over the packed values, key by key.
+
+### Map ambience (21 November 2026)
+
+The world map has no music but a nature ambience that follows its sky cycle
+(`scripts/audio/map_ambience.gd`, `MapAmbience`, a child of the map). Three
+looping beds take their loudness from the four sky states (`SkyCycle.weights`):
+
+| Bed | Day | Golden mist | Dusk | Night |
+|---|---:|---:|---:|---:|
+| `wind_day` | 1 | 0.75 | 0.35 | 0 |
+| `wind_night` | 0 | 0.25 | 0.6 | 1 |
+| `crickets` | 0 | 0 | 0.45 | 0.8 |
+
+Short calls come at random, a number of times per minute that depends on the
+time of day, never twice the same file in a row, from their island (panned
+with `AudioStreamPlayer2D`), with ±2 dB and ±5 % pitch variation:
+
+| Call | Files | Day | Golden mist | Dusk | Night | Shortest gap | Island |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Bird | 6 | 14 | 8 | 3 | 0 | 1.2 s | Forest or town |
+| Wind chime | 3 | 0 | 3 | 1 | 0 | 6 s | School |
+| Owl | 2 | 0 | 0 | 1 | 3 | 9 s | Forest |
+
+The ambience fades in over `ambience_fade_seconds` (1.5 s) when the map shows
+and out when it hides; it stops once silent, and each visit resumes the loops
+at a random point. Its loudness at full presence is `ambience_volume_db`
+(-14 dB) in `music/music.json`. The menu and duels have none.
+
+The sounds in `music/ambience/` are synthesised by
+`tools/make_map_ambience.gd`: filtered noise winds, pulsed cricket tones,
+chirped bird calls, inharmonic chime partials and vibrato owl hoots, 22,050 Hz
+mono. The beds are 32-second loops whose tail is crossfaded into their start.
+Every sound is seeded, so a new run rewrites identical files. It needs oggenc:
+
+```
+godot --path . --headless --script res://tools/make_map_ambience.gd
+godot --path . --headless --import
+```
+
+Recordings can replace these files under the same names.
 
 ## Sound effects
 

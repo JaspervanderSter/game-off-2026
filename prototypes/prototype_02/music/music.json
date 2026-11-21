@@ -1,6 +1,8 @@
 {
-	"description": "Background music. Volume in dB once faded in, fade time in seconds, and the battle music speed-up per frenzy level (5 levels).",
+	"description": "Background music and the journey map's ambience. Music volume in dB once faded in, fade time in seconds, and the battle music speed-up per frenzy level (5 levels). Ambience volume in dB at full presence and its fade time in seconds when the map shows or hides.",
 	"volume_db": -16.0,
 	"fade_seconds": 1.2,
-	"frenzy_speed_per_level": 0.05
+	"frenzy_speed_per_level": 0.05,
+	"ambience_volume_db": -14.0,
+	"ambience_fade_seconds": 1.5
 }

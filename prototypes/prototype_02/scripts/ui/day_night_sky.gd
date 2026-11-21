@@ -9,12 +9,26 @@ const TOP := [Color("688f9f"), Color("bba08b"), Color("655770"), Color("222d44")
 const BOTTOM := [Color("a8bdba"), Color("e5ca9e"), Color("ad929a"), Color("48546b")]
 const CLOUD := [Color("d1dccf"), Color("ecdbb9"), Color("c5acb4"), Color("637087")]
 
+## How much of each of the four sky states (day, golden mist, dusk, night) the
+## cycle shows at `phase`; the weights add up to 1. The map ambience follows them.
+static func weights(phase: float) -> PackedFloat32Array:
+	var position := fposmod(phase, 1.0) * 4.0
+	var index := int(position) % 4
+	var blend := _blend(position)
+	var result := PackedFloat32Array([0.0, 0.0, 0.0, 0.0])
+	result[index] += 1.0 - blend
+	result[(index + 1) % 4] += blend
+	return result
+
+## A short rest at each palette lets the four visual identities read clearly.
+static func _blend(position: float) -> float:
+	return smoothstep(0.18, 0.88, fmod(position, 1.0))
+
 static func palette(phase: float) -> Dictionary:
 	var position := fposmod(phase, 1.0) * 4.0
 	var index := int(position) % 4
 	var next := (index + 1) % 4
-	# A short rest at each palette lets the four visual identities read clearly.
-	var blend := smoothstep(0.18, 0.88, fmod(position, 1.0))
+	var blend := _blend(position)
 	var night := lerpf(1.0 if index == 3 else 0.0, 1.0 if next == 3 else 0.0, blend)
 	return {
 		"top": TOP[index].lerp(TOP[next], blend),

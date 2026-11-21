@@ -2249,7 +2249,39 @@ func _test_day_night_cycle() -> void:
 	cycle.elapsed = cycle.cycle_seconds - 1.0
 	cycle.advance(2.0)
 	check(is_equal_approx(cycle.elapsed, 1.0), "sky clock wraps after a full cycle")
-	cycle.free()
+	for phase in [0.0, 0.1, 0.33, 0.5, 0.62, 0.9]:
+		var weights: PackedFloat32Array = cycle.weights(phase)
+		check(is_equal_approx(weights[0] + weights[1] + weights[2] + weights[3], 1.0), "sky state weights add up to 1 at %s" % phase)
+	check(cycle.weights(0.0)[0] == 1.0 and cycle.weights(0.75)[3] == 1.0, "full day and full night have their own weight")
+	_test_map_ambience()
+
+
+## The map's nature ambience follows the sky and fades with the map.
+func _test_map_ambience() -> void:
+	var game = load("res://main.tscn").instantiate()
+	game.difficulty_progress_path = "user://ambience_test_%d.cfg" % OS.get_process_id()
+	add_child(game)
+	var map = game.map_screen
+	var ambience: MapAmbience = map.ambience
+	ambience.set_process(false)
+	game.show_map()
+	map.sky.elapsed = 0.0
+	check(ambience.bed_level("wind_day") == 1.0 and ambience.bed_level("crickets") == 0.0
+		and ambience.call_rate("bird") > 0.0 and ambience.call_rate("owl") == 0.0,
+		"by day the map has wind and birds, no crickets or owl")
+	map.sky.elapsed = map.sky.cycle_seconds * 0.75
+	check(ambience.bed_level("wind_day") == 0.0 and ambience.bed_level("crickets") > 0.0
+		and ambience.call_rate("bird") == 0.0 and ambience.call_rate("owl") > 0.0,
+		"at night the map has crickets and an owl, no birds")
+	map.sky.elapsed = map.sky.cycle_seconds * 0.25
+	check(ambience.call_rate("chime") > 0.0, "wind chimes ring in the golden mist")
+	ambience.advance(10.0)
+	check(ambience.presence == 1.0 and ambience.beds["wind_day"].playing, "the ambience fades in on the map")
+	game.choose_stage(0)
+	ambience.advance(10.0)
+	check(ambience.presence == 0.0 and not ambience.beds["wind_day"].playing, "a duel fades the ambience out and stops it")
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://ambience_test_%d.cfg" % OS.get_process_id()))
 
 
 func _test_journey_navigation() -> void:
@@ -2264,7 +2296,8 @@ func _test_journey_navigation() -> void:
 	await get_tree().process_frame
 	var map = game.map_screen
 	check(map.find_children("*", "ScrollContainer", true, false).is_empty(), "map has no scrolling container")
-	check(map.get_child_count() == 2, "map contains only the sky and islands, without a UI banner")
+	check(map.get_children().filter(func(c): return c is CanvasItem).size() == 2,
+		"map shows only the sky and islands, without a UI banner")
 	_check_whole_map_visible(map, "landscape")
 	var initial_transform: Transform2D = map.world.transform
 	var motion := InputEventMouseMotion.new()

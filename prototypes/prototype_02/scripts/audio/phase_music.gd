@@ -12,6 +12,8 @@ const DEFAULTS := {
 	"volume_db": -16.0,
 	"fade_seconds": 1.2,
 	"frenzy_speed_per_level": 0.05,
+	"ambience_volume_db": -14.0,
+	"ambience_fade_seconds": 1.5,
 }
 const INFO_KEYS := ["description"]
 
