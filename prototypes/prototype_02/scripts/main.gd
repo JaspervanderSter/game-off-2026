@@ -84,6 +84,7 @@ var hud: Hud
 var music: PhaseMusic
 var switch_flash: SwitchFlash
 var fps_counter: Control
+var alternate_audio: Node
 
 
 func _ready() -> void:
@@ -118,6 +119,12 @@ func _ready() -> void:
 	map_screen.game = self
 	map_screen.z_index = 30
 	add_child(map_screen)
+	if OS.has_feature("windows") and not OS.has_feature("web"):
+		alternate_audio = load("res://scripts/audio/alternate_audio.gd").new()
+		alternate_audio.music = music
+		alternate_audio.map = map_screen
+		add_child(alternate_audio)
+		music.replacement = alternate_audio
 	new_duel()
 	# The game opens on the title, in the sky above the journey's islands.
 	show_menu(true)
@@ -641,10 +648,20 @@ func _owned_at(pos: Vector2) -> OwnedCreature:
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
+	if alternate_audio != null:
+		if event.keycode == KEY_M and event.ctrl_pressed and event.shift_pressed:
+			alternate_audio.toggle_dialog()
+			get_viewport().set_input_as_handled()
+			return
+		if alternate_audio.dialog_visible():
+			if event.keycode == KEY_ESCAPE:
+				alternate_audio.close_dialog()
+			get_viewport().set_input_as_handled()
+			return
 	# Ctrl+Shift+R belongs to the browser; Alt+Shift+R also works on the Web.
 	# Handle this before focused menu/map buttons consume keyboard input.
 	if event.keycode == KEY_R and event.shift_pressed and (event.ctrl_pressed or event.alt_pressed) \
-			and (menu_screen.visible or map_screen.visible or phase == Phase.DIFFICULTY):
+			and (map_screen.visible or phase == Phase.DIFFICULTY):
 		_reset_difficulty_progress()
 		get_viewport().set_input_as_handled()
 		return
@@ -689,6 +706,8 @@ func toggle_art_style() -> void:
 ## Hidden Ctrl+Shift+S switch between the current sound effects (default) and
 ## the earlier ones, to compare them; the choice is remembered (see SoundSet).
 func toggle_sound_set() -> void:
+	if alternate_audio != null and alternate_audio.active:
+		return
 	switch_flash.show_sound_set(SoundSet.toggle())
 
 

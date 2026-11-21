@@ -41,6 +41,8 @@ const VALUE_ORDER := ["group", "loop", "protected", "files_from", "volume_db", "
 
 ## The game folder (holding sfx/), as an absolute path.
 var root := ""
+## A project may expose several independent SFX workspaces.
+var folder_name := "sfx"
 ## Events, sorted by path.
 var sounds: Array[SoundEntry] = []
 ## Groups by name: their settings, as edited.
@@ -57,7 +59,7 @@ var _structure := ""
 func open(path: String) -> String:
 	root = path.simplify_path()
 	sounds.clear()
-	if not DirAccess.dir_exists_absolute(sfx_dir()):
+	if not DirAccess.dir_exists_absolute(sfx_dir()) and not DirAccess.dir_exists_absolute(root.path_join("music")):
 		return "No sfx/ folder in %s" % root
 	_scan(sfx_dir(), "")
 	_sort()
@@ -67,7 +69,7 @@ func open(path: String) -> String:
 
 
 func sfx_dir() -> String:
-	return root.path_join("sfx")
+	return root.path_join(folder_name)
 
 
 func groups_path() -> String:
@@ -441,6 +443,8 @@ static func _value_text(value: Variant, key: String, indent: String) -> String:
 ## A folder's events: every JSON file, and every OGG file that is not a
 ## numbered file (`_N`) of another event there; then its sub-folders.
 func _scan(dir: String, folder: String) -> void:
+	if not DirAccess.dir_exists_absolute(dir):
+		return
 	for event_name in event_names_at(dir, folder == ""):
 		var entry := _entry_at(event_name if folder == "" else folder.path_join(event_name))
 		entry.load_settings()

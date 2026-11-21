@@ -18,6 +18,7 @@ func _ready() -> void:
 		_test_borrowed_files(game)
 		_test_waveform(game)
 		_test_projects(game)
+		preload("res://tests/music_tests.gd").run(self, game, _check)
 	_test_number_text()
 	_test_editing_and_saving()
 	_test_sound_files()

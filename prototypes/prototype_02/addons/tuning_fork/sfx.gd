@@ -169,7 +169,7 @@ func set_overlay(root: String) -> void:
 	if root == _overlay:
 		return
 	_overlay = root
-	_overlay_from_disk = root != "" and OS.has_feature("editor")
+	_overlay_from_disk = root != "" and (OS.has_feature("editor") or root.is_absolute_path() and not root.begins_with("res://"))
 	_overlay_root = ProjectSettings.globalize_path(root) if _overlay_from_disk else root
 	if enabled:
 		reload(true)

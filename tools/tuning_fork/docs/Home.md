@@ -21,6 +21,7 @@ the goal. See [[Principles]].
   [[Groups]]
 - How it plays: [[Playback]], [[Runtime]], [[File format]]
 - How people work with it: [[Workflow]], [[Hot reload]], [[Tool]]
+- Music and replaceable procedural references: [[Music]]
 - Words: [[Glossary]]
 - Where the code is today against this definition: [[Gaps]]
 

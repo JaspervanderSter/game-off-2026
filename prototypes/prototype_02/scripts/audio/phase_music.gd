@@ -26,6 +26,8 @@ var players: Dictionary = {}
 var weights: Dictionary = {}
 var current := ""
 var _settings := {}
+## Optional Windows workspace; absent on Web and inactive by default.
+var replacement: Node
 
 
 ## Music settings: the project's music.json, then the one beside an exported
@@ -92,11 +94,17 @@ func volume_db() -> float:
 func transition_to(id: String) -> void:
 	assert(id == "" or TRACKS.has(id))
 	current = id
+	if replacement != null and replacement.active:
+		replacement.transition_to(id)
+		if replacement.handles_phase(id):
+			return
 	if id != "" and not players[id].playing:
 		players[id].play()
 
 
 func set_frenzy_level(level: int) -> void:
+	if replacement != null and replacement.active:
+		replacement.set_frenzy_level(level)
 	var player: AudioStreamPlayer = players["battle"]
 	player.pitch_scale = maxf(0.01, 1.0 + level * float(setting("frenzy_speed_per_level")))
 
@@ -109,10 +117,10 @@ func advance_fades(dt: float) -> void:
 	var full := db_to_linear(volume_db())
 	for id in players:
 		var player: AudioStreamPlayer = players[id]
-		var target := 1.0 if id == current else 0.0
+		var target := 1.0 if id == current and not (replacement != null and replacement.handles_phase(id)) else 0.0
 		var weight := move_toward(float(weights[id]), target, dt / fade_seconds())
 		weights[id] = weight
 		# Smoothstep in amplitude: quiet starts and ends with no volume jumps.
 		player.volume_linear = weight * weight * (3.0 - 2.0 * weight) * full
-		if weight == 0.0 and id != current and player.playing:
+		if weight == 0.0 and target == 0.0 and player.playing:
 			player.stop()

@@ -13,6 +13,16 @@ and its project window.
 
 ## Known limits
 
+- **Music (21 November 2026):** the Music tab and shared track player extend
+  the original SFX-only scope; [[Music]] defines this addition. Game-specific
+  phase bindings, map synchronization and fallback generators remain game code.
+  Tuning Fork does not synthesize or bake arbitrary runtime code. Shapeshifters
+  Duel supplies its 160-second map reference and separate Windows workspace.
+- **Music preview:** configuration buttons preview transitions between tracks;
+  the tool does not reproduce the game's sky visuals or frenzy progression.
+- **Conversion:** the packaged oggenc remains the preferred WAV encoder.
+  FFmpeg with libvorbis can serve as an installed or `OGGENC`-selected fallback.
+
 - **Runtime:** the settings of a looping event that is already playing apply
   the next time it starts ([[Hot reload]]).
 - **Tool:** it plays groups at their groups.json volume; the game's own

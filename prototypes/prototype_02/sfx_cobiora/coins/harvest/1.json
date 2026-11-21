@@ -1,0 +1,13 @@
+{
+	"description": "First landing coin of a harvesting peasant. Coins 2 to 8 (coins/harvest/2 to 8) play this file, each higher.",
+	"group": "effects",
+	"loop": false,
+	"protected": false,
+	"volume_db": -8.0,
+	"volume_jitter_db": 0.0,
+	"pitch": 1.0,
+	"pitch_jitter": 0.02,
+	"cooldown_ms": 40,
+	"pick": "shuffle",
+	"shuffle_refill_after": 0
+}

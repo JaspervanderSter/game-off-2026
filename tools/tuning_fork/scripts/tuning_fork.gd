@@ -98,6 +98,9 @@ var _rename_dialog: ConfirmationDialog
 var _rename_path: LineEdit
 var _rename_error: Label
 var _delete_dialog: ConfirmationDialog
+var _tabs: TabContainer
+var _music_panel: MusicPanel
+var _sfx_workspace: OptionButton
 
 
 func _ready() -> void:
@@ -110,7 +113,10 @@ func _ready() -> void:
 		if _picker.visible:
 			_picker.open_dropped(paths)
 		else:
-			_add_files(paths))
+			if _tabs.current_tab == 1:
+				_music_panel.add_files(paths)
+			else:
+				_add_files(paths))
 	var disk_timer := Timer.new()
 	disk_timer.wait_time = 1.0
 	disk_timer.autostart = true
@@ -129,6 +135,10 @@ func _ready() -> void:
 	if args.has("root"):
 		var game := ProjectPicker.normalized(args["root"])
 		_open_root(game, args.get("select", _remembered_selection(game)))
+		if args.get("tab", "") == "music":
+			_tabs.current_tab = 1
+			if args.has("select"):
+				_music_panel.select(args["select"])
 	else:
 		_show_picker()
 	if args.has("screenshot"):
@@ -152,6 +162,20 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 	var typing := get_viewport().gui_get_focus_owner() is LineEdit or get_viewport().gui_get_focus_owner() is TextEdit
+	if _tabs.current_tab == 1:
+		if key.keycode == KEY_S and key.is_command_or_control_pressed():
+			if key.shift_pressed:
+				_save_all()
+			elif not _music_panel.current.is_empty():
+				_music_panel.save(_music_panel.current)
+		elif key.keycode == KEY_SPACE and not typing:
+			_music_panel.play_current()
+		elif key.keycode == KEY_ESCAPE:
+			_music_panel.stop()
+		else:
+			return
+		get_viewport().set_input_as_handled()
+		return
 	if key.keycode == KEY_S and key.is_command_or_control_pressed():
 		if key.shift_pressed:
 			_save_all()
@@ -173,7 +197,7 @@ func _input(event: InputEvent) -> void:
 ## Shows the project window over the editor, with `message` as a warning.
 func _show_picker(message := "", animate := true) -> void:
 	_stop_all()
-	var open := library.root != "" and DirAccess.dir_exists_absolute(library.sfx_dir())
+	var open := library.root != ""
 	_picker.show_projects(_recent(), ProjectPicker.detect(), open, message, animate)
 	_background.hide()
 
@@ -185,7 +209,7 @@ func _hide_picker() -> void:
 
 func _on_project_chosen(game: String) -> void:
 	game = ProjectPicker.normalized(game)
-	if SoundLibrary.event_count(game) < 0:
+	if SoundLibrary.event_count(game) < 0 and not DirAccess.dir_exists_absolute(game.path_join("music")):
 		_picker.show_message("No sfx/ folder in %s" % game)
 		return
 	_open_root(game, _remembered_selection(game))
@@ -237,7 +261,23 @@ func _open_root(root: String, select := "") -> void:
 	_stop_all()
 	current = null
 	showing_groups = false
+	if library.root != root:
+		library.folder_name = "sfx"
 	var error := library.open(root)
+	_sfx_workspace.clear()
+	var folders: Array[String] = []
+	if DirAccess.dir_exists_absolute(root):
+		for folder in DirAccess.get_directories_at(root):
+			if folder == "sfx" or folder.begins_with("sfx_"):
+				folders.append(folder)
+	folders.sort()
+	for folder in folders:
+		_sfx_workspace.add_item(folder)
+	_sfx_workspace.select(folders.find(library.folder_name))
+	if _music_panel.catalog.root != root.path_join("music"):
+		_music_panel.open(root)
+	else:
+		_music_panel.check_disk()
 	_root_label.text = library.root if error == "" else "—"
 	_root_label.tooltip_text = _root_label.text
 	sound_player.apply_groups(library.groups)
@@ -935,6 +975,10 @@ func _remove_file() -> void:
 # --- Saving ----------------------------------------------------------------
 
 func _save_current() -> void:
+	if _tabs.current_tab == 1:
+		if not _music_panel.current.is_empty():
+			_music_panel.save(_music_panel.current)
+		return
 	if showing_groups:
 		_save_groups()
 	elif current != null:
@@ -942,6 +986,8 @@ func _save_current() -> void:
 
 
 func _save_all() -> bool:
+	if not _music_panel.save_all():
+		return false
 	if library.groups_dirty() and not _save_groups():
 		return false
 	return _save_entries(_unsaved())
@@ -992,6 +1038,7 @@ func _revert_current() -> void:
 ## Runs `then` now, or once the user saved or discarded unsaved changes.
 func _confirm_unsaved(then: Callable) -> void:
 	var unsaved: Array = _unsaved().map(func(e: SoundEntry) -> String: return e.path)
+	unsaved.append_array(_music_panel.unsaved_paths())
 	if library.groups_dirty():
 		unsaved.append(SoundLibrary.GROUPS_FILE)
 	if unsaved.is_empty():
@@ -1005,6 +1052,7 @@ func _confirm_unsaved(then: Callable) -> void:
 ## Reloads what changed on disk (another editor, new files): events added or
 ## removed, sound files, settings and groups.
 func _check_disk() -> void:
+	_music_panel.check_disk()
 	if library.root == "":
 		return
 	if library.structure_changed_on_disk():
@@ -1051,6 +1099,9 @@ func _check_disk() -> void:
 
 ## Plays the current event once: file `file_index`, or the one it picks.
 func _play_once(file_index := -1) -> void:
+	if _tabs.current_tab == 1:
+		_music_panel.play_current()
+		return
 	if current == null:
 		return
 	var streams := library.streams_of(current)
@@ -1077,6 +1128,8 @@ func _on_played(entry: SoundEntry, file_index: int, pitch: float, volume_db: flo
 
 func _stop_all() -> void:
 	sound_player.stop_all()
+	if _music_panel != null:
+		_music_panel.stop()
 
 
 # --- Interface construction ---------------------------------------------------
@@ -1094,12 +1147,30 @@ func _build_ui() -> void:
 	page.add_theme_constant_override("separation", 0)
 	background.add_child(page)
 	page.add_child(_build_top_bar())
+	_tabs = TabContainer.new()
+	_tabs.size_flags_vertical = SIZE_EXPAND_FILL
+	page.add_child(_tabs)
+	var sfx_page := VBoxContainer.new()
+	sfx_page.name = "SFX"
+	_tabs.add_child(sfx_page)
+	_sfx_workspace = OptionButton.new()
+	_sfx_workspace.tooltip_text = "Independent sound workspace. Default audio uses sfx; alternate modes can use their own folder."
+	_sfx_workspace.item_selected.connect(func(index: int) -> void:
+		var folder := _sfx_workspace.get_item_text(index)
+		_confirm_unsaved(func() -> void:
+			library.folder_name = folder
+			_open_root(library.root)))
+	sfx_page.add_child(_sfx_workspace)
 	var split := HSplitContainer.new()
 	split.size_flags_vertical = SIZE_EXPAND_FILL
-	page.add_child(split)
+	sfx_page.add_child(split)
 	split.add_child(_build_list())
 	split.add_child(_build_editor())
-	page.add_child(_build_status_bar())
+	sfx_page.add_child(_build_status_bar())
+	_music_panel = MusicPanel.new()
+	_music_panel.name = "Music"
+	_tabs.add_child(_music_panel)
+	_tabs.tab_changed.connect(func(_index: int) -> void: _stop_all())
 	_build_dialogs()
 	_picker = ProjectPicker.new()
 	_picker.hide()
@@ -1351,6 +1422,7 @@ func _build_dialogs() -> void:
 	_confirm.custom_action.connect(func(action: StringName) -> void:
 		if action == &"discard":
 			_confirm.hide()
+			_music_panel.discard_all()
 			_after_confirm.call())
 	add_child(_confirm)
 

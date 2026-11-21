@@ -5,7 +5,7 @@
 #
 # Produces <Out>\ShapeshiftersDuel.exe (with the game icon and version info),
 # <Out>\sfx\ (every sound event's .json and .ogg files, groups.json),
-# <Out>\music\music.json and
+# <Out>\music\ (tracks, sidecars and alternate bindings), <Out>\sfx_cobiora\ and
 # <Out>-Windows.zip, which unpacks into a single ShapeshiftersDuel folder.
 param(
 	[string]$Godot = "",
@@ -49,7 +49,20 @@ Get-ChildItem $sfx -Recurse -File -Include *.ogg, *.json | ForEach-Object {
 	New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
 	Copy-Item $_.FullName $target
 }
-Copy-Item (Join-Path $project "music\music.json") (Join-Path $Out "music")
+# Expose all music dynamically, preserving subfolders and adjacent settings.
+$music = Join-Path $project "music"
+Get-ChildItem $music -Recurse -File -Include *.ogg, *.wav, *.json | ForEach-Object {
+	$target = Join-Path (Join-Path $Out "music") $_.FullName.Substring($music.Length + 1)
+	New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+	Copy-Item -LiteralPath $_.FullName -Destination $target
+}
+$alternateSfx = Join-Path $project "sfx_cobiora"
+Get-ChildItem $alternateSfx -Recurse -File -Include *.ogg, *.json | ForEach-Object {
+	$target = Join-Path (Join-Path $Out "sfx_cobiora") $_.FullName.Substring($alternateSfx.Length + 1)
+	New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+	Copy-Item -LiteralPath $_.FullName -Destination $target
+}
+Copy-Item -LiteralPath (Join-Path $project "AUDIO_WORKSPACE.md") -Destination $Out
 @"
 Sound effects of Shapeshifters Duel
 

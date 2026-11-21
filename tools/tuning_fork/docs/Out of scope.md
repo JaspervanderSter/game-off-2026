@@ -9,8 +9,8 @@ than Wwise or FMOD ([[Principles]]). Each item has a simple answer instead.
 | Sequences (intro, loop, outro) | Separate events the game plays in turn |
 | Game parameters (RTPC, curves, `pitch_step`) | One event per case ([[Settings]]) |
 | Positional 2D/3D sound, panning, attenuation | Not planned |
-| Music (tracks, fades, transitions, tempo) | A separate system in the game, outside Tuning Fork |
-| Ambience generators (random one-shots over beds) | Not planned |
+| Tempo grids, beat matching, musical composition | Edit recordings in an audio editor; [[Music]] exposes simple file playback |
+| Editing ambience generators (random one-shots over beds) | Keep the game's generator and offer a baked full-loop replacement through [[Music]] |
 | Effects (reverb, filters, echo) | Bake them into the file |
 | Ducking, side-chain, snapshots | Group volumes the game sets ([[Groups]]) |
 | Tracking which events the game uses | The team talks ([[Workflow]]) |

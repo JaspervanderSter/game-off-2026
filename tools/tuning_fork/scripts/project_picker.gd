@@ -88,7 +88,7 @@ func _init() -> void:
 	var open := Button.new()
 	open.icon = Icons.get_icon("folder", ACCENT, 22)
 	open.text = "Open a game folder"
-	open.tooltip_text = "Any folder holding sfx/; or drop it on the window"
+	open.tooltip_text = "Any folder holding sfx/ or music/; or drop it on the window"
 	open.custom_minimum_size.y = 52
 	open.focus_mode = FOCUS_NONE
 	open.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -106,7 +106,7 @@ func _init() -> void:
 	_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
 	_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	_dialog.use_native_dialog = true
-	_dialog.title = "Game folder (holding sfx/)"
+	_dialog.title = "Game folder (holding sfx/ or music/)"
 	_dialog.dir_selected.connect(func(dir: String) -> void: chosen.emit(dir))
 	add_child(_dialog)
 
@@ -129,7 +129,7 @@ func show_projects(recent: Array, detected: Array, back_allowed: bool, message :
 			cards.append(_card(game, false))
 	if cards.is_empty():
 		var hint := Label.new()
-		hint.text = "Open the game folder that holds sfx/"
+		hint.text = "Open the game folder that holds sfx/ or music/"
 		hint.add_theme_color_override("font_color", DIM)
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		hint.custom_minimum_size.y = 120
@@ -183,7 +183,7 @@ static func detect(start := "") -> Array[String]:
 			folders.sort()
 			folders.reverse()
 			for folder: String in folders:
-				if DirAccess.dir_exists_absolute(prototypes.path_join(folder).path_join("sfx")):
+				if DirAccess.dir_exists_absolute(prototypes.path_join(folder).path_join("sfx")) or DirAccess.dir_exists_absolute(prototypes.path_join(folder).path_join("music")):
 					found.append(prototypes.path_join(folder))
 			break
 		dir = dir.get_base_dir()
@@ -229,7 +229,9 @@ func _section(shape: String, text: String) -> Control:
 ## One folder: icon, name, path, number of events; recent ones can be removed.
 func _card(game: String, recent: bool) -> Control:
 	var count := SoundLibrary.event_count(game)
-	var present := count >= 0
+	var present := count >= 0 or DirAccess.dir_exists_absolute(game.path_join("music"))
+	if present and count < 0:
+		count = 0
 	var style := _flat(CARD, 8)
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", style)

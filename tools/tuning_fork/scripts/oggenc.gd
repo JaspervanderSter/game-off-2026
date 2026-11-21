@@ -20,11 +20,12 @@ static func program() -> String:
 			candidates.append(ProjectSettings.globalize_path("res://vendor/oggenc/oggenc.exe"))
 		if OS.get_environment("USERPROFILE") != "":
 			candidates.append(OS.get_environment("USERPROFILE").path_join("Tools/oggenc/oggenc2.exe"))
-		candidates.append_array(["oggenc2", "oggenc"])
+		candidates.append_array(["oggenc2", "oggenc", "ffmpeg"])
 		for candidate in candidates:
 			var on_path := not candidate.contains("/") and not candidate.contains("\\")
+			var version_arg := "-version" if "ffmpeg" in candidate.to_lower() else "--version"
 			if (on_path or FileAccess.file_exists(candidate)) \
-					and OS.execute(candidate, ["--version"], [], false) == 0:
+					and OS.execute(candidate, [version_arg], [], false) == 0:
 				_program = candidate
 				break
 	return _program
@@ -36,7 +37,10 @@ static func to_ogg(source: String, target: String) -> String:
 	if program() == "":
 		return "Converting %s needs oggenc beside Tuning Fork or on the PATH" % source.get_file()
 	var output := []
-	var code := OS.execute(program(), ["-Q", "-q", "5", "-o", target, source], output, true)
+	var args := PackedStringArray(["-Q", "-q", "5", "-o", target, source])
+	if "ffmpeg" in program().to_lower():
+		args = PackedStringArray(["-v", "error", "-y", "-i", source, "-c:a", "libvorbis", "-q:a", "5", target])
+	var code := OS.execute(program(), args, output, true)
 	if code != 0 or AudioStreamOggVorbis.load_from_file(target) == null:
 		if FileAccess.file_exists(target):
 			DirAccess.remove_absolute(target)

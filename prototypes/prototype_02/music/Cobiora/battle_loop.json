@@ -1,0 +1,10 @@
+{
+	"description": "Combat. Musical pitch stays unchanged by default, including during frenzy. The speed-up per frenzy level can be tuned here.",
+	"volume_db": -16.0,
+	"fade_seconds": 1.2,
+	"loop": true,
+	"playback_mode": "restart",
+	"duck_db": -40.0,
+	"frenzy_speed_per_level": 0.0,
+	"segments": []
+}

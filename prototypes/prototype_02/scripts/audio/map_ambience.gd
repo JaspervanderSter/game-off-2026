@@ -59,6 +59,9 @@ var rng := RandomNumberGenerator.new()
 var _wait := {} # kind -> seconds before another call of that kind may come
 var _last := {} # kind -> index of the call last played, never repeated at once
 var _settings := {}
+## Only the Windows alternative replaces the complete procedural mix.
+var replaced := false
+var _original_gain := 1.0
 
 
 func _ready() -> void:
@@ -124,6 +127,9 @@ func advance(dt: float) -> void:
 	presence = move_toward(presence, 1.0 if shown else 0.0, dt / maxf(0.01, setting("ambience_fade_seconds")))
 	# Smoothstep in amplitude: quiet starts and ends with no volume jumps.
 	var fade := presence * presence * (3.0 - 2.0 * presence)
+	if replaced or _original_gain < 1.0:
+		_original_gain = move_toward(_original_gain, 0.0 if replaced else 1.0, dt / maxf(0.01, setting("ambience_fade_seconds")))
+		fade *= _original_gain
 	var full := db_to_linear(setting("ambience_volume_db"))
 	for id in beds:
 		var player: AudioStreamPlayer = beds[id]
@@ -133,7 +139,7 @@ func advance(dt: float) -> void:
 			player.play(rng.randf() * player.stream.get_length())
 		elif fade == 0.0 and player.playing:
 			player.stop()
-	if not shown or presence < 0.5:
+	if not shown or presence < 0.5 or replaced:
 		return
 	for kind: String in CALLS:
 		_wait[kind] -= dt

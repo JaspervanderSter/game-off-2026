@@ -1,0 +1,5 @@
+{
+	"description": "The player cannot afford a creature, shop reroll or recharge upgrade.",
+	"group": "ui",
+	"pitch_jitter": 0.0
+}

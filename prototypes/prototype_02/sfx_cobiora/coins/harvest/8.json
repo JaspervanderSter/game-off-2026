@@ -1,0 +1,14 @@
+{
+	"description": "Landing coin 8 of a harvesting peasant; rings higher than coin 7.",
+	"group": "effects",
+	"loop": false,
+	"protected": false,
+	"files_from": "coins/harvest/1",
+	"volume_db": -8.0,
+	"volume_jitter_db": 0.0,
+	"pitch": 1.49,
+	"pitch_jitter": 0.02,
+	"cooldown_ms": 40,
+	"pick": "shuffle",
+	"shuffle_refill_after": 0
+}

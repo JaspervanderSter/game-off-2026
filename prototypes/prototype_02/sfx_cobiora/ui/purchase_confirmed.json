@@ -1,0 +1,5 @@
+{
+	"description": "The player spends gold on a creature, shop reroll or recharge upgrade.",
+	"group": "ui",
+	"pitch_jitter": 0.0
+}

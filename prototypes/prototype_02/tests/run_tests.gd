@@ -36,6 +36,7 @@ func _ready() -> void:
 	_test_round_frieze()
 	_test_shop_drag_and_enemy_preparation()
 	_test_phase_music()
+	preload("res://tests/audio_workspace_tests.gd").run(self, check)
 	_test_result_recordings()
 	_test_sound_files()
 	_test_round_reset_and_damage()

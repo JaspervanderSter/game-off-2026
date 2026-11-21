@@ -118,8 +118,21 @@ and `scripts/sound_player.gd` the playback and file picking. When the
 runtime's rules change, change them here too. `scripts/oggenc.gd` uses the
 packaged encoder in the Windows export and the repository copy in Windows
 editor runs. It also supports `$OGGENC` and compatible encoders on the PATH.
-Music is the game's own system
-and is not shown here.
+The **Music** tab recursively discovers OGG/WAV recordings under `music/` and
+edits their adjacent JSON settings. Other JSON files become generic configuration
+forms; bindings to discovered tracks get transition-preview buttons. It supports
+continuous, restart and randomly selected segment playback, fades, ducking,
+waveforms, seeking, audio replacement and hot reload. The game and tool share
+identical MusicCatalog/MusicVoice scripts, with parity tested. See
+[`docs/Music.md`](docs/Music.md).
+
+The **SFX** tab also offers a folder selector for independent `sfx_*` workspaces.
+For Shapeshifters Duel, edit `sfx_cobiora` and `music/Cobiora/` for the Windows
+alternative; `sfx/` and `music/music.json` belong to the original game.
+Ctrl+Shift+M in the Windows game opens Default / Cobiora. The original and Web
+playback are unchanged. The packaged game includes `AUDIO_WORKSPACE.md` with
+the cycle reference and complete workflow. WAV conversion prefers packaged
+oggenc; an installed FFmpeg with libvorbis is also supported as a fallback.
 
 ## Tests
 
@@ -142,5 +155,6 @@ deletion; and group creation, renaming, removal and saving.
 
 `-- --root=<game folder>` opens that folder without the project window.
 `--select=<path>` starts on an event (or `--select=groups`).
+`--tab=music --select=<relative audio or JSON path>` opens a music entry.
 `--screenshot=<file.png>` plays the selected event a few times muted, saves
 the window and quits; without `--root` it saves the project window.

@@ -1,0 +1,10 @@
+{
+	"description": "Preparation. Continuous mode keeps the music advancing under combat; duck_db is its reduction during combat. Alternatively define segments in seconds and choose segments mode.",
+	"volume_db": -16.0,
+	"fade_seconds": 1.2,
+	"loop": true,
+	"playback_mode": "continuous",
+	"duck_db": -40.0,
+	"frenzy_speed_per_level": 0.0,
+	"segments": []
+}

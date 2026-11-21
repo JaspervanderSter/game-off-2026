@@ -5,6 +5,10 @@ exported for Windows, that needs neither Godot nor the game's code.
 
 ## What it does
 
+After choosing a project, **SFX** and **Music** are separate tabs. Music
+discovers recordings and adjacent settings dynamically; see [[Music]]. The SFX
+tab can open independent `sfx_*` folders without mixing their edits with `sfx/`.
+
 - **Starts on the project window**, never on a game by itself: the user
   picks the game folder (the one holding `sfx/`). The window lists the
   folders opened before, most recent first, then those it finds beside the
