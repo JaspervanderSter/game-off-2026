@@ -926,3 +926,25 @@ static func world_map(ci: CanvasItem, p: Vector2, radius: float) -> void:
 	ci.draw_colored_polygon(points, GOLD)
 	for offset in [-0.33, 0.33]:
 		Shapes.line(ci, p + Vector2(offset * radius, -radius * 0.6), p + Vector2(offset * radius, radius * 0.6), Color(0.27, 0.18, 0.15), 2)
+
+
+## A tiny floating island, about 22 * s wide: a grass top with a fir and a
+## cottage over a jagged rock that tapers into the void.
+static func floating_island(ci: CanvasItem, p: Vector2, s: float) -> void:
+	_poly(ci, p, s, [Vector2(-10, 0), Vector2(-3, 12), Vector2(1, 9), Vector2(4, 15), Vector2(10, 0)], Color("7a5a3e"))
+	_poly(ci, p, s, [Vector2(1, 9), Vector2(4, 15), Vector2(10, 0)], Color("5e4430"))
+	_ellipse(ci, p, s, Vector2.ZERO, 11, 4, Color("6f9a4f"))
+	_poly(ci, p, s, [Vector2(-6, -1), Vector2(-3.5, -8), Vector2(-1, -1)], Color("3f6b3a"))
+	_poly(ci, p, s, [Vector2(2, -4.5), Vector2(7, -4.5), Vector2(7, -1), Vector2(2, -1)], Color("c9b58b"))
+	_poly(ci, p, s, [Vector2(1.2, -4.2), Vector2(4.5, -7.5), Vector2(7.8, -4.2)], Color("805544"))
+
+
+## Sky-blue medallion ringed in gold with a floating island bobbing inside: the
+## way back to the journey map. `t` drives the bob; `hot` brightens the ring.
+static func island_medallion(ci: CanvasItem, p: Vector2, r: float, t: float, hot := false) -> void:
+	var k := r / 20.0
+	Shapes.circle(ci, p, r, Color("9cc0d4").lightened(0.08 if hot else 0.0))
+	Shapes.ellipse(ci, p + Vector2(-9, 9) * k, 6 * k, 2.5 * k, Color(1, 1, 1, 0.6))
+	Shapes.ellipse(ci, p + Vector2(8, -10) * k, 4 * k, 1.6 * k, Color(1, 1, 1, 0.45))
+	floating_island(ci, p + Vector2(1, sin(t * 2.0) * 1.5 - 1) * k, 1.05 * k)
+	Shapes.arc(ci, p, r, 0, TAU, 40, GOLD.lightened(0.45) if hot else GOLD, 2.5 * k, true)

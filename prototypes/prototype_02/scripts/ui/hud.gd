@@ -15,6 +15,15 @@ const FRIEZE_SLIDE := 0.45
 const FRIEZE_LINE := Color(0.42, 0.35, 0.28)
 const FRIEZE_DRAW := Color(0.55, 0.5, 0.45)
 const RESTART_POS := Vector2(640, 420)
+# Abandoning a replayed duel: the island medallion in the top-left corner (or
+# Esc) pauses the duel under a confirmation with a check and a cross.
+const ABANDON_POS := Vector2(48, 42)
+const ABANDON_RADIUS := 24.0
+const ABANDON_HOVER_SCALE := 1.08
+const CONFIRM_MEDALLION := Vector2(640, 300)
+const CONFIRM_YES := Vector2(570, 420)
+const CONFIRM_NO := Vector2(710, 420)
+const CONFIRM_RADIUS := 32.0
 const VICTORY_POS := Vector2(640, 255)
 const UNLOCK_CLICK := 0.48
 const UNLOCK_OPEN_TIME := 0.24
@@ -588,6 +597,7 @@ func _draw_layer(layer_name: String, layer: CanvasItem) -> void:
 				Icons.token(_ci, game.drag.form_id, p, Rules.BODY_RADIUS * Rules.CELL * 1.1, 0, true)
 			game.spotlight.draw(_ci)
 			_draw_harvest_gain()
+			_draw_abandon()
 	_ci = self
 
 
@@ -834,6 +844,36 @@ func _draw_harvest() -> void:
 			for j in 5:
 				var a: float = TAU * j / 5.0 + coin.index * 0.6
 				Icons.star(_ci, dest + Vector2.from_angle(a) * (16 + k * 24), 4.5 * (1.0 - k), Color(1, 0.9, 0.35, 1.0 - k))
+
+
+## The way back to the map in a replayed duel, then, once asked, the paused
+## duel under a dimmed screen with the island medallion, a check (back to the
+## map) and a cross (resume).
+func _draw_abandon() -> void:
+	var t := Time.get_ticks_msec() / 1000.0
+	var mouse := get_global_mouse_position()
+	if not game.abandon_asked:
+		if game.can_abandon():
+			var hot := ABANDON_POS.distance_to(mouse) < ABANDON_RADIUS
+			Icons.island_medallion(_ci, ABANDON_POS, ABANDON_RADIUS * (ABANDON_HOVER_SCALE if hot else 1.0), t, hot)
+		return
+	_ci.draw_rect(Rect2(Vector2(-2000, -2000), Vector2(6000, 6000)), Color(0.04, 0.03, 0.06, 0.66))
+	Icons.island_medallion(_ci, CONFIRM_MEDALLION, 52, t)
+	for yes in [true, false]:
+		var c: Vector2 = CONFIRM_YES if yes else CONFIRM_NO
+		var hot := c.distance_to(mouse) < CONFIRM_RADIUS
+		var r := CONFIRM_RADIUS * (ABANDON_HOVER_SCALE if hot else 1.0)
+		var fill := Color("2f6b3a") if yes else Color("6b2f2f")
+		var edge := Color("9fe1a0") if yes else Color("f09595")
+		Shapes.circle(_ci, c, r, fill.lightened(0.12) if hot else fill)
+		Shapes.arc(_ci, c, r, 0, TAU, 40, edge.lightened(0.3) if hot else edge, 3.0, true)
+		var k := r / 20.0
+		var ink := Color("eaffea") if yes else Color("ffecec")
+		if yes:
+			Shapes.polyline(_ci, PackedVector2Array([c + Vector2(-8, 0) * k, c + Vector2(-2, 6) * k, c + Vector2(9, -6) * k]), ink, 3.5 * k)
+		else:
+			Shapes.line(_ci, c + Vector2(-6, -6) * k, c + Vector2(6, 6) * k, ink, 3.5 * k)
+			Shapes.line(_ci, c + Vector2(6, -6) * k, c + Vector2(-6, 6) * k, ink, 3.5 * k)
 
 
 ## The harvest lesson's gold rises beside the purse once its coins have landed,

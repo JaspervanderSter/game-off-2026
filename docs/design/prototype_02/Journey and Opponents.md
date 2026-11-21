@@ -307,6 +307,18 @@ blocked, and combat slows to a quarter speed while the dimming is full.
 A rule is remembered once shown (`journey.introduced` in the save), and a beaten
 opponent never replays it. The hunter and the archmage introduce nothing.
 
+### Leaving a replay — playtest revision, 21 November 2026
+
+Confirmed: a **replayed** duel (an opponent already beaten) can be abandoned to
+return to the map; a first attempt is played to its end. The control is a small
+sky-blue medallion ringed in gold with a floating island inside, in the top-left
+corner above the opponent's panel (chosen among six styles: wooden sign, bare
+island with a chevron, map scrap, cloud, pennant; the user asked for no arrow).
+Esc does the same. It asks for confirmation without text: the duel pauses under
+a dimmed screen with the medallion, a green check (leave) and a red cross
+(resume). Abandoning changes nothing on the journey. Enter and Esc confirm and
+cancel (implementation choice).
+
 ### Harvest lesson — playtest revision, 21 November 2026
 
 The user found the first harvest unclear: the light circled the peasant while

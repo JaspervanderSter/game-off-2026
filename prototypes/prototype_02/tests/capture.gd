@@ -29,6 +29,24 @@ func _ready() -> void:
 		await _capture_map_reveal()
 		get_tree().quit()
 		return
+	if "--abandon-only" in OS.get_cmdline_user_args():
+		# A replayed duel: the island medallion, hovered, then the confirmation.
+		game.difficulty_progress_path = capture_dir.path_join("abandon_progress.cfg")
+		game.journey.completed.assign(range(6))
+		game.choose_stage(5)
+		await _frames(4)
+		await _shot("abandon_0_pack")
+		game.choose_pack(0)
+		await _seconds(1.0)
+		get_viewport().warp_mouse(Hud.ABANDON_POS)
+		await _frames(4)
+		await _shot("abandon_1_hovered")
+		game.ask_abandon()
+		get_viewport().warp_mouse(Hud.CONFIRM_YES)
+		await _frames(4)
+		await _shot("abandon_2_confirm")
+		get_tree().quit()
+		return
 	if "--harvest-lesson-only" in OS.get_cmdline_user_args():
 		await _capture_harvest_lesson()
 		get_tree().quit()

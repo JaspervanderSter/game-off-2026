@@ -54,6 +54,7 @@ func _ready() -> void:
 	_test_forest_lessons()
 	_test_rule_spotlight()
 	_test_learning_pause()
+	_test_abandon_replay()
 	_test_merge_lesson_and_full_board()
 	_test_scroll_shows_introduced_upgrades()
 	_test_day_night_cycle()
@@ -2824,6 +2825,41 @@ func _test_rule_spotlight() -> void:
 	check(Ruleset.TRADE in restored.introduced, "introduced rules are saved")
 	game.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://rule_spotlight_test_%d.cfg" % OS.get_process_id()))
+
+
+## A replayed duel can be left for the map after a confirmation that pauses
+## it; a first attempt cannot be abandoned.
+func _test_abandon_replay() -> void:
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	game.difficulty_progress_path = "user://abandon_test_%d.cfg" % OS.get_process_id()
+	game.journey.completed.assign([0])
+	game.choose_stage(1)
+	check(not game.can_abandon(), "a first attempt cannot be abandoned")
+	game.ask_abandon()
+	check(not game.abandon_asked, "asking to abandon a first attempt does nothing")
+	game.new_duel()
+	game.choose_stage(0)
+	check(game.can_abandon(), "a replay can be abandoned from the composition choice")
+	game.choose_pack(0)
+	game.enemy_preparing = false
+	game.start_combat()
+	check(game.phase == game.Phase.COMBAT and game.can_abandon(), "a replay can be abandoned during combat")
+	game._left_press(Hud.ABANDON_POS)
+	check(game.abandon_asked, "the island medallion asks to abandon")
+	var time: float = game.battle.time
+	game._physics_process(0.5)
+	check(game.battle.time == time, "the duel is paused while the confirmation waits")
+	game.cancel_abandon()
+	game._physics_process(0.1)
+	check(not game.abandon_asked and game.battle.time > time, "the cross resumes the duel")
+	game.ask_abandon()
+	game.abandon_duel()
+	check(game.phase == game.Phase.DIFFICULTY and game.map_screen.visible and not game.abandon_asked,
+		"the check leaves the duel for the map")
+	check(game.journey.completed == [0] and not game.journey.available(2), "abandoning changes nothing on the journey")
+	game.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://abandon_test_%d.cfg" % OS.get_process_id()))
 
 
 ## The town adds three humans and three animals to the forest's six forms;

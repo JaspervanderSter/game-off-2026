@@ -458,6 +458,8 @@ The user played the journey and listed 22 changes, handled one at a time.
   among four animated proposals. See [[Journey and Opponents]].
 - **Harvest lesson:** the light follows the first harvest's coins from the
   peasant into the purse, where "+N" rises; it no longer circles the peasant.
+- **Leaving a replay:** a replayed duel shows an island medallion (top left, or
+  Esc) that pauses it under a check / cross confirmation and returns to the map.
 
 ## Playtest plan and completion criteria
 

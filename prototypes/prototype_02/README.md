@@ -20,6 +20,7 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 | Open the journey | Click the map-and-arrow button in the menu (or Enter) |
 | Pick a stage | Click an unlocked opponent on an island; Tab / arrow keys and Enter also work |
 | Return to the menu | Esc on the map |
+| Leave a replayed duel | Click the sky-blue island medallion in the top-left corner (or press Esc): the duel pauses under a green check (back to the map, or Enter) and a red cross (resume, or Esc). Only replays of beaten opponents show it |
 | Pick a starting composition | Left-click one of the three cards |
 | Buy a creature | Click and release a shop card for the bench, or drag it directly to a board cell / reserve slot |
 | Reroll shop | Click the circular-arrow button below the offers, inside the stall (1 gold) |

@@ -41,6 +41,8 @@ var field_full_flash := 0.0
 const FIELD_FULL_FLASH := 0.9
 ## Spotlight on the rule this duel's opponent introduces, the first time it shows.
 var spotlight := RuleSpotlight.new()
+## True while a replayed duel waits, paused, for the player to confirm leaving it.
+var abandon_asked := false
 var menu_screen: Node2D
 var map_screen: Node2D
 const PACK_CHOICES := 3
@@ -168,6 +170,7 @@ func new_duel() -> void:
 	last_result = {}
 	last_damage = 0
 	last_damage_team = -1
+	abandon_asked = false
 	hud.clear_loss_rewards()
 	hud.clear_harvest()
 	hud.clear_victory()
@@ -178,6 +181,36 @@ func new_duel() -> void:
 	newly_unlocked_difficulty = -1
 	if map_screen != null:
 		show_map()
+
+
+## Only a replay of a beaten journey opponent can be abandoned; a first attempt
+## is played to its end.
+func can_abandon() -> bool:
+	return journey.selected >= 0 and journey.selected in journey.completed \
+		and phase in [Phase.PACK, Phase.PREP, Phase.COMBAT, Phase.RESOLVE]
+
+
+## Pauses the replayed duel under the abandon confirmation.
+func ask_abandon() -> void:
+	if not can_abandon() or abandon_asked:
+		return
+	abandon_asked = true
+	drag = null
+	shop_drag_index = -1
+	shop_drag_active = false
+	Sfx.play("ui/click")
+
+
+func cancel_abandon() -> void:
+	abandon_asked = false
+	Sfx.play("ui/click")
+
+
+## Leaves the replayed duel for the map; the journey is unchanged.
+func abandon_duel() -> void:
+	if not abandon_asked:
+		return
+	new_duel()
 
 
 ## Direct difficulty entry retained for rule tests and developer tooling.
@@ -369,6 +402,8 @@ func start_combat() -> void:
 
 
 func _physics_process(dt: float) -> void:
+	if abandon_asked:
+		return # the duel waits, paused, for the abandon confirmation
 	match phase:
 		Phase.PREP:
 			_advance_enemy_preparation(dt)
@@ -648,6 +683,25 @@ func _unhandled_input(event: InputEvent) -> void:
 				_reset_difficulty_progress()
 		get_viewport().set_input_as_handled()
 		return
+	if abandon_asked:
+		# The paused duel only answers the confirmation: check or Enter leaves,
+		# cross or Esc resumes.
+		if event is InputEventKey and event.pressed and not event.echo:
+			if event.keycode == KEY_ESCAPE:
+				cancel_abandon()
+			elif event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
+				abandon_duel()
+		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			if event.position.distance_to(Hud.CONFIRM_YES) < Hud.CONFIRM_RADIUS:
+				abandon_duel()
+			elif event.position.distance_to(Hud.CONFIRM_NO) < Hud.CONFIRM_RADIUS:
+				cancel_abandon()
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE and can_abandon():
+		ask_abandon()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseMotion and shop_drag_index >= 0:
 		shop_drag_position = event.position
 		if event.position.distance_to(shop_drag_origin) >= SHOP_DRAG_DISTANCE:
@@ -671,6 +725,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _left_press(pos: Vector2) -> void:
+	if can_abandon() and pos.distance_to(Hud.ABANDON_POS) < Hud.ABANDON_RADIUS:
+		ask_abandon()
+		return
 	match phase:
 		Phase.DIFFICULTY:
 			for i in Difficulty.COUNT:
@@ -834,10 +891,13 @@ func _process(dt: float) -> void:
 	_apply_shake(dt)
 	_advance_ui(dt)
 	_watch_rule_spotlight()
-	spotlight.advance(dt)
+	if not abandon_asked:
+		spotlight.advance(dt)
 	field_full_flash = maxf(0.0, field_full_flash - dt)
 	var mouse := get_global_mouse_position()
 	hover_info = {}
+	if abandon_asked:
+		mouse = Vector2(-1000, -1000) # nothing under the confirmation is hovered
 	match phase:
 		Phase.COMBAT, Phase.RESOLVE:
 			var u: Unit = battle.unit_at(mouse - Rules.BOARD_POS) if battle else null
