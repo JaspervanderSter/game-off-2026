@@ -2857,8 +2857,38 @@ func _test_merge_lesson_and_full_board() -> void:
 	game.difficulty_progress_path = "user://merge_lesson_test_%d.cfg" % OS.get_process_id()
 	game.journey.completed.assign(range(Journey.stage_count()))
 	game.journey.lessons_done.clear()
+	# The thief deals three shield guardians in the front line and two more
+	# coins, and demonstrates merging all three into a one-star guardian.
 	game.choose_stage(7)
-	game.choose_pack(0)
+	check(game.phase == game.Phase.PREP and game.offered_packs.is_empty(),
+		"the thief deals the player's opening instead of a choice")
+	var guardians: Array[OwnedCreature] = game.player.creatures.duplicate()
+	var front: int = game.player.preferred_row("front")
+	check(guardians.size() == 3 and guardians.all(func(c: OwnedCreature) -> bool:
+		return c.form_id == "guardian" and c.is_fielded() and c.cell.y == front),
+		"the thief's duel opens with three shield guardians in the front line")
+	check(game.player.gold == Rules.income(1) + 2, "the thief's duel opens with two more coins than the income")
+	game.enemy_preparing = false
+	game.shop_out = 0.0
+	var demo: Dictionary = game.merge_demo()
+	var middle: OwnedCreature = demo.get("target")
+	check(demo.get("sources", []).size() == 2 and middle in guardians and middle.cell.x == 3,
+		"the lesson flies the two outer guardians into the middle one")
+	check(Hud._merge_demo_stars(demo), "the demonstration ends on a star")
+	game._left_press(demo.sources[0])
+	game._left_release(demo.to)
+	demo = game.merge_demo()
+	check(middle.merge_copies == 2 and not game.merge_lesson_done and demo.get("target") == middle
+		and demo.sources.size() == 1, "after a first combine the lesson shows the copy that completes the star")
+	game._left_press(demo.sources[0])
+	game._left_release(demo.to)
+	check(middle.stars == 1 and game.player.creatures.size() == 1, "the three guardians make a one-star guardian")
+	check(game.merge_lesson_done and game.merge_demo().is_empty() and Ruleset.MERGE in game.journey.lessons_done,
+		"the first star ends the lesson for good")
+	# With fewer copies, the lesson demonstrates an identical offer or a pair.
+	game.journey.lessons_done.clear()
+	game.new_duel()
+	game.choose_stage(7)
 	game.enemy_preparing = false
 	game.shop_out = 0.0
 	var form: String = game.player.creatures[0].form_id
@@ -2870,8 +2900,8 @@ func _test_merge_lesson_and_full_board() -> void:
 		game.player.offers[i] = ""
 	check(game.merge_demo().is_empty(), "no merge demonstration without a copy to merge")
 	game.player.offers[0] = form
-	var demo: Dictionary = game.merge_demo()
-	check(not demo.is_empty() and demo.from == Hud.offer_token_pos(0), "an identical offer is demonstrated onto its copy")
+	demo = game.merge_demo()
+	check(not demo.is_empty() and demo.sources == [Hud.offer_token_pos(0)], "an identical offer is demonstrated onto its copy")
 	# A second identical creature can be placed on an empty cell.
 	var empty := Vector2i(0, 5)
 	game._left_press(Hud.offer_rect(0).get_center())
@@ -2881,15 +2911,25 @@ func _test_merge_lesson_and_full_board() -> void:
 	check(game.player.at_cell(empty) != null and game.player.at_cell(empty).form_id == form and game.player.field_count() == 2,
 		"an identical creature can be placed beside its copy")
 	demo = game.merge_demo()
-	check(not demo.is_empty() and demo.target in game.player.creatures, "two copies on the board are demonstrated")
-	game._left_press(demo.from)
+	check(not demo.is_empty() and demo.target in game.player.creatures and demo.sources.size() == 1,
+		"two copies on the board are demonstrated")
+	game._left_press(demo.sources[0])
 	game._left_release(demo.to)
-	check(game.merge_lesson_done and game.merge_demo().is_empty(), "the first merge ends the demonstration")
+	check(not game.merge_lesson_done and Ruleset.MERGE not in game.journey.lessons_done,
+		"a combine without a star keeps the lesson going")
+	game.player.offers[1] = form
+	demo = game.merge_demo()
+	check(demo.get("sources", []) == [Hud.offer_token_pos(1)] and Hud._merge_demo_stars(demo),
+		"the identical offer that completes the star is demonstrated")
+	game._left_press(Hud.offer_rect(1).get_center())
+	game.shop_drag_position = demo.to
+	game.shop_drag_active = true
+	game._left_release(demo.to)
+	check(game.merge_lesson_done and game.merge_demo().is_empty(), "the first star ends the demonstration")
 	check(Ruleset.MERGE in game.journey.lessons_done, "the merge lesson is remembered")
-	# Replaying the thief: an identical pair, but no demonstration any more.
+	# Replaying the thief: three identical guardians, but no demonstration any more.
 	game.new_duel()
 	game.choose_stage(7)
-	game.choose_pack(0)
 	game.enemy_preparing = false
 	game.shop_out = 0.0
 	game.player.offers[0] = game.player.creatures[0].form_id
@@ -3223,7 +3263,9 @@ func _town_offered_cards(index: int) -> Array[int]:
 	game.journey.completed.assign(range(Journey.stage_count()))
 	game.choose_stage(index)
 	var cards: Array[int] = game.offered_packs.duplicate()
-	check(cards.size() == 3, "town %d offers three compositions" % index)
+	# The thief's merge lesson deals its own opening instead.
+	var dealt := not OpponentDB.player_pack(index).is_empty()
+	check(cards.size() == (0 if dealt else 3), "town %d offers three compositions unless it deals a lesson opening" % index)
 	game.choose_pack(0)
 	for c: OwnedCreature in game.enemy.creatures:
 		check(c.form_id in Ruleset.TOWN_HUMANS, "town %d opponent opens with town humans" % index)

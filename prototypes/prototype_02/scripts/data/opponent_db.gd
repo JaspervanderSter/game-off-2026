@@ -12,7 +12,11 @@ const ZONE_LEVELS := [Difficulty.APPRENTICE, Difficulty.ADEPT, Difficulty.ARCHMA
 ## introduced; rule: the Ruleset rule it introduces ("" for none); pack: the
 ## CreatureDB.PACKS name of its opening ("" = forest army or archmage deck);
 ## hearts: the opponent's own starting hearts when they differ from its zone's
-## (the hunter falls after one won round, so the first duel stays short).
+## (the hunter falls after one won round, so the first duel stays short);
+## player_pack: the player's opening when a lesson needs a precise team, dealt
+## instead of a choice of compositions (the thief's merge lesson starts with
+## three shield guardians in the front line to merge into a star, and two more
+## coins: playtest, 21 November 2026).
 const OPPONENTS := [
 	{"id": "hunter", "name": "Hunter", "magic": false, "rule": "", "pack": "", "hearts": 1},
 	{"id": "druid", "name": "Druid", "magic": true, "rule": Ruleset.WAND, "pack": ""},
@@ -21,7 +25,8 @@ const OPPONENTS := [
 	{"id": "archdruid", "name": "Archdruid", "magic": true, "rule": Ruleset.ANIMAL_BONUS, "pack": ""},
 	{"id": "merchant", "name": "Merchant", "magic": false, "rule": Ruleset.TRADE, "pack": "Troupe"},
 	{"id": "innkeeper", "name": "Innkeeper", "magic": false, "rule": Ruleset.HARVEST, "pack": "Tavern"},
-	{"id": "thief", "name": "Thief", "magic": false, "rule": Ruleset.MERGE, "pack": "Shadows"},
+	{"id": "thief", "name": "Thief", "magic": false, "rule": Ruleset.MERGE, "pack": "Shadows",
+		"player_pack": {"forms": ["guardian", "guardian", "guardian"], "bonus_gold": 2}},
 	{"id": "court_mage", "name": "Court mage", "magic": true, "rule": Ruleset.CASTERS, "pack": "Arcane"},
 	{"id": "king", "name": "King", "magic": false, "rule": Ruleset.FRENZY, "pack": "Crusade"},
 	{"id": "apprentice", "name": "Apprentice", "magic": true, "rule": "upgrade_recharge", "pack": "Village"},
@@ -125,6 +130,12 @@ static func ruleset(index: int) -> Ruleset:
 	# Forest and town keep their own rosters; the school opens all creatures.
 	result.roster = zone(index) if zone(index) <= Ruleset.TOWN else Ruleset.COMPLETE_ROSTER
 	return result
+
+
+## The player's fixed opening against opponent `index` ({"forms", "bonus_gold"}),
+## or {} when the player chooses among compositions.
+static func player_pack(index: int) -> Dictionary:
+	return OPPONENTS[index].get("player_pack", {}) if index >= 0 else {}
 
 
 ## Index in packs_for(index) of the opponent's opening, or -1 to deal from its deck.

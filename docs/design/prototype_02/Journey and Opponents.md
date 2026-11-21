@@ -42,7 +42,7 @@ Related notes: [[Prototype 02]], [[Roster and Transformation Map]],
 | 5 | Forest (boss) | Archdruid | Yes | Animal bonuses after an allied shapeshift (rabbit leap within the forest roster) | Two wolves, two rabbits and a spearman |
 | 6 | Town | Merchant | No | Selling, rerolling and locking offers | Troupe |
 | 7 | Town | Innkeeper | No | Peasants and their harvest | Tavern |
-| 8 | Town | Thief | No | Merging three identical creatures into a star | Shadows |
+| 8 | Town | Thief | No | Merging three identical creatures into a star | Shadows (the player: three shield guardians, see "Merge lesson") |
 | 9 | Town | Court mage | Yes | Casters (pyromancer, frost mage) and cancelling their spell by shapeshifting them | Arcane |
 | 10 | Town (boss) | King | No | Frenzy after 45 seconds | Crusade |
 | 11 | School | Apprentice | Yes | Wand scroll: fast recharge | Village |
@@ -377,7 +377,7 @@ blocked, and combat slows to a quarter speed while the dimming is full.
 | Animal bonus (archdruid) | The creature, followed | First allied shapeshift into a bonus form |
 | Trading (merchant) | Reroll button | Shop in place |
 | Harvest (innkeeper) | The harvester's coins, followed into the purse | First fight with a harvester |
-| Merging (thief) | The player's first identical pair | Shop in place with a pair |
+| Merging (thief) | The three shield guardians (or the first identical pair) | Shop in place with copies |
 | Casters (court mage) | The caster, followed | First spell channel |
 | Frenzy (king) | Timer bar | Frenzy starts |
 | Wand upgrades (school) | The new scroll row | Scroll unrolled |
@@ -450,6 +450,18 @@ while its merge pips fill by one. No text; it never blocks. Confirmed after a
 later playtest: like the cast invitation, it plays only until the player's first
 merge against the thief, ever (saved in `journey.lessons_done`), and never again
 when the thief is replayed.
+
+**Revised after a playtest (21 November 2026):** the point of merging was still
+unclear. The thief's duel now opens with **three shield guardians in the front
+line** instead of a choice of compositions, and **two more coins** than the
+round's income (5 instead of 3). The demonstration merges the three into a
+**one-star shield guardian**: the two outer guardians fly into the middle one in
+turn, its pips fill to three, and a star pops above it before the loop starts
+again. With fewer copies it still shows a pair or an identical offer. Since the
+lesson is the whole merge, it now lasts until the player's first **star**
+against the thief, ever: after a first combine it keeps showing the copy that
+completes the star. Timings and the choice of the middle guardian are
+implementation choices.
 
 The same playtest reported that a second identical creature could not be placed
 on an empty cell. The cause was the existing limit of **six creatures on the

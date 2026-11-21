@@ -882,9 +882,14 @@ has rested on the purse for 0.9 s. Shown
 rules are saved under `journey.introduced`; beaten opponents never replay theirs.
 Merge pips and harvest coins appear only in duels where their rule exists.
 
-In the thief's duel a looping demonstration (`main.merge_demo()`, drawn by the
-HUD) shows a translucent copy travelling along a dotted gold arc onto an
-identical creature, whose merge pips fill, until the player's first merge there, ever (saved in `journey.lessons_done`).
+The thief's duel deals the player a fixed opening instead of a choice of
+compositions (`"player_pack"` in `OpponentDB`, read by `OpponentDB.player_pack()`):
+three shield guardians in the front line and two more coins. A looping
+demonstration (`main.merge_demo()`, drawn by the HUD) flies the two outer
+guardians in turn along dotted gold arcs into the middle one, whose merge pips
+fill to three before a star pops above it. With fewer copies it shows a pair
+or an identical offer. It plays until the player's first star there, ever
+(saved in `journey.lessons_done`).
 The board holds at most six creatures (`Rules.FIELD_CAP`): when it is full,
 empty cells stay dark under a drag, the capacity pips under the board are
 ringed in red, and a refused drop makes them blink.

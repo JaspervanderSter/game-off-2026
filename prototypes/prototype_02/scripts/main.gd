@@ -304,6 +304,12 @@ func _start_duel() -> void:
 		state.rules = ruleset
 		state.learning_duel = OpponentDB.is_learning_encounter(opponent)
 	enemy.magic = opponent < 0 or OpponentDB.get_opponent(opponent).magic
+	# A lesson that needs a precise team deals it rather than offering a choice.
+	var lesson_pack := OpponentDB.player_pack(opponent)
+	if not lesson_pack.is_empty():
+		offered_packs.clear()
+		_open_duel(lesson_pack)
+		return
 	if OpponentDB.is_learning_encounter(opponent):
 		offered_packs = OpponentDB.learning_packs()
 	elif ruleset.is_complete():
@@ -390,7 +396,12 @@ func pack_at(slot: int) -> Dictionary:
 func choose_pack(slot: int) -> void:
 	if phase != Phase.PACK or slot < 0 or slot >= offered_packs.size():
 		return
-	player.take_starting_pack(pack_at(slot))
+	_open_duel(pack_at(slot))
+
+
+## Both wizards take their openings and the first round begins.
+func _open_duel(player_pack: Dictionary) -> void:
+	player.take_starting_pack(player_pack)
 	# A journey opponent opens with its own composition; the archmage and duels
 	# outside the journey deal from the opponent's deck.
 	var enemy_pack := OpponentDB.pack_index(opponent) if opponent >= 0 else -1
@@ -931,13 +942,16 @@ func _release_shop_offer(pos: Vector2) -> void:
 			Sfx.play("ui/place")
 
 
+## The merge lesson ends with the player's first star: a first combine still
+## leaves the lesson showing the copy that completes it.
 func _merge_feedback(recipient: OwnedCreature, previous_stars: int) -> void:
-	merge_lesson_done = true
-	if opponent >= 0 and OpponentDB.get_opponent(opponent).rule == Ruleset.MERGE \
-			and Ruleset.MERGE not in journey.lessons_done:
-		journey.lessons_done.append(Ruleset.MERGE)
-		_save_difficulty_progress(unlocked_difficulty)
 	var ranked_up := recipient.stars > previous_stars
+	if ranked_up:
+		merge_lesson_done = true
+		if opponent >= 0 and OpponentDB.get_opponent(opponent).rule == Ruleset.MERGE \
+				and Ruleset.MERGE not in journey.lessons_done:
+			journey.lessons_done.append(Ruleset.MERGE)
+			_save_difficulty_progress(unlocked_difficulty)
 	var centre := Rules.BOARD_POS + Rules.cell_center(recipient.cell) if recipient.is_fielded() else bench_slot_rect(recipient.slot).get_center()
 	fx.add("merge" if ranked_up else "combine", centre - Rules.BOARD_POS)
 	Sfx.play("ui/merge" if ranked_up else "ui/combine")
@@ -1102,9 +1116,10 @@ func _watch_rule_spotlight() -> void:
 	elif rule == Ruleset.MERGE and shop_shown:
 		var demo := merge_demo()
 		if not demo.is_empty():
-			var a: Vector2 = demo.from
-			var b: Vector2 = demo.to
-			_spotlight((a + b) * 0.5, Vector2(absf(a.x - b.x) * 0.5 + 56, absf(a.y - b.y) * 0.5 + 56))
+			var frame := Rect2(demo.to, Vector2.ZERO)
+			for source: Vector2 in demo.sources:
+				frame = frame.expand(source)
+			_spotlight(frame.get_center(), frame.size * 0.5 + Vector2(56, 56))
 	elif phase != Phase.COMBAT or battle == null:
 		return
 	elif rule == Ruleset.WAND and player.can_cast():
@@ -1123,6 +1138,33 @@ func _watch_rule_spotlight() -> void:
 			Vector2(Rules.BOARD_SIZE.x * 0.5 + 24, 34))
 
 
+## The player's creatures that would merge into a star together, target first
+## then the copies to bring to it, nearest first; [] when no form has enough
+## copies. The target is on the board when possible, between its copies (the
+## middle shield guardian of the thief's three).
+func _star_group() -> Array:
+	var best: Array = []
+	var best_reach := INF
+	for target: OwnedCreature in player.creatures:
+		var at := _owned_screen_position(target)
+		var partners := player.creatures.filter(func(c: OwnedCreature) -> bool: return player.can_merge(c, target))
+		partners.sort_custom(func(a: OwnedCreature, b: OwnedCreature) -> bool:
+			return _owned_screen_position(a).distance_to(at) < _owned_screen_position(b).distance_to(at))
+		var group: Array = [target]
+		var copies := target.merge_copies
+		var reach := 0.0 if target.is_fielded() else 10000.0
+		for c: OwnedCreature in partners:
+			if copies >= 3:
+				break
+			group.append(c)
+			copies += c.merge_copies
+			reach += _owned_screen_position(c).distance_to(at)
+		if copies >= 3 and reach < best_reach:
+			best = group
+			best_reach = reach
+	return best
+
+
 ## Two of the player's creatures that could merge (same form and stars), or [];
 ## a benched creature comes first, so it is the one shown moving.
 func _first_pair() -> Array:
@@ -1139,11 +1181,12 @@ func _owned_screen_position(c: OwnedCreature) -> Vector2:
 	return Rules.BOARD_POS + Rules.cell_center(c.cell)
 
 
-## The thief's merge lesson: which drag to demonstrate, until the player's first
-## merge in that duel, ever (saved in journey.lessons_done).
-## {"from", "to" (screen positions), "target": OwnedCreature}, from a pair the
-## player owns, else from an affordable identical offer; {} when there is
-## nothing to show.
+## The thief's merge lesson: which merge to demonstrate, until the player's
+## first star in that duel, ever (saved in journey.lessons_done).
+## {"sources" (screen positions, flown in one after the other), "to" (screen
+## position), "target": OwnedCreature}: copies the player owns merging into a
+## star (the thief deals three shield guardians for it), else a pair, else an
+## affordable identical offer onto its copy; {} when there is nothing to show.
 func merge_demo() -> Dictionary:
 	if merge_lesson_done or phase != Phase.PREP or opponent < 0 or drag != null or shop_out > 0.0:
 		return {}
@@ -1151,13 +1194,20 @@ func merge_demo() -> Dictionary:
 		return {}
 	if OpponentDB.get_opponent(opponent).rule != Ruleset.MERGE or not ruleset.has(Ruleset.MERGE):
 		return {}
-	var pair := _first_pair()
-	if not pair.is_empty():
-		return {"from": _owned_screen_position(pair[0]), "to": _owned_screen_position(pair[1]), "target": pair[1]}
+	var group := _star_group()
+	if group.is_empty():
+		group = _first_pair()
+		group.reverse() # target first
+	if not group.is_empty():
+		var sources: Array[Vector2] = []
+		for c: OwnedCreature in group.slice(1):
+			sources.append(_owned_screen_position(c))
+		return {"sources": sources, "to": _owned_screen_position(group[0]), "target": group[0]}
 	for i in Rules.SHOP_SIZE:
 		for c: OwnedCreature in player.creatures:
 			if player.can_merge_offer(i, c):
-				return {"from": Hud.offer_token_pos(i), "to": _owned_screen_position(c), "target": c}
+				var offer: Array[Vector2] = [Hud.offer_token_pos(i)]
+				return {"sources": offer, "to": _owned_screen_position(c), "target": c}
 	return {}
 
 

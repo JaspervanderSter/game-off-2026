@@ -515,6 +515,10 @@ The user played the journey and listed 22 changes, handled one at a time.
   clicking an enemy during a fight does nothing at all (no fizzle, no error
   sound); before the merchant introduces trading, right-clicking an offer to
   lock it does nothing either.
+- **Merge lesson:** the thief's duel opens with three shield guardians in the
+  front line (no choice of composition) and two more coins; the demonstration
+  merges the three into a one-star guardian and lasts until the player's first
+  star. See [[Journey and Opponents]].
 
 ## Playtest plan and completion criteria
 

@@ -138,8 +138,10 @@ var _ci: CanvasItem = self
 ## redraw only when what they show changes (their key); the others every frame.
 var _layers := {}
 var _merge_ghost: Node2D
-## One loop of the merge demonstration, in seconds.
+## The merge demonstration flies each copy in for this long, in seconds, then
+## shows the star it makes for MERGE_DEMO_STAR before looping.
 const MERGE_DEMO_PERIOD := 1.8
+const MERGE_DEMO_STAR := 1.1
 
 
 func _ready() -> void:
@@ -688,9 +690,22 @@ func _draw_learning_cast_hint() -> void:
 	Icons.wand(_ci, p + Vector2(36, -40 + sin(t * 3.0) * 6), 18)
 
 
-## Phase of the merge demonstration loop, 0 to 1, on real time.
-func _merge_demo_phase() -> float:
-	return fmod(Time.get_ticks_msec() / 1000.0, MERGE_DEMO_PERIOD) / MERGE_DEMO_PERIOD
+## True when the demonstrated copies complete the target's group: a star forms.
+static func _merge_demo_stars(demo: Dictionary) -> bool:
+	var target: OwnedCreature = demo.target
+	return target.merge_copies + demo.sources.size() >= 3
+
+
+## Seconds into the merge demonstration's loop, on real time: each copy's
+## flight in turn, then the star when one forms.
+func _merge_demo_time(demo: Dictionary) -> float:
+	var period: float = MERGE_DEMO_PERIOD * demo.sources.size() + (MERGE_DEMO_STAR if _merge_demo_stars(demo) else 0.0)
+	return fmod(Time.get_ticks_msec() / 1000.0, period)
+
+
+## Phase of copy `index`'s flight, 0 to 1 (0 before its turn, 1 after it).
+static func _merge_flight(time: float, index: int) -> float:
+	return clampf(time / MERGE_DEMO_PERIOD - index, 0.0, 1.0)
 
 
 ## Point along the merge demonstration's arc, k from 0 (source) to 1 (target).
@@ -699,36 +714,64 @@ static func _merge_arc(from: Vector2, to: Vector2, k: float) -> Vector2:
 	return from.lerp(to, k) + Vector2(0, -sin(k * PI) * lift)
 
 
-## The thief's lesson: a dotted gold arc from one copy to the identical one,
-## the target pulsing, and its merge pips filling as the ghost copy lands.
-## The translucent copy itself is drawn by _draw_merge_ghost.
+## The thief's lesson: a dotted gold arc from each copy to the identical target;
+## the copies fly in one after the other (translucent, drawn by
+## _draw_merge_ghost), the target pulses and its merge pips fill as each lands,
+## and when the group is complete a star pops above it (playtest, 21 November
+## 2026: three shield guardians merge into a one-star guardian).
 func _draw_merge_lesson() -> void:
 	var demo: Dictionary = game.merge_demo()
 	if demo.is_empty():
 		return
-	var from: Vector2 = demo.from
 	var to: Vector2 = demo.to
 	var target: OwnedCreature = demo.target
-	var t := _merge_demo_phase()
-	for i in range(1, 10):
-		Shapes.circle(_ci, _merge_arc(from, to, i / 10.0), 3.0, Color(Icons.GOLD, 0.55))
-	var tip := _merge_arc(from, to, 0.93)
-	var dir := (to - tip).normalized()
-	_ci.draw_colored_polygon(PackedVector2Array([tip + dir * 10, tip - dir * 4 + dir.orthogonal() * 7,
-		tip - dir * 4 - dir.orthogonal() * 7]), Color(Icons.GOLD, 0.8))
-	var landed := smoothstep(0.68, 0.74, t) * (1.0 - smoothstep(0.92, 1.0, t))
-	Shapes.arc(_ci, to, 28 + landed * 8, 0, TAU, 32, Color(Icons.GOLD, 0.5 + landed * 0.5), 3.0, true)
-	Icons.merge_progress(_ci, to + Vector2(0, 30), target.merge_copies + (1 if t > 0.7 else 0), target.stars)
+	var time := _merge_demo_time(demo)
+	var landed_copies := 0
+	var pulse := 0.0
+	for index in demo.sources.size():
+		var from: Vector2 = demo.sources[index]
+		var t := _merge_flight(time, index)
+		if t > 0.7:
+			landed_copies += 1
+		pulse = maxf(pulse, smoothstep(0.68, 0.74, t) * (1.0 - smoothstep(0.92, 1.0, t)))
+		if t >= 0.8:
+			continue # a landed copy's arc is gone until the loop restarts
+		for i in range(1, 10):
+			Shapes.circle(_ci, _merge_arc(from, to, i / 10.0), 3.0, Color(Icons.GOLD, 0.55))
+		var tip := _merge_arc(from, to, 0.93)
+		var dir := (to - tip).normalized()
+		_ci.draw_colored_polygon(PackedVector2Array([tip + dir * 10, tip - dir * 4 + dir.orthogonal() * 7,
+			tip - dir * 4 - dir.orthogonal() * 7]), Color(Icons.GOLD, 0.8))
+	Shapes.arc(_ci, to, 28 + pulse * 8, 0, TAU, 32, Color(Icons.GOLD, 0.5 + pulse * 0.5), 3.0, true)
+	Icons.merge_progress(_ci, to + Vector2(0, 30), mini(target.merge_copies + landed_copies, 3), target.stars)
+	if not _merge_demo_stars(demo):
+		return
+	# The last copy lands at 0.7 of its flight: the star pops out of the target.
+	var star_age: float = time - MERGE_DEMO_PERIOD * (demo.sources.size() - 1 + 0.7)
+	if star_age < 0.0:
+		return
+	var at := to + Vector2(0, -32)
+	var burst := clampf(star_age / 0.5, 0.0, 1.0)
+	Shapes.arc(_ci, at, 8.0 + burst * 30.0, 0, TAU, 32, Color(Icons.GOLD, 0.85 * (1.0 - burst)), 2.5, true)
+	for i in 6:
+		var direction := Vector2.from_angle(TAU * i / 6.0 + 0.3)
+		Icons.star(_ci, at + direction * (10.0 + burst * 26.0), 4.0 * (1.0 - burst), Color(Icons.GOLD, 1.0 - burst))
+	var pop := smoothstep(0.0, 0.12, star_age) * (1.0 + 0.6 * exp(-6.0 * star_age))
+	var count := mini(target.stars + 1, Rules.MAX_STARS)
+	for i in count:
+		Icons.star(_ci, at + Vector2((i - (count - 1) * 0.5) * 11.0, 0), 6.0 * (pop if i == count - 1 else 1.0))
 
 
 func _draw_merge_ghost() -> void:
 	var demo: Dictionary = game.merge_demo() if game != null else {}
 	if demo.is_empty():
 		return
-	var t := _merge_demo_phase()
+	var time := _merge_demo_time(demo)
+	var index := mini(floori(time / MERGE_DEMO_PERIOD), demo.sources.size() - 1)
+	var t := _merge_flight(time, index)
 	var k := smoothstep(0.15, 0.7, t)
 	_merge_ghost.modulate = Color(1, 1, 1, 0.75 * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.7, 0.8, t)))
-	var p := _merge_arc(demo.from, demo.to, k)
+	var p := _merge_arc(demo.sources[index], demo.to, k)
 	var target: OwnedCreature = demo.target
 	Shapes.circle(_merge_ghost, p + Vector2(4, 12), 20, Color(0, 0, 0, 0.3))
 	Icons.token(_merge_ghost, target.form_id, p, Rules.BODY_RADIUS * Rules.CELL, 0, true)
