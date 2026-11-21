@@ -2778,6 +2778,36 @@ func _test_rule_spotlight() -> void:
 	check(game.spotlight.time_scale() < 0.5, "the duel slows while the spotlight is on")
 	game.spotlight.advance(RuleSpotlight.DURATION)
 	check(not game.spotlight.active() and not game.spotlight.pending(), "the spotlight plays once per duel")
+	# The innkeeper's harvest: the light shows the coins, following them into the purse.
+	game.new_duel()
+	game.journey.completed.assign(range(6))
+	game.choose_stage(6)
+	game.choose_pack(0)
+	check(game.spotlight.rule == Ruleset.HARVEST and game.spotlight.pending(), "the innkeeper's duel waits to show the harvest")
+	game.hud.set_process(false)
+	game.player.add_creature("peasant")
+	game.enemy_preparing = false
+	game.start_combat()
+	var hud: Hud = game.hud
+	check(game.spotlight.active() and hud.harvest_lesson.get("team", -1) == 0 and hud.harvest_speed < 1.0,
+		"the first harvest is spotlit on the player's harvester and plays slower")
+	var lesson_coin: Dictionary = hud.harvest_coins.filter(func(c): return c.uid == hud.harvest_lesson.uid)[0]
+	var step := func(seconds: float) -> void:
+		hud.advance_harvest(seconds)
+		game.spotlight.advance(seconds)
+	step.call(0.0)
+	check(game.spotlight.center.y < lesson_coin.from.y, "the light opens above the harvester, on its coin fan")
+	step.call((lesson_coin.fly + Hud.HARVEST_FLIGHT * 0.6 - hud.harvest_time) / hud.harvest_speed)
+	check(game.spotlight.center.distance_to(hud._coin_position(lesson_coin)) < 12.0, "the light follows the flying coin")
+	step.call((hud.harvest_lesson.landed - hud.harvest_time) / hud.harvest_speed + 0.3)
+	check(game.spotlight.active() and game.spotlight.center.distance_to(Hud.gold_pos(0)) < 45.0,
+		"the light rests on the purse once the coin has landed")
+	check(not hud.harvest_lesson.is_empty(), "the gold earned rises beside the purse")
+	step.call(Hud.HARVEST_LESSON_PURSE_HOLD + RuleSpotlight.FADE_OUT)
+	check(not game.spotlight.active() and hud.harvest_lesson.is_empty() and hud.harvest_speed == 1.0,
+		"the harvest lesson ends and the harvest plays at its normal speed again")
+	hud.set_process(true)
+	game.journey.completed.assign(range(5))
 	game.new_duel()
 	game.choose_stage(5)
 	check(not game.spotlight.pending(), "a rule already introduced is not spotlit again")

@@ -29,6 +29,10 @@ func _ready() -> void:
 		await _capture_map_reveal()
 		get_tree().quit()
 		return
+	if "--harvest-lesson-only" in OS.get_cmdline_user_args():
+		await _capture_harvest_lesson()
+		get_tree().quit()
+		return
 	get_viewport().warp_mouse(Hud.difficulty_rect(Difficulty.ADEPT).get_center())
 	await _frames(4)
 	await _shot("00_difficulty")
@@ -303,6 +307,25 @@ func _capture_map_reveal() -> void:
 		await _shot("map_reveal_%02d_full" % stage)
 		map.advance_discovery(map.BURST_DURATION)
 		map.set_process(true)
+
+
+## The innkeeper's first harvest: the light follows the coin into the purse.
+func _capture_harvest_lesson() -> void:
+	game.difficulty_progress_path = capture_dir.path_join("harvest_progress.cfg")
+	game.journey.completed.assign(range(6))
+	game.journey.introduced.erase(Ruleset.HARVEST)
+	game.choose_stage(6)
+	game.choose_pack(0)
+	game.player.add_creature("peasant")
+	await _seconds(0.3)
+	while game.enemy_preparing:
+		await _frames(1)
+	game.start_combat()
+	var elapsed := 0.0
+	for t in [0.3, 0.9, 1.4, 1.8, 2.1, 2.4, 2.7, 3.1, 3.6]:
+		await _seconds(t - elapsed)
+		elapsed = t
+		await _shot("harvest_lesson_%03d" % roundi(t * 100))
 
 
 func _frames(n: int) -> void:

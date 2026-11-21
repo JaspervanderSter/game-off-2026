@@ -720,9 +720,17 @@ around the new element, rings it in gold with orbiting sparkles, and lifts the
 dimming after about 2.7 seconds, without text or blocking input. Interface rules
 are shown as soon as their element is on screen (stall, reroll, upgrade row);
 the others when they happen: charge crystals at the druid's first fight, the first
-enemy creature for hexes, the first allied bonus shapeshift, the first harvester,
+enemy creature for hexes, the first allied bonus shapeshift, the first harvest,
 the first mergeable pair, the first caster channelling, and the timer bar when
-frenzy starts. Combat slows to a quarter speed while the dimming is full. Shown
+frenzy starts. Combat slows to a quarter speed while the dimming is full.
+
+The harvest shows the coin rather than the peasant: the opening starts on a
+harvester (the player's first one when it has any) and its coin fan, follows its
+coins along their flight (`Hud.harvest_spotlight`, passed to `RuleSpotlight` as
+a tracking callable) and rests on the purse, framing the coin icon, the counter
+and a rising "+N", the gold that harvester earned. That first harvest plays at
+0.6 speed (`Hud.HARVEST_LESSON_SPEED`), and the dimming lasts until the light
+has rested on the purse for 0.9 s. Shown
 rules are saved under `journey.introduced`; beaten opponents never replay theirs.
 Merge pips and harvest coins appear only in duels where their rule exists.
 

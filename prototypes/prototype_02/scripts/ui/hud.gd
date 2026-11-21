@@ -64,6 +64,15 @@ const HARVEST_FLIGHT := 0.58
 ## Harvest coin sound events, coins/harvest/1 to /8, each a step higher; later
 ## coins of the same harvester replay the last one.
 const HARVEST_COIN_SOUNDS := 8
+# Harvest lesson (the innkeeper's duel, first harvest): the spotlight follows one
+# harvester's coins from its hop into the purse, the harvest plays slower, and
+# the gold earned rises from the purse as "+N" once the coins have landed.
+const HARVEST_LESSON_SPEED := 0.6
+const HARVEST_LESSON_PURSE_HOLD := 0.9 # seconds the light rests on the purse
+const HARVEST_LESSON_GAIN_TIME := 1.1 # seconds the "+N" rises
+const HARVEST_LIGHT_FARMER := Vector2(54, 72) # harvester and its coin fan
+const HARVEST_LIGHT_COIN := Vector2(46, 46)
+const HARVEST_LIGHT_PURSE := Vector2(76, 46)
 
 var game # main.gd
 var font: Font
@@ -72,6 +81,8 @@ var reward_time := 0.0
 var harvest_time := 0.0
 var harvest_sources: Array[Dictionary] = []
 var harvest_coins: Array[Dictionary] = []
+var harvest_speed := 1.0
+var harvest_lesson := {} # {team, uid, gold, landed (harvest time)} while shown
 var victory := VictoryFx.new()
 var unlock_level := -1
 var unlock_time := 0.0
@@ -193,6 +204,46 @@ func clear_harvest() -> void:
 	harvest_sources.clear()
 	harvest_coins.clear()
 	harvest_time = 0.0
+	harvest_speed = 1.0
+	harvest_lesson = {}
+
+
+## Shows the harvest rule on one queued harvester: slows the harvest and
+## returns how long the spotlight stays at full strength, from now until it has
+## rested on the purse after the last coin landed.
+func begin_harvest_lesson(team: int, uid: int) -> float:
+	var landed := harvest_time
+	var gold := 0
+	for coin in harvest_coins:
+		if coin.team == team and coin.uid == uid:
+			landed = maxf(landed, coin.fly + HARVEST_FLIGHT)
+			gold += 1
+	harvest_speed = HARVEST_LESSON_SPEED
+	harvest_lesson = {"team": team, "uid": uid, "gold": gold, "landed": landed}
+	return (landed - harvest_time) / harvest_speed + HARVEST_LESSON_PURSE_HOLD
+
+
+## Where the harvest lesson's light stands now, [center, radii]: on the
+## harvester and its coin fan, then on its flying coins, then on the purse.
+## Empty when no lesson is shown.
+func harvest_spotlight() -> Array:
+	if harvest_lesson.is_empty():
+		return []
+	var coins := harvest_coins.filter(func(c): return c.team == harvest_lesson.team and c.uid == harvest_lesson.uid)
+	var purse := gold_pos(harvest_lesson.team) + Vector2(34, -4)
+	if coins.is_empty():
+		return [purse, HARVEST_LIGHT_PURSE]
+	var farmer: Vector2 = coins[0].from + Vector2(0, -26)
+	var first_fly: float = coins[0].fly
+	var middle := Vector2.ZERO
+	for coin in coins:
+		middle += _coin_position(coin)
+	middle /= coins.size()
+	var leave := smoothstep(0.0, 0.3, (harvest_time - first_fly) / HARVEST_FLIGHT)
+	var arrive := smoothstep(0.0, 0.25, harvest_time - harvest_lesson.landed)
+	var center := farmer.lerp(middle, leave).lerp(purse, arrive)
+	var radii := HARVEST_LIGHT_FARMER.lerp(HARVEST_LIGHT_COIN, leave).lerp(HARVEST_LIGHT_PURSE, arrive)
+	return [center, radii]
 
 
 ## Queues the harvest animation for one wizard. Rules already granted the gold;
@@ -225,9 +276,12 @@ func harvest_remaining(team: int) -> float:
 
 
 func advance_harvest(dt: float) -> void:
-	if harvest_sources.is_empty() and harvest_coins.is_empty():
+	if harvest_sources.is_empty() and harvest_coins.is_empty() and harvest_lesson.is_empty():
 		return
-	harvest_time += dt
+	harvest_time += dt * harvest_speed
+	if not harvest_lesson.is_empty() and harvest_time >= harvest_lesson.landed + HARVEST_LESSON_GAIN_TIME * harvest_speed:
+		harvest_lesson = {}
+		harvest_speed = 1.0
 	for src in harvest_sources:
 		if not src.popped and harvest_time >= src.start:
 			src.popped = true
@@ -533,6 +587,7 @@ func _draw_layer(layer_name: String, layer: CanvasItem) -> void:
 				Shapes.circle(_ci, p + Vector2(4, 10), 22, Color(0, 0, 0, 0.3))
 				Icons.token(_ci, game.drag.form_id, p, Rules.BODY_RADIUS * Rules.CELL * 1.1, 0, true)
 			game.spotlight.draw(_ci)
+			_draw_harvest_gain()
 	_ci = self
 
 
@@ -758,7 +813,7 @@ func _draw_harvest() -> void:
 			# Pop out with an overshoot, then hover, bobbing, spinning and twinkling.
 			var k := clampf(age / HARVEST_POP, 0.0, 1.0)
 			var e := 1.0 + 2.70158 * pow(k - 1.0, 3) + 1.70158 * pow(k - 1.0, 2)
-			var p := from.lerp(hover, e) + Vector2(0, -sin(k * PI) * 14.0 + sin(harvest_time * 10.0 + coin.index) * 2.0 * k)
+			var p := _coin_position(coin)
 			_spinning_coin(p, 13.0 * (0.35 + 0.65 * e), spin)
 			if k >= 1.0 and fmod(harvest_time * 3.0 + coin.index * 0.37, 1.0) < 0.3:
 				var tw := fmod(harvest_time * 3.0 + coin.index * 0.37, 1.0) / 0.3
@@ -771,8 +826,7 @@ func _draw_harvest() -> void:
 				var t := maxf(0.0, progress - j * 0.03)
 				var trail := hover.bezier_interpolate(control, control, dest, t)
 				Shapes.circle(_ci, trail, 6.5 - j * 0.7, Color(1, 0.75, 0.12, (1.0 - j / 8.0) * 0.55))
-			var p := hover.bezier_interpolate(control, control, dest, progress)
-			_spinning_coin(p, 13.0 + sin(flight * PI) * 5.0, spin)
+			_spinning_coin(_coin_position(coin), 13.0 + sin(flight * PI) * 5.0, spin)
 		else:
 			# Landing: a ring and a little star burst on the purse.
 			var k := clampf((flight - 1.0) * HARVEST_FLIGHT / REWARD_TAIL, 0.0, 1.0)
@@ -780,6 +834,39 @@ func _draw_harvest() -> void:
 			for j in 5:
 				var a: float = TAU * j / 5.0 + coin.index * 0.6
 				Icons.star(_ci, dest + Vector2.from_angle(a) * (16 + k * 24), 4.5 * (1.0 - k), Color(1, 0.9, 0.35, 1.0 - k))
+
+
+## The harvest lesson's gold rises beside the purse once its coins have landed,
+## above the spotlight's dimming.
+func _draw_harvest_gain() -> void:
+	if harvest_lesson.is_empty():
+		return
+	var rise: float = (harvest_time - harvest_lesson.landed) / harvest_speed / HARVEST_LESSON_GAIN_TIME
+	if rise < 0.0 or rise >= 1.0:
+		return
+	var at := gold_pos(harvest_lesson.team) + Vector2(54, 8 - 24 * rise)
+	var size := roundi(28 + 8 * sin(minf(rise * 4.0, 1.0) * PI))
+	var alpha := 1.0 - smoothstep(0.6, 1.0, rise)
+	var text := "+%d" % harvest_lesson.gold
+	_ci.draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 6, Color(0.2, 0.12, 0.05, alpha))
+	_ci.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(Icons.GOLD.lerp(Color.WHITE, 0.35), alpha))
+
+
+## Where a harvest coin is now: popping out of its harvester and hovering
+## above it, then flying along its curve into the purse.
+func _coin_position(coin: Dictionary) -> Vector2:
+	var from: Vector2 = coin.from
+	var hover: Vector2 = from + coin.offset
+	var dest := gold_pos(coin.team)
+	var flight: float = (harvest_time - coin.fly) / HARVEST_FLIGHT
+	if flight >= 1.0:
+		return dest
+	if flight >= 0.0:
+		var control := hover.lerp(dest, 0.5) + Vector2(0, -90)
+		return hover.bezier_interpolate(control, control, dest, flight * flight)
+	var k := clampf((harvest_time - coin.start) / HARVEST_POP, 0.0, 1.0)
+	var e := 1.0 + 2.70158 * pow(k - 1.0, 3) + 1.70158 * pow(k - 1.0, 2)
+	return from.lerp(hover, e) + Vector2(0, -sin(k * PI) * 14.0 + sin(harvest_time * 10.0 + coin.index) * 2.0 * k)
 
 
 ## A coin seen turning on its vertical axis, with a bright rim on its edge.

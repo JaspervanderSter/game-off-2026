@@ -298,7 +298,7 @@ blocked, and combat slows to a quarter speed while the dimming is full.
 | Hex (swamp witch) | First enemy creature, followed | First fight |
 | Animal bonus (archdruid) | The creature, followed | First allied shapeshift into a bonus form |
 | Trading (merchant) | Reroll button | Shop in place |
-| Harvest (innkeeper) | First harvester | First fight with a harvester |
+| Harvest (innkeeper) | The harvester's coins, followed into the purse | First fight with a harvester |
 | Merging (thief) | The player's first identical pair | Shop in place with a pair |
 | Casters (court mage) | The caster, followed | First spell channel |
 | Frenzy (king) | Timer bar | Frenzy starts |
@@ -306,6 +306,17 @@ blocked, and combat slows to a quarter speed while the dimming is full.
 
 A rule is remembered once shown (`journey.introduced` in the save), and a beaten
 opponent never replays it. The hunter and the archmage introduce nothing.
+
+### Harvest lesson — playtest revision, 21 November 2026
+
+The user found the first harvest unclear: the light circled the peasant while
+its coin flew off into the dark. Confirmed (proposal A of four): the light
+shows the **coin**, not the peasant. It opens on the harvester and its coin fan,
+follows the coins along their flight and rests on the purse while a "+N" rises
+beside the counter (a number, since it is a game value). Implementation
+choices: the player's harvester is preferred, the first harvest plays at 0.6
+speed, and the light rests 0.9 s on the purse. Rejected: two lights linked by a
+dotted arc, a giant coin without dimming, a light on the purse only.
 
 ### Merge lesson — playtest revision, 20 November 2026
 

@@ -25,6 +25,11 @@ var time := -1.0 # seconds since the spotlight began; negative before it does
 var center := Vector2.ZERO
 var radii := Vector2.ZERO
 var unit: Unit = null # followed while alive, for rules shown on a creature
+## Seconds at full strength, between the fade in and the fade out.
+var hold := HOLD
+## While valid, called every frame for [center, radii] (an empty array keeps
+## them): the spotlight follows a moving element, such as harvest coins.
+var track := Callable()
 
 
 ## Prepares a duel: `introduced_rule` waits for its moment ("" for none).
@@ -32,6 +37,8 @@ func reset(introduced_rule: String) -> void:
 	rule = introduced_rule
 	time = -1.0
 	unit = null
+	track = Callable()
+	hold = HOLD
 
 
 ## True while the rule still waits for its moment.
@@ -39,15 +46,22 @@ func pending() -> bool:
 	return rule != "" and time < 0.0
 
 
+func duration() -> float:
+	return FADE_IN + hold + FADE_OUT
+
+
 func active() -> bool:
-	return time >= 0.0 and time < DURATION
+	return time >= 0.0 and time < duration()
 
 
-## Starts the spotlight on an ellipse (screen coordinates), or on `follow`.
-func begin(at: Vector2, ellipse: Vector2, follow: Unit = null) -> void:
+## Starts the spotlight on an ellipse (screen coordinates), on `follow`, or on
+## what `track_with` returns; it stays at full strength for `hold_for` seconds.
+func begin(at: Vector2, ellipse: Vector2, follow: Unit = null, hold_for := HOLD, track_with := Callable()) -> void:
 	center = at
 	radii = ellipse
 	unit = follow
+	hold = hold_for
+	track = track_with
 	time = 0.0
 	Sfx.play("ui/difficulty_unlock")
 
@@ -56,11 +70,17 @@ func advance(dt: float) -> void:
 	if time < 0.0:
 		return
 	time += dt
-	if unit != null and is_instance_valid(unit) and unit.alive:
+	if track.is_valid():
+		var shot: Array = track.call()
+		if shot.size() == 2:
+			center = shot[0]
+			radii = shot[1]
+	elif unit != null and is_instance_valid(unit) and unit.alive:
 		center = Rules.BOARD_POS + unit.position
-	if time >= DURATION:
+	if time >= duration():
 		rule = ""
 		unit = null
+		track = Callable()
 
 
 ## Combat speed while the spotlight is on: slow while fully dimmed.
@@ -71,7 +91,7 @@ func time_scale() -> float:
 func _strength() -> float:
 	if time < FADE_IN:
 		return smoothstep(0.0, FADE_IN, time)
-	return 1.0 - smoothstep(FADE_IN + HOLD, DURATION, time)
+	return 1.0 - smoothstep(FADE_IN + hold, duration(), time)
 
 
 func draw(ci: CanvasItem) -> void:

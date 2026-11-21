@@ -349,13 +349,18 @@ func start_combat() -> void:
 	battle.frenzy_changed.connect(music.set_frenzy_level)
 	battle.ended.connect(_on_battle_ended)
 	# Harvest: every peasant fielded when the fight begins pays its gold now.
+	var lesson := {} # harvester whose coins the harvest rule's light follows
 	for s in states:
 		var sources: Array[Dictionary] = []
 		for y in s.harvest():
 			sources.append({"uid": y.creature.uid, "pos": Rules.BOARD_POS + Rules.cell_center(y.creature.cell), "gold": y.gold})
 		hud.begin_harvest(s.team, sources)
-		if spotlight.pending() and spotlight.rule == Ruleset.HARVEST and not sources.is_empty():
-			_spotlight(sources[0].pos, Vector2(48, 48))
+		if not sources.is_empty() and (lesson.is_empty() or s == player):
+			lesson = {"team": s.team, "uid": sources[0].uid, "pos": sources[0].pos}
+	if spotlight.pending() and spotlight.rule == Ruleset.HARVEST and not lesson.is_empty():
+		# The light shows the coin, not the peasant: it follows the coins into the purse.
+		var hold := hud.begin_harvest_lesson(lesson.team, lesson.uid) - RuleSpotlight.FADE_IN
+		_spotlight(lesson.pos, Hud.HARVEST_LIGHT_FARMER, null, maxf(hold, 0.5), hud.harvest_spotlight)
 	drag = null
 	phase = Phase.COMBAT
 	music.set_frenzy_level(0)
@@ -903,8 +908,8 @@ func _cast_lesson() -> String:
 
 
 ## Starts the spotlight on the rule waiting in this duel and remembers it.
-func _spotlight(at: Vector2, radii: Vector2, follow: Unit = null) -> void:
-	spotlight.begin(at, radii, follow)
+func _spotlight(at: Vector2, radii: Vector2, follow: Unit = null, hold := RuleSpotlight.HOLD, track := Callable()) -> void:
+	spotlight.begin(at, radii, follow, hold, track)
 	if spotlight.rule not in journey.introduced:
 		journey.introduced.append(spotlight.rule)
 		_save_difficulty_progress(unlocked_difficulty)
