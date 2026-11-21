@@ -2061,17 +2061,27 @@ func _test_difficulty() -> void:
 	var game = load("res://main.tscn").instantiate()
 	game.difficulty_progress_path = progress_path
 	add_child(game)
-	check(game.map_screen.visible and not game.menu_screen.visible and not game.hud.visible,
-		"startup opens directly on the world map")
-	for screen in [game.menu_screen, game.map_screen]:
+	check(game.map_screen.visible and game.map_screen.on_title() and game.map_screen.title.visible and not game.hud.visible,
+		"startup opens on the title, in the sky above the world map")
+	for screen in [game.map_screen]:
 		var no_text := true
 		for button: Button in screen.buttons:
 			no_text = no_text and button.text.is_empty() and button.tooltip_text.is_empty()
 		check(no_text, "%s controls show neither text nor textual tooltips" % screen.name)
+	var map = game.map_screen
+	map._activate(0)
+	check(game.phase == game.Phase.DIFFICULTY, "stages cannot be chosen from the title")
+	map._tap_at(Vector2(640, 360))
+	check(not map.title.animating(), "a tap finishes the title's animation")
+	map._tap_at(map.title.get_global_transform_with_canvas() * map.title.medallion_center())
+	check(map.visible and not map.on_title() and game.journey.available(0),
+		"the island medallion takes the camera down to the islands, first stage available")
+	map._process(map.PAN_TIME)
+	check(map.menu_blend == 0.0 and not map.title.visible, "the camera pans down to the islands")
 	game.show_menu()
-	game.menu_screen._activate(0)
-	check(game.map_screen.visible and not game.menu_screen.visible and game.journey.available(0),
-		"the menu opens the map with its first stage available")
+	check(map.visible and map.on_title(), "Esc's show_menu pans back up to the title without leaving the map")
+	game.show_map()
+	map._process(map.PAN_TIME)
 	game.choose_stage(6)
 	check(game.phase == game.Phase.DIFFICULTY, "locked map stages cannot launch")
 	game.map_screen._activate(0)
@@ -2298,8 +2308,9 @@ func _test_journey_navigation() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var map = game.map_screen
+	map.show_islands(true) # the game opens on the title, one screen above
 	check(map.find_children("*", "ScrollContainer", true, false).is_empty(), "map has no scrolling container")
-	check(map.get_children().filter(func(c): return c is CanvasItem).size() == 2,
+	check(map.get_children().filter(func(c): return c is CanvasItem and not c is TitleScreen).size() == 2,
 		"map shows only the sky and islands, without a UI banner")
 	_check_whole_map_visible(map, "landscape")
 	var initial_transform: Transform2D = map.world.transform

@@ -17,10 +17,10 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 
 | Action | Control |
 | --- | --- |
-| Open the journey | Click the island-and-arrow button in the menu (or Enter) |
+| Open the journey | Click the island medallion under the title (or Enter): the camera pans down to the islands. A click or key during the title's animation finishes it |
 | Return to the map after a duel | Click the island medallion under the crown or skull |
 | Pick a stage | Click an unlocked opponent on an island; Tab / arrow keys and Enter also work |
-| Return to the menu | Esc on the map |
+| Return to the title | Esc on the map: the camera pans back up to the title |
 | Leave a replayed duel | Click the sky-blue island medallion in the top-left corner (or press Esc): the duel pauses under a green check (back to the map, or Enter) and a red cross (resume, or Esc). Only replays of beaten opponents show it |
 | Pick a starting composition | Left-click one of the three cards |
 | Buy a creature | Click and release a shop card for the bench, or drag it directly to a board cell / reserve slot |
@@ -69,6 +69,34 @@ medallion, the last seven finished rounds as pips in the winner's colour (grey
 for a draw) and the next rounds as fading dashed rings. When a round resolves,
 the medallion's ring takes the winner's colour; when the next round starts, the
 frieze slides one step left.
+
+## Title (21 November 2026)
+
+The game opens on its title, formed in the map's sky one screen above the
+islands (`scripts/ui/title_screen.gd`, `TitleScreen`, a child of the map).
+Seventeen creature tokens pop in, each runs through its own transformation
+chain (the most likely outcome each time, two to four steps, with a merge ring
+and `ui/combine`), then becomes a letter: blessed into SHAPESHIFTERS in blue,
+hexed into DUEL in red, with the real shapeshift effects and sounds. The
+letters are thick rounded vector strokes (an ink outline, the colour, a light
+core) and the last creature of each chain perches on its letter. The island
+medallion then appears under the title with the unlock chime: it is the only
+control. Clicking it pans the camera down to the islands over 1.4 s
+(`world_map.menu_blend`): the islands rise from below, the title leaves
+upwards and the stars and clouds drift with parallax; there is no change of
+scene and the sky cycle and ambience carry on. Esc on the map pans back up to
+the formed title. Map discovery waits until the camera reaches the islands.
+A duel returns straight to the islands. The old `menu.tscn` diorama and its
+quit button are gone (closing the window quits).
+
+`tools/title_proposals.tscn` keeps the four proposals compared with the user
+(keys 1 to 4: the journey's opponents, tokens on the board, transformation
+chains, a wand duel), five letter styles (5 to 9) and four backdrops (Q W E
+R), with sounds, to come back to them later:
+
+```
+godot --path . res://tools/title_proposals.tscn
+```
 
 ## Screen layout (21 November 2026)
 
@@ -704,8 +732,8 @@ Portrait uses a taller triangle and scales the whole map to fit. A wooden
 suspension bridge links forest to town, and a violet bridge with gold handrails
 links town to the school courtyard. Both bridges land on the shores, clear of
 the encounters. Routes follow curved trails and the bridge decks.
-The existing `menu.tscn` diorama is retained for later work and can still be
-reached with Esc. Selecting an opponent starts the duel; completed stages stand
+The menu is the title, in the sky one screen above the islands (see "Title"
+below). Selecting an opponent starts the duel; completed stages stand
 on a soft gold ring, without a star. Unknown opponents and routes have no visible markers,
 silhouettes or padlocks. The protagonist does not appear on the map. Controls use
 icons and animation only, including hover feedback: no labels or textual tooltips.

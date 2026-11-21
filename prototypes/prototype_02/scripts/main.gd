@@ -48,7 +48,6 @@ var abandon_asked := false
 ## until the player's very first fight. Saved in journey.introduced and
 ## journey.lessons_done; a save that already beat the hunter skips it.
 const FIGHT_LESSON := "fight"
-var menu_screen: Node2D
 var map_screen: Node2D
 const PACK_CHOICES := 3
 # Starting compositions come from hidden decks: three cards for the player per
@@ -115,30 +114,33 @@ func _ready() -> void:
 	_load_difficulty_progress()
 	player_deck.load_state()
 	enemy_deck.load_state()
-	menu_screen = preload("res://menu.tscn").instantiate()
 	map_screen = preload("res://world_map.tscn").instantiate()
-	for screen in [menu_screen, map_screen]:
-		screen.game = self
-		screen.z_index = 30
-		add_child(screen)
+	map_screen.game = self
+	map_screen.z_index = 30
+	add_child(map_screen)
 	new_duel()
+	# The game opens on the title, in the sky above the journey's islands.
+	show_menu(true)
 
 
-func show_menu() -> void:
+## The menu is the title in the map's sky: from the islands the camera pans
+## up to it; at launch it appears at once and its animation plays.
+func show_menu(launch := false) -> void:
 	music.transition_to("")
-	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
-	menu_screen.show()
-	map_screen.hide()
+	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	map_screen.show()
 	board_view.hide()
 	hud.hide()
-	menu_screen.focus_first()
+	map_screen.show_title(launch, launch)
 
 
+## The journey's islands: a camera pan down from the title, or a cut after a duel.
 func show_map() -> void:
 	music.transition_to("")
 	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
-	menu_screen.hide()
+	var from_title: bool = map_screen.visible and map_screen.on_title()
 	map_screen.show()
+	map_screen.show_islands(not from_title)
 	board_view.hide()
 	hud.hide()
 	map_screen.focus_first()
@@ -257,7 +259,6 @@ func _start_duel() -> void:
 	board_view.set_environment(Journey.environment_for_stage(journey.selected))
 	music.transition_to("prep")
 	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
-	menu_screen.hide()
 	map_screen.hide()
 	board_view.show()
 	hud.show()
@@ -692,11 +693,14 @@ func cycle_environment() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if menu_screen.visible or map_screen.visible:
+	if map_screen.visible:
 		if event is InputEventKey and event.pressed and not event.echo:
-			if event.keycode == KEY_ESCAPE:
+			var on_title: bool = map_screen.on_title()
+			if event.keycode == KEY_ESCAPE and not on_title:
 				show_menu()
-			elif event.keycode == KEY_ENTER and menu_screen.visible:
+			elif on_title and map_screen.title.animating():
+				map_screen.title.finish() # any key finishes the title's animation
+			elif on_title and event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
 				show_map()
 			elif event.keycode == KEY_R and event.ctrl_pressed and event.shift_pressed:
 				_reset_difficulty_progress()

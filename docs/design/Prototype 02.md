@@ -185,9 +185,17 @@ not a rule that changes combat.
 
 The menu and map have **no music**. Music belongs to duel scenes, starting with
 pack selection and preparation, with the existing combat and resolution
-transitions. Start the project **directly on the world map**. Retain the menu
-scene for later work: deferring menu work does not make the journey decisions
-in this section temporary.
+transitions. **Revised 21 November 2026: the game opens on its title, in the
+map's sky one screen above the islands**; the island medallion under it, the
+only control, pans the camera down to the islands without changing scene, and
+Esc on the map pans back up. The title forms from creatures that run through
+their transformation chains and become letters keeping the last creature on
+top (chosen among four animated proposals made with the game's own assets:
+the journey's opponents hexed into letters, tokens on the board, the chains,
+a wand duel). The letters are thick vector strokes (chosen among pixel,
+blackletter, calligraphic, vector and sprite-filled letters); the backdrop is
+the map's sky (chosen among the board, a starry night and a lit table). The
+splash screen is deferred.
 
 **Confirmed after a playtest (21 November 2026): the map has a nature
 ambience that follows the sky cycle**, still without music. By day, a light
@@ -211,7 +219,7 @@ recordings); the per-state levels and call rates are implementation choices.
 | Three / six / ten starting hearts and matching heart capacity in the HUD | Implemented with this decision. |
 | Fifteen full-length opponents, fixed openings and cumulative rule introductions | Implemented from [[Journey and Opponents]]; five per unchanged island. |
 | Wizard appearance milestones outside the map | Still to be defined; the protagonist is not represented on the world map. |
-| Menu development | Deferred while work focuses on the world map. |
+| Menu | The title forms in the map's sky; a camera pan leads to the islands. Splash screen deferred. |
 
 ## Roster and transformation design
 
@@ -470,6 +478,9 @@ The user played the journey and listed 22 changes, handled one at a time.
   peasant into the purse, where "+N" rises; it no longer circles the peasant.
 - **Leaving a replay:** a replayed duel shows an island medallion (top left, or
   Esc) that pauses it under a check / cross confirmation and returns to the map.
+- **Menu:** the title forms in the map's sky from creatures running through
+  their transformation chains into vector-stroke letters; the island medallion
+  pans the camera down to the islands. Splash screen deferred.
 - **Screen layout:** the duel screen grows with the introduced rules (board and
   wizards centred before the shop, fight button under the board, then right of
   the bench); the wizard panels became medallions with hearts on fixed-spacing

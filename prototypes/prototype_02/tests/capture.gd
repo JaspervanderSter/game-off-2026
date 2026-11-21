@@ -52,9 +52,18 @@ func _ready() -> void:
 		get_tree().quit()
 		return
 	if "--map-icons-only" in OS.get_cmdline_user_args():
-		# Every way back to the map: the menu button and the game-over button.
+		# Every way to the map: the title's medallion and the game-over button.
+		game.show_menu(true)
+		for i in 5:
+			await _seconds(0.6)
+			await _shot("title_%d" % i)
+		game.show_map()
+		await _seconds(0.7)
+		await _shot("title_pan")
+		await _seconds(1.0)
+		await _shot("title_islands")
 		game.show_menu()
-		await _frames(4)
+		await _seconds(1.6)
 		await _shot("map_icon_menu")
 		game.difficulty_progress_path = capture_dir.path_join("icons_progress.cfg")
 		game.choose_stage(0)

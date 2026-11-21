@@ -46,6 +46,15 @@ var sky: Node2D
 var world: Node2D
 var roads: Node2D
 var ambience: MapAmbience
+## The menu: the title forms in the sky above the islands. The camera pans
+## between them (menu_blend 1 on the title, 0 on the islands) instead of
+## changing scene.
+var title: TitleScreen
+var menu_blend := 0.0
+var menu_target := 0.0
+const PAN_TIME := 1.4
+const SKY_PARALLAX := 4.0 # stars and clouds drift less than the islands
+var _world_origin := Vector2.ZERO
 var islands: Array[Node2D] = []
 var bridges: Array[Node2D] = []
 var buttons: Array[Button] = [] # one icon-only opponent per stage
@@ -109,6 +118,10 @@ func _ready() -> void:
 	ambience = MapAmbience.new()
 	ambience.map = self
 	add_child(ambience)
+	title = TitleScreen.new()
+	title.z_index = 3
+	add_child(title)
+	_apply_pan()
 
 func _button(parent: Node, rect: Rect2) -> Button:
 	var button := Button.new()
@@ -123,6 +136,8 @@ func _button(parent: Node, rect: Rect2) -> Button:
 	return button
 
 func _activate(index: int) -> void:
+	if on_title():
+		return
 	if index < 0:
 		game.show_menu()
 	elif index < buttons.size() and buttons[index].visible and not buttons[index].disabled:
@@ -252,7 +267,8 @@ func _layout() -> void:
 	var origins: Array = PORTRAIT_ORIGINS if portrait else LANDSCAPE_ORIGINS
 	var scales: Array = PORTRAIT_SCALES if portrait else LANDSCAPE_SCALES
 	map_scale = minf(viewport_size.x / design_size.x, viewport_size.y / design_size.y)
-	world.position = (viewport_size - design_size * map_scale) * 0.5
+	_world_origin = (viewport_size - design_size * map_scale) * 0.5
+	world.position = _world_origin
 	world.scale = Vector2.ONE * map_scale
 	for index in islands.size():
 		islands[index].position = origins[index]
@@ -338,6 +354,13 @@ func _clear_touch() -> void:
 	_mouse_dragged = false
 
 func _tap_at(point: Vector2) -> void:
+	if on_title():
+		# The title: a tap finishes its animation, then the medallion goes down to the islands.
+		if title.animating():
+			title.finish()
+		elif point.distance_to(title.get_global_transform_with_canvas() * title.medallion_center()) < TitleScreen.MEDALLION_RADIUS:
+			game.show_map()
+		return
 	var nearest := -1
 	var nearest_distance := INF
 	for index in buttons.size():
@@ -358,9 +381,15 @@ func _process(dt: float) -> void:
 	if not is_visible_in_tree():
 		return
 	age += dt
-	advance_discovery(dt)
+	menu_blend = move_toward(menu_blend, menu_target, dt / PAN_TIME)
+	if menu_blend > 0.0:
+		title.advance(dt)
+	else:
+		# Discovery waits until the camera has reached the islands.
+		advance_discovery(dt)
 	if get_viewport_rect().size != _layout_size:
 		_layout()
+	_apply_pan()
 	var state: Dictionary = sky.colors()
 	for island in islands:
 		island.cloud_color = state.cloud
@@ -368,6 +397,43 @@ func _process(dt: float) -> void:
 		buttons[index].queue_redraw()
 		figures[index].queue_redraw()
 	roads.queue_redraw()
+
+## True while the camera looks, or is going, at the title above the islands.
+func on_title() -> bool:
+	return menu_target > 0.5
+
+
+## Points the camera at the title; `restart` replays its animation.
+func show_title(restart := false, instant := false) -> void:
+	menu_target = 1.0
+	if instant:
+		menu_blend = 1.0
+	if restart:
+		title.play()
+	get_viewport().gui_release_focus()
+	_apply_pan()
+
+
+## Points the camera at the islands: a pan from the title, or a cut.
+func show_islands(instant := false) -> void:
+	menu_target = 0.0
+	if instant:
+		menu_blend = 0.0
+	title.finish()
+	_apply_pan()
+
+
+## The islands sit one screen below the title; the sky follows with parallax.
+func _apply_pan() -> void:
+	if title == null:
+		return
+	var height := get_viewport_rect().size.y
+	var eased := smoothstep(0.0, 1.0, menu_blend)
+	world.position = _world_origin + Vector2(0, eased * height)
+	title.position = Vector2(0, (eased - 1.0) * height)
+	title.visible = menu_blend > 0.0
+	sky.scroll_offset = eased * height * SKY_PARALLAX
+
 
 ## Seconds since the ground began to open under a stage's opponent; INF once
 ## it has long stood there.
