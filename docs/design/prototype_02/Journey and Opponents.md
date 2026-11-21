@@ -226,7 +226,10 @@ defaults and can be revised.
   offers do nothing.
 - **Before the wand (opponent 1):** neither side can cast; charge crystals are
   hidden. With the druid, casts on one's own creatures only; hexes on enemy
-  creatures come with the swamp witch.
+  creatures come with the swamp witch. Until then, clicking an enemy during a
+  fight gives no feedback at all: no fizzle and no error sound (confirmed after
+  a playtest, 21 November 2026: the error sound suggested a rule the player
+  had not met).
 - **Before the animal bonuses (opponents 1–4):** rabbits and skunks reached by
   an allied shapeshift have no special effect.
 - **Before peasants (opponents 1–6):** the peasant is never offered and no

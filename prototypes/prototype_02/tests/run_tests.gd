@@ -1802,6 +1802,34 @@ func _test_combat_click_casts() -> void:
 	game._left_press(Vector2(20, 20))
 	check(game.fx.items.size() == effects, "clicks outside the board neither cast nor fizzle")
 	game.queue_free()
+	# The druid hands over the wand before the swamp witch teaches the hex:
+	# clicking an enemy then gives no feedback at all, not an error.
+	game = load("res://main.tscn").instantiate()
+	game.difficulty_progress_path = "user://hex_click_test_%d.cfg" % OS.get_process_id()
+	add_child(game)
+	game.journey.completed.assign(range(Journey.stage_count()))
+	game.choose_stage(1)
+	game.choose_pack(0)
+	game._advance_enemy_preparation(1.0)
+	game.start_combat()
+	b = game.battle
+	b.spells[0].charges = 2
+	check(game.ruleset.has(Ruleset.WAND) and not game.ruleset.has(Ruleset.HEX), "the druid's duel has the wand, not the hex")
+	foe = b.living(1)[0]
+	effects = game.fx.items.size()
+	Sfx._last_played.erase("ui/fail")
+	game._left_press(Rules.BOARD_POS + foe.position)
+	check(b.casts[0] == 0 and game.fx.items.size() == effects and not Sfx._last_played.has("ui/fail"),
+		"before the hex, clicking an enemy neither casts, fizzles nor plays an error")
+	var empty := Rules.BOARD_POS + Rules.cell_center(Vector2i(0, 0))
+	if b.unit_at(empty - Rules.BOARD_POS) == null:
+		game._left_press(empty)
+		check(game.fx.items.any(func(i): return i.kind == "fizzle"), "an empty cell still fizzles once the wand is in hand")
+	ally = b.living(0)[0]
+	game._left_press(Rules.BOARD_POS + ally.position)
+	check(b.casts[0] == 1, "the wand still shapeshifts the player's own creatures")
+	game.queue_free()
+	DirAccess.remove_absolute(game.difficulty_progress_path)
 
 
 func _test_blizzard_and_recharge_upgrade() -> void:

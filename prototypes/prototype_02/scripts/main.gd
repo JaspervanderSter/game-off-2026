@@ -952,11 +952,15 @@ func _right_press(pos: Vector2) -> void:
 
 
 ## Left click / tap on a living creature during combat casts the shapeshift.
-## Clicks on empty board cells fizzle; clicks outside the board are ignored.
+## Clicks on empty board cells fizzle; clicks outside the board are ignored, and
+## so are clicks on enemies before the swamp witch introduces the hex: a rule
+## the player has not met yet gives no feedback at all (playtest, 21 November 2026).
 func _cast_at(pos: Vector2) -> void:
 	if not Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE).has_point(pos) or not player.can_cast():
 		return # before the journey hands the player a wand, clicks do nothing
 	var u := battle.unit_at(pos - Rules.BOARD_POS)
+	if u != null and u.team != 0 and not ruleset.has(Ruleset.HEX):
+		return
 	if u == null or not battle.cast(0, u):
 		fx.add("fizzle", pos - Rules.BOARD_POS)
 		Sfx.play("ui/fail")

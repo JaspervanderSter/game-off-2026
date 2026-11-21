@@ -822,6 +822,8 @@ Stages 1-5 use guided learning behaviour, 6-10 use Adept, and 11-15 use Archmage
 full-length characters in `OpponentDB` replace the old creature markers. Each
 introduces one existing rule; `Ruleset` applies the cumulative rules to both
 sides, limits creature offers and openings, and hides unavailable controls.
+An action that belongs to a rule not met yet gives no feedback at all: before
+the hex, clicking an enemy during a fight neither fizzles nor plays `ui/fail`.
 Characters without magic never cast. The Hunter teaches placement; the Druid
 introduces the wand in encounter 2, the Lumberjack introduces the shop in encounter
 3, and the Swamp witch introduces hexes. The town introduces trading,

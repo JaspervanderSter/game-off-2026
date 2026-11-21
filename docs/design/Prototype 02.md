@@ -511,6 +511,9 @@ The user played the journey and listed 22 changes, handled one at a time.
   the king's road up to his keep's gate, and the school road below the
   archmage's rune circle so it never doubles his own road. See
   [[Journey and Opponents]].
+- **No error for an unmet rule:** before the swamp witch introduces the hex,
+  clicking an enemy during a fight does nothing at all (no fizzle, no error
+  sound).
 
 ## Playtest plan and completion criteria
 
