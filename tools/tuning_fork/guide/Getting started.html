@@ -95,7 +95,8 @@
 			<h2>Open the game</h2>
 			<p>Start <code>TuningFork.exe</code> and pick the game in the list, or
 			<svg class="icon"><use href="#folder"/></svg> <b>Open a game folder</b>:
-			the folder that holds <code>sfx/</code>. The folder button at the top
+			the game project or extracted folder containing its executable, not the
+			<code>custom/</code> subfolder. The folder button at the top
 			brings you back to this list.</p>
 		</li>
 		<li>
@@ -127,15 +128,17 @@
 		</li>
 	</ol>
 
-	<h2>Music and alternate workspaces</h2>
+	<h2>Music and game audio</h2>
 	<p>After opening a project, choose <strong>Music</strong> to browse every OGG/WAV
 	under its <code>music/</code> folder. Select a recording to tune its adjacent JSON,
 	preview it, seek, define segments or replace its audio. Select a configuration
 	JSON to edit the game's track bindings and preview transitions. Save, then return
 	to the game window to reload. New files appear automatically.</p>
 	<p>For Shapeshifters Duel on Windows, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>
-	opens Default / Custom. Choose <code>custom/music</code> in Music and choose
-	<code>custom/sfx</code> in SFX for the alternate mode. The complete map ambience
+	opens Default / Custom. A fresh Windows build starts in Custom and remembers
+	your choice across restarts. In Tuning Fork, open the game folder: SFX and Music
+	automatically edit <code>custom/sfx</code> and <code>custom/music</code>, with no
+	folder or mode selector. The complete map ambience
 	reference is 160 seconds: day at 0, golden mist at 40, dusk at 80, night at 120.
 	Replace the whole loop freely. Default and Web playback stay unchanged.
 	Read <code>AUDIO_WORKSPACE.md</code> beside the game executable for details.</p>

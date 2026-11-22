@@ -349,22 +349,25 @@ footer { display: flex; justify-content: space-between; gap: 20px; padding: 22px
     <section class="panel text-panel">
       <h3>With Tuning Fork, without Godot</h3>
       <p>Download <strong>ShapeshiftersDuel-Windows.zip</strong> and <strong>TuningFork-Windows.zip</strong> from the <a href="https://spacemonkeyc.itch.io/shapeshifter-duel#download">itch.io download section</a>. Extract both archives.</p>
-      <p>Open Tuning Fork and select the game folder containing <code>sfx/</code>. Replace or tune an existing sound, save, then return to the running Windows game to hear the change.</p>
+      <p>Open Tuning Fork and select the extracted game folder containing <code>ShapeshiftersDuel.exe</code> and <code>tuning_fork.json</code>. The <strong>SFX</strong> and <strong>Music</strong> tabs automatically open <code>custom/sfx/</code> and <code>custom/music/</code>. Replace or tune an existing sound or track, save, then return to the running Windows game to hear the change.</p>
       <a class="action-link" href="tuning-fork.html">Tuning Fork: five-step guide</a>
+      <p><a href="tuning-fork-guide.html">Complete Tuning Fork guide: SFX, music and ambience</a></p>
     </section>
     <section class="panel text-panel">
       <h3>With the Godot project</h3>
       <p><a href="https://github.com/JaspervanderSter/game-off-2026">Get the repository on GitHub</a>, then open <code>prototypes/prototype_02/project.godot</code> in Godot 4.7 and run the game.</p>
-      <p>You can use Tuning Fork with this version too: open the <code>prototypes/prototype_02/</code> folder. Sounds saved there reload when you return to the game window.</p>
+      <p>You can use Tuning Fork with this version too: open the <code>prototypes/prototype_02/</code> folder. In the game, use <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> on Windows and select <strong>Custom</strong> to hear these edits; a fresh editor run starts in Default. Saved sounds and music reload when you return to the game window.</p>
     </section>
   </div>
   <p class="callout">Use the Windows download or the Godot project to test local sound changes. The browser game on itch.io does not reload files from your computer.</p>
-  <p>To share a sound proposal, send the changed sound files and settings, with a short note about what you changed. If you create a new event, tell me when it should play so I can connect it to the game.</p>
+  <p>A fresh Windows build starts in <strong>Custom</strong>. If you previously selected Default, use <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> in the game to switch back; the choice is remembered. Tuning Fork has no mode selector.</p>
+  <p>To share a sound proposal, send the changed files and JSON settings from <code>custom/sfx/</code> or <code>custom/music/</code>, with a short note about what you changed. If you create a new event, tell me when it should play so I can connect it to the game.</p>
 </section>
 <section id="music" class="content-section">
   <h2>Music</h2>
-  <p>No Godot or Tuning Fork installation is needed to propose music. Play the game, listen to the preparation and combat phases, and share the direction you would enjoy exploring.</p>
+  <p>Use Tuning Fork's <strong>Music</strong> tab to replace and tune the preparation and combat tracks, or the complete world map ambience. It discovers OGG/WAV recordings automatically, including newly added files, and lets you edit their settings, preview transitions and define playback segments.</p>
   <p>A reference or a short demo is a good starting point. Think about the contrast between planning a team and watching a chaotic magical fight, while leaving room for the sound effects.</p>
-  <p>Tuning Fork handles sound effects; music uses a separate system. Loops, transitions and the amount of music to make can be discussed together.</p>
+  <p>Save your changes and return to the running game in Custom mode to hear them. The map reference covers a full 160-second day/night cycle. See the <a href="tuning-fork-guide.html#music">music workflow</a> and <a href="tuning-fork-guide.html#ambience">ambience reference</a> in the complete guide.</p>
+  <p>You can also propose a reference or demo without installing the tool. Loops, transitions and the amount of music to make can be discussed together.</p>
 </section>
 </main></body></html>

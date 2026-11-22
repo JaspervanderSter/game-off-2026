@@ -93,17 +93,17 @@ standalone reading. There is no duplicate game card in its body.
 python tools/pages/build_resources.py
 ```
 
-This generates `docs/how-to-play.html`, `docs/audio.html` and
-`docs/tuning-fork.html`. The first two read the English HTML fragments under
+This generates `docs/how-to-play.html`, `docs/audio.html`,
+`docs/tuning-fork-guide.html` and `docs/tuning-fork.html`. The first three read the English HTML fragments under
 `content/`; the complete guide embeds the preparation screenshot. The tutorial
 reuses `tools/tuning_fork/guide/Getting started.html`, adapting the website framing
 and the event-selection step for collaborators working on existing sounds.
 Keep the original tutorial as the source for the five-step workflow.
 
-All three pages use `page_theme.py`, embed the shared theme for standalone use,
+All four pages use `page_theme.py`, embed the shared theme for standalone use,
 and refresh the homepage's versioned local links. The game's itch.io page is the
 public entry point for both Windows downloads; do not hardcode temporary CDN
-download URLs. Verify all six website pages and the local cross-links after changes.
+download URLs. Verify all seven website pages and the local cross-links after changes.
 
 The homepage and audio page use `itch_card.py` for their itch game
 card. The official cover is saved as `assets/itch-cover.jpg` from the game's

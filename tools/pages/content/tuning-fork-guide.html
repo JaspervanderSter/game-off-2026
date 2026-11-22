@@ -1,0 +1,121 @@
+<header class="page-heading">
+  <p class="eyebrow">Audio contributor handbook</p>
+  <h1>Tuning Fork: complete guide</h1>
+  <p class="lead">Replace and tune sound effects, music and world map ambience, then hear your work in Shapeshifter Duel without rebuilding the game.</p>
+  <p>New here? Start with the <a href="tuning-fork.html">five-step quick start</a>. This guide explains the full workflow and the settings you will use along the way.</p>
+</header>
+<div class="manual-layout">
+  <nav class="manual-contents panel" aria-label="Guide contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#setup">Download and open the project</a></li>
+      <li><a href="#sfx">Edit sound effects</a></li>
+      <li><a href="#groups">Mixing groups</a></li>
+      <li><a href="#music">Edit music and transitions</a></li>
+      <li><a href="#ambience">World map ambience</a></li>
+      <li><a href="#save">Save and test in the game</a></li>
+      <li><a href="#share">Share your changes</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+    </ol>
+  </nav>
+  <div class="manual-chapters">
+    <section id="setup" class="content-section">
+      <h2>1. Download and open the project</h2>
+      <ol>
+        <li>Download <strong>ShapeshiftersDuel-Windows.zip</strong> and <strong>TuningFork-Windows.zip</strong> from <a href="https://spacemonkeyc.itch.io/shapeshifter-duel#download">itch.io</a>. Extract both archives fully.</li>
+        <li>Start <code>ShapeshiftersDuel.exe</code> and <code>TuningFork.exe</code>. Keep the files supplied beside each executable, including Tuning Fork's WAV encoder.</li>
+        <li>In Tuning Fork, choose the game from the project list or use <strong>Open a game folder</strong>. Select the folder containing the game executable and <code>tuning_fork.json</code>.</li>
+        <li>Choose <strong>SFX</strong> or <strong>Music</strong>. The game configuration automatically opens <code>custom/sfx/</code> and <code>custom/music/</code>; there is no folder or Default / Custom selector inside Tuning Fork.</li>
+      </ol>
+      <p>A fresh Windows game starts in <strong>Custom</strong>. If you have changed that preference before, press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> in the game and select Custom. The game remembers this choice across restarts. Default plays the original audio, including the procedural map ambience.</p>
+      <p>With a source checkout, open <code>prototypes/prototype_02/</code> in Tuning Fork and run its <code>project.godot</code> in Godot 4.7. On Windows, select Custom in the game: editor runs start in Default when no preference exists.</p>
+      <p class="callout">Use the Windows game or a Windows editor run for local audio iteration. The itch.io browser game cannot load your local changes.</p>
+    </section>
+    <section id="sfx" class="content-section">
+      <h2>2. Edit sound effects</h2>
+      <p>An event is a named sound the game can trigger. In <strong>SFX</strong>, filter the list by path, then select an existing event. Its description explains its purpose. Changing an existing event is the quickest way to hear your contribution in context.</p>
+      <h3>Files and preview</h3>
+      <p>Each waveform card is a take. Click a card to audition that file, or use Play, <kbd>Space</kbd> or a double-click on an event to hear its normal playback rules. Auto-play previews slider changes. Stop or <kbd>Esc</kbd> ends a looping preview.</p>
+      <p>Drop WAV or OGG files into the SFX window, or use the add-file card, to add takes to the selected event. WAV is converted to OGG. Adding a take keeps the existing takes: to replace the sound completely, remove the unwanted files with their bin buttons too. File operations take effect on disk immediately; back up files before replacing them.</p>
+      <h3>Settings you can tune</h3>
+      <dl class="manual-controls">
+        <div><dt>Volume / volume jitter</dt><dd>Set the level in decibels and the random variation around it. Start with small changes and compare against nearby events.</dd></div>
+        <div><dt>Pitch / pitch jitter</dt><dd>Set playback speed and pitch, with optional random variation. A pitch of 1 preserves the recording; 2 plays an octave higher and twice as fast.</dd></div>
+        <div><dt>Cooldown</dt><dd>The minimum delay in milliseconds between plays of this event. Triggers inside the delay are skipped.</dd></div>
+        <div><dt>Pick / shuffle refill</dt><dd>Random chooses a take on each play; shuffle deals through a pool. Refill controls when that pool resets; 0 uses all takes.</dd></div>
+        <div><dt>Loop</dt><dd>Repeat until stopped. Variation and repeat-delay controls that do not apply to loops are disabled.</dd></div>
+        <div><dt>Protected</dt><dd>Give the event a voice that other sounds cannot steal.</dd></div>
+        <div><dt>Group</dt><dd>Choose the mixing group. Its volume also affects the preview.</dd></div>
+        <div><dt>Files from</dt><dd>Borrow another event's takes while keeping this event's own settings. Follow the displayed link to edit the original takes.</dd></div>
+      </dl>
+      <p>Hover settings for tooltips and use a reset arrow to restore that setting's default. A warning colour can indicate missing or unreadable files, unknown settings or an unknown group.</p>
+      <h3>Create, rename or remove an event</h3>
+      <p>The plus button beside the filter creates an event with a folder, name and description. The pencil renames or moves it; the bin removes it and its files, unless another event borrows them. Creating or renaming an event changes its path: a programmer must connect that path to the game before it will trigger there. Adding a file alone does not create a new gameplay trigger.</p>
+    </section>
+    <section id="groups" class="content-section">
+      <h2>3. Mixing groups</h2>
+      <p>Open <strong>Groups</strong> at the end of the SFX list to adjust the level of a whole family of events. You can add a group, rename one and remove unused groups. Events follow a renamed group.</p>
+      <p>Balance individual events first, then adjust their shared group. Tuning Fork previews the saved group volume; additional volume changes made by game code can still make the in-game result differ.</p>
+    </section>
+    <section id="music" class="content-section">
+      <h2>4. Edit music and transitions</h2>
+      <p>The <strong>Music</strong> tab discovers every OGG/WAV recording recursively under the project's configured music folder. Tracks are not a fixed list. Select a recording to see its waveform, seek through it, preview it and edit its settings. A JSON file with the same basename stores those settings; Save creates it if it does not exist yet.</p>
+      <p>Use <strong>Replace audio</strong> to change a selected OGG track while retaining its path and bindings, or <strong>Import music (WAV / OGG)</strong> to add a track. Imports convert WAV to OGG. For an existing WAV track, overwrite it with another WAV in your audio editor, or import a new OGG and update the binding. New files appear automatically.</p>
+      <dl class="manual-controls">
+        <div><dt>Volume</dt><dd>The recording's level in decibels.</dd></div>
+        <div><dt>Fade seconds</dt><dd>Full fade-in and fade-out duration. Use a positive value.</dd></div>
+        <div><dt>Loop</dt><dd>Repeat the whole recording or selected segment. Turn it off for one playback.</dd></div>
+        <div><dt>Playback mode</dt><dd><strong>Continuous</strong> keeps position, including while ducked behind another phase. <strong>Restart</strong> starts at the beginning on entry. <strong>Segments</strong> chooses a defined region on each entry, avoiding an immediate repeat when alternatives exist.</dd></div>
+        <div><dt>Duck dB</dt><dd>How much a continuous outgoing track is reduced while another phase is active. A value of -40 makes it very quiet.</dd></div>
+        <div><dt>Frenzy speed per level</dt><dd>Optional playback speed increase driven by the game's frenzy level. Use 0 to preserve the musical speed and pitch.</dd></div>
+        <div><dt>Segments</dt><dd>Add regions with start and end times in seconds before selecting Segments mode. Each must have positive duration and fit inside the recording. Loop determines whether the chosen region repeats.</dd></div>
+      </dl>
+      <h3>Connect tracks to game phases</h3>
+      <p>Select <code>workspace.json</code> in the Music list. For this game, <code>prep</code>, <code>battle</code> and <code>ambience</code> name tracks by path relative to <code>custom/music/</code>. Change a binding to use an imported track. Keep <code>sfx_directory</code> pointing at the intended SFX folder, relative to the game folder.</p>
+      <p>Configuration buttons for recognised track bindings preview transitions: try Prep, then Battle, then Prep again to compare fades and continuous playback. Save the edited track settings before comparing the saved transition preview. Tuning Fork discovers these bindings from configuration; the game's phase names are not hardcoded into the tool.</p>
+      <p class="callout">Track preview helps you hear playback and fades. Test in the game to judge the mix with SFX, the sky cycle and frenzy progression.</p>
+    </section>
+    <section id="ambience" class="content-section">
+      <h2>5. World map ambience</h2>
+      <p><code>custom/music/world_map_cycle.ogg</code> is a full recorded reference of the procedural map ambience. Replace the complete mix freely; its birds, winds and individual timings are starting points, not requirements.</p>
+      <ul>
+        <li><strong>0 s:</strong> day.</li>
+        <li><strong>40 s:</strong> golden mist.</li>
+        <li><strong>80 s:</strong> dusk.</li>
+        <li><strong>120 s:</strong> night.</li>
+        <li><strong>160 s:</strong> day again; the loop restarts.</li>
+      </ul>
+      <p>These are sky palette anchors with blended transitions between them. The game aligns this recording with the sky clock when entering the map and stops it outside the map. Make a seamless <strong>160-second</strong> replacement to keep your intended speed and pitch: a different duration is fitted to the visual cycle by changing playback speed.</p>
+      <p>The recording replaces procedural ambience in Custom mode. Default and the Web game keep the procedural version. Tuning Fork edits recordings and their playback settings; baking a new procedural generator remains a separate game-specific task.</p>
+    </section>
+    <section id="save" class="content-section">
+      <h2>6. Save and test in the game</h2>
+      <ol>
+        <li>Preview the event or track and adjust its settings.</li>
+        <li>Use Save or <kbd>Ctrl</kbd>+<kbd>S</kbd> for the selection; <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> saves all pending edits.</li>
+        <li>Return focus to the running game in Custom mode. Saved SFX, music files and settings reload without a new build.</li>
+        <li>Trigger the relevant event, enter its phase or return to the map. Compare levels and transitions in context.</li>
+      </ol>
+      <p>A looping SFX already playing takes new settings on its next start. New event paths still need game integration. Revert restores settings from disk; it does not undo a recording that you have already replaced on disk.</p>
+      <p>Files changed in an external audio editor also reload in Tuning Fork. If an external JSON change conflicts with unsaved edits, the tool keeps your edits and asks you to Save or Revert. Resolve the conflict deliberately before continuing.</p>
+    </section>
+    <section id="share" class="content-section">
+      <h2>7. Share your changes</h2>
+      <p>Send the changed recordings and JSON settings from <code>custom/sfx/</code> and <code>custom/music/</code>, retaining their relative paths. Include <code>workspace.json</code> if you changed track bindings, and <code>groups.json</code> if you changed mixing groups. With Git, commit those same source files.</p>
+      <p>Add a brief note saying what to listen for and where to trigger it. For a new or renamed event, give its exact path and intended trigger. Keep a backup before extracting a later build over your edited game folder.</p>
+    </section>
+    <section id="troubleshooting" class="content-section">
+      <h2>8. Troubleshooting</h2>
+      <dl class="manual-controls">
+        <div><dt>I cannot find my game</dt><dd>Extract the archive first, then open the folder containing the game executable and <code>tuning_fork.json</code>. Do not select the ZIP, Tuning Fork's own folder or the <code>custom/</code> subfolder.</dd></div>
+        <div><dt>Preview changed; the game did not</dt><dd>Save, return focus to the Windows game, check Custom in its <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> dialog, then trigger the sound again. For music, check the binding in <code>workspace.json</code>. Local edits cannot be heard in the browser game.</dd></div>
+        <div><dt>A new file never plays</dt><dd>An imported music track needs a phase binding. A new SFX event needs a gameplay trigger connected by the programmer.</dd></div>
+        <div><dt>WAV import fails</dt><dd>Keep the packaged <code>oggenc.exe</code> beside Tuning Fork. Read the error message and try a valid OGG export from your audio editor.</dd></div>
+        <div><dt>Music cannot be saved or previewed</dt><dd>Check that the recording is readable and every segment ends within its duration. After replacing a track with a shorter one, update its segments.</dd></div>
+        <div><dt>Map audio sounds sped up</dt><dd>Use a 160-second replacement for the full ambience loop. The game fits other durations to the sky cycle.</dd></div>
+      </dl>
+      <p>For the exported game's reference, read <code>AUDIO_WORKSPACE.md</code> beside its executable. For the tool's definition and integration details, see the <a href="https://github.com/JaspervanderSter/game-off-2026/tree/main/tools/tuning_fork/docs">Tuning Fork documentation</a>.</p>
+    </section>
+    <p class="related-links"><a href="tuning-fork.html">Five-step quick start</a> · <a href="audio.html">Sound &amp; music</a> · <a href="index.html">Project resources</a></p>
+  </div>
+</div>

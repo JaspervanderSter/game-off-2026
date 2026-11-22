@@ -39,6 +39,8 @@ def build():
     write_page("how-to-play.html", "Game rules", guide, "document-page manual-page")
     audio = (HERE / "content/audio.html").read_text(encoding="utf-8")
     write_page("audio.html", "Sound & music", audio)
+    manual = (HERE / "content/tuning-fork-guide.html").read_text(encoding="utf-8")
+    write_page("tuning-fork-guide.html", "Tuning Fork complete guide", manual, "document-page manual-page")
 
     # Reuse the tutorial shipped with Tuning Fork; only adapt its website framing
     # and the event-selection step for contributors replacing existing sounds.
@@ -55,7 +57,7 @@ def build():
                         'the game can vary repeated sounds by picking between the takes.')
     intro = f'<p class="callout">Download the Windows game and Tuning Fork from <a href="{ITCH}#download">itch.io</a>, then extract both archives. This guide also works with the Godot project.</p>'
     body = body.replace('<ol class="tutorial-steps">', intro + '\n<ol class="tutorial-steps">')
-    body += '<p class="related-links"><a href="audio.html">Back to sound &amp; music</a></p>'
+    body += '<p class="related-links"><a href="tuning-fork-guide.html">Complete guide: SFX, music and ambience</a> · <a href="audio.html">Back to sound &amp; music</a></p>'
     write_page("tuning-fork.html", "Tuning Fork getting started", symbols + body, "document-page tuning-guide")
     refresh_homepage()
 
