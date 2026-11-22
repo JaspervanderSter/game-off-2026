@@ -298,7 +298,7 @@ unless a later rule explicitly introduces different collision or targeting.
 | Snake | Applies damage over time with its bite. | Damage takes time to pay off. |
 | Skunk | Short-range spray temporarily reduces enemy armour in a small area. | Needs allied damage to exploit the opening. |
 | Eagle | Periodically dives onto a distant enemy, delivering one hit before normal melee combat resumes. | Vulnerable after landing; no permanent flight immunity. |
-| Hedgehog | Returns a small amount of damage when struck by a melee attack. | Weak against ranged attackers. |
+| Porcupine | Returns a small amount of damage when struck by a melee attack. | Weak against ranged attackers. |
 | Deer | Supports nearby allies with a modest healing aura. | Fragile and weak offensively. |
 | Peacock | Periodically displays its tail, briefly reducing the attack speed of nearby enemies. | Needs proximity to enemies despite low durability. |
 

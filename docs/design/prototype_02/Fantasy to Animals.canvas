@@ -183,9 +183,9 @@
       "color": "4"
     },
     {
-      "id": "hedgehog",
+      "id": "porcupine",
       "type": "file",
-      "file": "docs/design/prototype_02/creatures/Hedgehog.md",
+      "file": "docs/design/prototype_02/creatures/Porcupine.md",
       "subpath": "#Card",
       "x": 4780,
       "y": 0,
@@ -458,11 +458,11 @@
       "label": "1/3 · draft"
     },
     {
-      "id": "berserker_to_hedgehog",
+      "id": "berserker_to_porcupine",
       "fromNode": "berserker",
       "fromSide": "bottom",
       "fromEnd": "none",
-      "toNode": "hedgehog",
+      "toNode": "porcupine",
       "toSide": "top",
       "toEnd": "arrow",
       "color": "5",
@@ -491,11 +491,11 @@
       "label": "1/3 · draft"
     },
     {
-      "id": "duelist_to_hedgehog",
+      "id": "duelist_to_porcupine",
       "fromNode": "duelist",
       "fromSide": "bottom",
       "fromEnd": "none",
-      "toNode": "hedgehog",
+      "toNode": "porcupine",
       "toSide": "top",
       "toEnd": "arrow",
       "color": "5",
@@ -524,11 +524,11 @@
       "label": "1/3 · draft"
     },
     {
-      "id": "bard_to_hedgehog",
+      "id": "bard_to_porcupine",
       "fromNode": "bard",
       "fromSide": "bottom",
       "fromEnd": "none",
-      "toNode": "hedgehog",
+      "toNode": "porcupine",
       "toSide": "top",
       "toEnd": "arrow",
       "color": "5",

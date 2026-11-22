@@ -16,7 +16,7 @@ ASSETS = HERE / "assets/artist_brief"
 NAMES = ["peasant", "guardian", "berserker", "duelist", "assassin", "spearman",
          "archer", "crossbowman", "pyromancer", "frost_mage", "cleric", "bard",
          "turtle", "rhino", "gorilla", "wolf", "leopard", "rabbit", "snake",
-         "skunk", "eagle", "hedgehog", "deer", "peacock"]
+         "skunk", "eagle", "porcupine", "deer", "peacock"]
 
 
 def run(*args, env=None):

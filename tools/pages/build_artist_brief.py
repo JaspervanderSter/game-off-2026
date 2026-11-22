@@ -17,7 +17,7 @@ PUBLISHED.mkdir(parents=True, exist_ok=True)
 NAMES = ["Pitchfork Peasant", "Shield Guardian", "Berserker", "Duelist", "Assassin", "Spearman",
          "Archer", "Crossbowman", "Pyromancer", "Frost Mage", "Cleric", "Bard",
          "Turtle", "Rhinoceros", "Gorilla", "Wolf", "Leopard", "Rabbit",
-         "Snake", "Skunk", "Eagle", "Hedgehog", "Deer", "Peacock"]
+         "Snake", "Skunk", "Eagle", "Porcupine", "Deer", "Peacock"]
 
 def publish(name, data):
     (PUBLISHED / name).write_bytes(data)
@@ -62,12 +62,12 @@ html = '''<!doctype html>
 <nav class="site-nav" aria-label="Brief sections"><a class="brand" href="../index.html">Shapeshifter Duel / Artist brief</a><a href="#characters">Characters</a><a href="#motion">Motion</a><a href="#request">Your exploration</a></nav><main class="wrap">
 <section class="hero" id="game"><p class="eyebrow">01 / The game</p><h1>Character Design for Shapeshifter Duel</h1>
 <p class="lead">Current artwork, animation references and a first exploration</p>
-<div class="meta"><span class="tag">2D heroic fantasy</span><span class="tag">Character exploration</span><span class="tag">Visuals: 20 November 2026</span></div>
+<div class="meta"><span class="tag">2D heroic fantasy</span><span class="tag">Character exploration</span><span class="tag">Visuals: 22 November 2026</span></div>
 <figure class="hero-shot">@@PREP_IMAGE@@<figcaption>The prototype during preparation. <a href="@@PREP@@" download="Shapeshifters-Duel-board.png">Save the screenshot for your sketches</a>.</figcaption></figure>
 <div class="two"><div><h3>You are the wizard.</h3><p>Recruit a small band of fantasy fighters and place them on a board. They fight automatically; you intervene by transforming allies or enemies into a random new form. A shield-bearing guardian can become a rabbit. A new body means a new combat role.</p></div><div><h3>Playful, mischievous, a little absurd.</h3><p>We want expressive characters and surprising magical accidents, with clear tactical action underneath. The current game is a single-player duel against an AI wizard.</p><p class="meta">Super Auto Pets informs the playful atmosphere; Teamfight Tactics informs the board and automatic combat. Neither dictates the character style.</p></div></div>
 </section>
 <section id="characters"><p class="eyebrow">02 / What exists today</p><div class="section-head"><h2>Two families. One cast apart.</h2><div class="toolbar" role="group" aria-label="Character preview size"><button id="large" aria-pressed="true">Enlarged</button><button id="small" aria-pressed="false">Approx. gameplay size</button></div></div>
-<p class="intro">The prototype has 12 fantasy fighters and 12 animal forms. These are the current default visuals: pixel sprites where available, with vector artwork for the remaining forms.</p>
+<p class="intro">The prototype has 12 fantasy fighters and 12 animal forms. These are the current default visuals: the pixel art sprites of all 24 forms.</p>
 <h3>Fantasy fighters</h3><div class="roster">@@FANTASY@@</div>
 <h3>Animal forms</h3><div class="roster">@@ANIMALS@@</div>
 <p class="meta">Blue and red circles identify the two teams. <a href="@@ROSTER@@" download="Shapeshifters-Duel-current-characters.png">Save the character reference sheet</a>.</p>

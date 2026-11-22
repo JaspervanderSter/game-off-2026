@@ -41,28 +41,28 @@ const FOREST_OUTCOMES := {
 	"deer": ["guardian", "archer", "spearman"],
 }
 ## The town adds three humans (cleric, assassin, bard) and three animals of the
-## moat and gardens (turtle, hedgehog, peacock) to the forest roster. Peasants and
+## moat and gardens (turtle, porcupine, peacock) to the forest roster. Peasants and
 ## the two casters belong to it too, behind their own rules (FORM_RULES).
 const TOWN_HUMANS := ["archer", "guardian", "spearman", "cleric", "assassin", "bard",
 	"peasant", "pyromancer", "frost_mage"]
-const TOWN_ANIMALS := ["rabbit", "wolf", "deer", "turtle", "hedgehog", "peacock"]
+const TOWN_ANIMALS := ["rabbit", "wolf", "deer", "turtle", "porcupine", "peacock"]
 ## Closed town graph. Forest forms keep their most likely forest outcome; every
 ## town human is reached from two animals, every animal from four or five humans.
 const TOWN_OUTCOMES := {
 	"archer": ["rabbit", "wolf", "peacock"],
 	"guardian": ["deer", "turtle", "wolf"],
-	"spearman": ["wolf", "hedgehog", "rabbit"],
+	"spearman": ["wolf", "porcupine", "rabbit"],
 	"peasant": ["rabbit", "turtle", "deer"],
 	"cleric": ["deer", "peacock", "turtle"],
-	"assassin": ["wolf", "rabbit", "hedgehog"],
-	"bard": ["peacock", "deer", "hedgehog"],
-	"pyromancer": ["hedgehog", "peacock", "wolf"],
-	"frost_mage": ["turtle", "hedgehog", "peacock"],
+	"assassin": ["wolf", "rabbit", "porcupine"],
+	"bard": ["peacock", "deer", "porcupine"],
+	"pyromancer": ["porcupine", "peacock", "wolf"],
+	"frost_mage": ["turtle", "porcupine", "peacock"],
 	"rabbit": ["archer", "assassin", "peasant"],
 	"wolf": ["spearman", "assassin", "guardian"],
 	"deer": ["guardian", "cleric", "bard"],
 	"turtle": ["peasant", "spearman", "cleric"],
-	"hedgehog": ["bard", "frost_mage", "pyromancer"],
+	"porcupine": ["bard", "frost_mage", "pyromancer"],
 	"peacock": ["pyromancer", "archer", "frost_mage"],
 }
 const ROSTER_FORMS := [FOREST_HUMANS + FOREST_ANIMALS, TOWN_HUMANS + TOWN_ANIMALS]

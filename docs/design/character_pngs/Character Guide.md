@@ -2,8 +2,8 @@
 
 Meet the game's 12 fantasy fighters and 12 animal forms. Fighters can be
 recruited; animals appear through shapeshifting. Each has its own combat role.
-The illustrations use the prototype's current default style: pixel sprites
-where available, with vector artwork for the remaining forms. Pixel sprites
+The illustrations use the prototype's current default style: the pixel art
+sprites of all 24 forms. Pixel sprites
 include their team base.
 
 ## Fantasy fighters
@@ -190,9 +190,9 @@ damage, then continues fighting in melee. Unlike the Rabbit's leap, the dive
 itself is a damaging strike. It remains vulnerable during the approach and after
 arrival; flight does not grant immunity.
 
-### Hedgehog (`hedgehog`)
+### Porcupine (`porcupine`)
 
-A small pale face surrounded by a conspicuous ring of brown spikes.
+Long black-and-white quills swept back over a dark body, with a small pale snout.
 
 **Combat role:** Punishes melee attackers with retaliatory thorn damage
 whenever their melee hit lands. Its own attacks are weak, and ranged attacks do

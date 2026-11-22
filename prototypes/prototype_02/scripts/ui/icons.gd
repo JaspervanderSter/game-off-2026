@@ -44,6 +44,16 @@ static func _eyes(ci: CanvasItem, p: Vector2, s: float, c: Vector2, gap: float, 
 	_circ(ci, p, s, c + Vector2(gap, 0), 0.06, col)
 
 
+## Quill: a spike from c at angle a, with a pale tip over its last 28%.
+static func _quill(ci: CanvasItem, p: Vector2, s: float, c: Vector2, a: float, length: float, width: float, col: Color) -> void:
+	var d := Vector2.from_angle(a)
+	var n := d.orthogonal() * width
+	var end := c + d * length
+	_poly(ci, p, s, [c + n, c - n, end], col)
+	var tip := c + d * length * 0.72
+	_poly(ci, p, s, [tip + n * 0.28, tip - n * 0.28, end], Color(0.93, 0.92, 0.88))
+
+
 ## Robe + head shared by the heroic fantasy forms.
 static func _humanoid(ci: CanvasItem, p: Vector2, s: float, robe: Color) -> void:
 	_poly(ci, p, s, [Vector2(-0.55, 0.85), Vector2(0.55, 0.85), Vector2(0.32, -0.05), Vector2(-0.32, -0.05)], robe)
@@ -207,15 +217,17 @@ static func creature(ci: CanvasItem, id: String, p: Vector2, s: float) -> void:
 			_circ(ci, p, s, Vector2(0, -0.45), 0.3, Color(0.97, 0.97, 0.95))
 			_poly(ci, p, s, [Vector2(-0.1, -0.35), Vector2(0.1, -0.35), Vector2(0.0, -0.1)], Color(1.0, 0.75, 0.1))
 			_eyes(ci, p, s, Vector2(0, -0.52), 0.13)
-		"hedgehog":
-			var spikes := []
-			for i in 24:
-				var a := TAU * i / 24.0
-				spikes.append(Vector2.from_angle(a) * (0.85 if i % 2 == 0 else 0.55) + Vector2(0, 0.05))
-			_poly(ci, p, s, spikes, Color(0.4, 0.27, 0.15))
-			_circ(ci, p, s, Vector2(0, 0.2), 0.42, Color(0.9, 0.78, 0.6))
-			_circ(ci, p, s, Vector2(0, 0.38), 0.08, DARK)
-			_eyes(ci, p, s, Vector2(0, 0.1), 0.17)
+		"porcupine":
+			# A crest of long white-tipped quills fanned behind a small face.
+			for i in 13:
+				var a := lerpf(-PI * 1.08, PI * 0.08, i / 12.0)
+				var quill := Color(0.2, 0.2, 0.23) if i % 2 == 0 else Color(0.52, 0.52, 0.56)
+				_quill(ci, p, s, Vector2(0, 0.3), a, 1.05 if i % 2 == 0 else 0.85, 0.11, quill)
+			_ellipse(ci, p, s, Vector2(0, 0.35), 0.48, 0.4, Color(0.3, 0.26, 0.24))
+			_ellipse(ci, p, s, Vector2(0, 0.42), 0.3, 0.27, Color(0.44, 0.37, 0.32))
+			_ellipse(ci, p, s, Vector2(0, 0.55), 0.15, 0.11, Color(0.86, 0.8, 0.72))
+			_circ(ci, p, s, Vector2(0, 0.5), 0.055, DARK)
+			_eyes(ci, p, s, Vector2(0, 0.33), 0.13)
 		"deer":
 			var antler := Color(0.55, 0.38, 0.2)
 			_line(ci, p, s, Vector2(-0.2, -0.45), Vector2(-0.55, -1.05), antler, 0.07)

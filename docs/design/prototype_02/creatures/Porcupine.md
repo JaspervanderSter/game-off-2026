@@ -1,14 +1,14 @@
 ---
-creature_id: hedgehog
+creature_id: porcupine
 family: animal
 status: candidate
 ---
 
-# Hedgehog
+# Porcupine
 
 ## Card
 
-**Hedgehog** · Animal · CANDIDATE
+**Porcupine** · Animal · CANDIDATE
 
 Returns damage when struck by melee attacks.
 

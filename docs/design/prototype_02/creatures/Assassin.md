@@ -64,7 +64,7 @@ not a balance decision. 1/3 is exact; the three chances sum to 100%.
 | [[Snake]] | 1/3 |
 | [[Peacock]] | 1/3 |
 
-**Proposed incoming links:** [[Gorilla]], [[Hedgehog]], [[Wolf]].
+**Proposed incoming links:** [[Gorilla]], [[Porcupine]], [[Wolf]].
 
 Links are directed. A reverse link exists only when explicitly listed in the
 other creature's outgoing table. Card positions do not imply links.

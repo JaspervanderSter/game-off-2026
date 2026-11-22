@@ -1512,8 +1512,8 @@ func _test_abilities() -> void:
 	guard.hp = guard.max_hp
 	b.damage(null, guard, 100.0, "ranged", true)
 	check(absf(guard.max_hp - guard.hp - 100.0) < 0.01, "piercing ignores armour")
-	# Hedgehog thorns.
-	var hog := b.spawn(1, "hedgehog", Vector2(400, 100))
+	# Porcupine thorns.
+	var hog := b.spawn(1, "porcupine", Vector2(400, 100))
 	var peasant := b.spawn(0, "peasant", Vector2(420, 120))
 	b.damage(peasant, hog, 5.0, "melee")
 	check(absf(peasant.max_hp - peasant.hp - 5.0) < 0.01, "thorns reflect melee damage")

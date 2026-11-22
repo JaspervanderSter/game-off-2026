@@ -41,7 +41,7 @@ def render_reference():
         "snake": "Poison: bites apply 7 damage/second for 4 seconds; repeated bites refresh it.",
         "skunk": "Support: spray removes 30 armour for 4 seconds; allied entry fears nearby enemies.",
         "eagle": "Melee: dives onto a distant enemy for 30 damage.",
-        "hedgehog": "Retaliation: deals 5 damage back after a melee hit lands.",
+        "porcupine": "Retaliation: deals 5 damage back after a melee hit lands.",
         "deer": "Healing: nearby allies, including itself, regenerate 5 health/second.",
         "peacock": "Support: multiplies nearby enemies’ attack interval by 1.8 for 4 seconds.",
     }

@@ -361,7 +361,8 @@ and keeps the artist's file names:
 - A creature without a sprite keeps its vector drawing, so the pixel style is
   always complete. The tests fail when a sprite name matches no creature and team.
 
-So far, only creature tokens have sprites. Status icons, projectiles and
+All 24 creatures have sprites (humans in `sprites/humans/`, animals in
+`sprites/animals/`). Only creature tokens have sprites: status icons, projectiles and
 interface icons stay vector in both styles. `res://tests/capture.tscn` takes
 the visual smoke screenshots in the pixel style; add `-- --vector-art` for the
 vector style.
@@ -666,7 +667,7 @@ health-percentage and level rules remain the same.
 - Peacock: 140 HP, a larger area and a stronger, longer attack-speed debuff.
 - Snake: 125 HP, stronger basic attacks and poison at 7 HP/s.
 - Wolf, leopard and eagle: stronger attacks and more HP for their offensive roles;
-  eagle dive damage also increases. Hedgehog gains durability for its thorns.
+  eagle dive damage also increases. Porcupine gains durability for its thorns.
 - Skunk: more HP, stronger basic attacks and a larger armour-reduction area.
 - Turtle, rhino and gorilla retain their existing defensive and area-damage roles.
 
@@ -858,7 +859,7 @@ first duel ends after one won round.
 `Ruleset.FOREST_OUTCOMES` is an explicit closed six-form practice graph, using the
 normal 55/30/15 priorities. Rolls, hover previews and AI evaluations use the duel's
 graph (`Ruleset.roster`). The town adds the cleric, assassin and bard, plus the
-turtle, hedgehog and peacock, to the forest's six forms; peasants and the two
+turtle, porcupine and peacock, to the forest's six forms; peasants and the two
 casters also belong to it, behind their own rules. `Ruleset.TOWN_OUTCOMES` is the
 town's closed fifteen-form graph, in which forest forms keep their most likely
 forest outcome. Town openings and player cards come from `OpponentDB.TOWN_PACKS`.

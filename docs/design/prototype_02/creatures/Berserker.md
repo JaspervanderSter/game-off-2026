@@ -61,7 +61,7 @@ not a balance decision. 1/3 is exact; the three chances sum to 100%.
 | Destination | Draft chance |
 | --- | --- |
 | [[Gorilla]] | 1/3 |
-| [[Hedgehog]] | 1/3 |
+| [[Porcupine]] | 1/3 |
 | [[Wolf]] | 1/3 |
 
 **Proposed incoming links:** [[Rabbit]], [[Turtle]], [[Deer]].

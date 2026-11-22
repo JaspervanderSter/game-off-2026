@@ -8,7 +8,7 @@ remain proposals for review.
 Shield Guardian, Spearman, Rabbit, Wolf and Deer. It uses a closed practice graph
 for both wizards, including hover previews. See [[Journey and Opponents#Closed forest transformation graph]].
 **Town exception, 20 November 2026:** the second island adds Cleric, Assassin,
-Bard, Turtle, Hedgehog and Peacock (with peasants and the two casters behind
+Bard, Turtle, Porcupine and Peacock (with peasants and the two casters behind
 their rules) and uses its own closed graph. See [[Journey and Opponents#Town roster — confirmed 20 November 2026]].
 The complete graph and maps below apply only at the school and outside the
 journey; they do not describe forest or town transformation routes.
@@ -87,7 +87,7 @@ rule. Each stage contains three alternatives:
 | 1 | Pitchfork Peasant, Shield Guardian, Cleric | 2 |
 | 2 | Rabbit, Turtle, Deer | 3 |
 | 3 | Berserker, Duelist, Bard | 4 |
-| 4 | Gorilla, Hedgehog, Wolf | 5 |
+| 4 | Gorilla, Porcupine, Wolf | 5 |
 | 5 | Assassin, Archer, Frost Mage | 6 |
 | 6 | Eagle, Snake, Peacock | 7 |
 | 7 | Spearman, Crossbowman, Pyromancer | 8 |

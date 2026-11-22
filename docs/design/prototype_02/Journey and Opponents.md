@@ -178,7 +178,7 @@ now unlocks three more humans and three more animals; only the last island
 - **Humans (confirmed):** the forest three plus **Cleric, Assassin and Bard**.
   Peasants (innkeeper) and the pyromancer and frost mage (court mage) also belong
   to the town, behind their own rules, in addition to these three.
-- **Animals:** the forest three plus **Turtle, Hedgehog and Peacock** (animals of
+- **Animals:** the forest three plus **Turtle, Porcupine and Peacock** (animals of
   the moat, hedges and royal gardens). The user left the choice open except that
   the skunk must not be among them; this selection is an implementation choice.
 - **Transformations (confirmed):** a shapeshift only produces forms of the island
@@ -189,18 +189,18 @@ now unlocks three more humans and three more animals; only the last island
 | --- | --- | --- | --- |
 | Archer | Rabbit | Wolf | Peacock |
 | Shield Guardian | Deer | Turtle | Wolf |
-| Spearman | Wolf | Hedgehog | Rabbit |
+| Spearman | Wolf | Porcupine | Rabbit |
 | Peasant | Rabbit | Turtle | Deer |
 | Cleric | Deer | Peacock | Turtle |
-| Assassin | Wolf | Rabbit | Hedgehog |
-| Bard | Peacock | Deer | Hedgehog |
-| Pyromancer | Hedgehog | Peacock | Wolf |
-| Frost mage | Turtle | Hedgehog | Peacock |
+| Assassin | Wolf | Rabbit | Porcupine |
+| Bard | Peacock | Deer | Porcupine |
+| Pyromancer | Porcupine | Peacock | Wolf |
+| Frost mage | Turtle | Porcupine | Peacock |
 | Rabbit | Archer | Assassin | Peasant |
 | Wolf | Spearman | Assassin | Shield Guardian |
 | Deer | Shield Guardian | Cleric | Bard |
 | Turtle | Peasant | Spearman | Cleric |
-| Hedgehog | Bard | Frost mage | Pyromancer |
+| Porcupine | Bard | Frost mage | Pyromancer |
 | Peacock | Pyromancer | Archer | Frost mage |
 
 Every town human is reached from two animals and every animal from four or five
