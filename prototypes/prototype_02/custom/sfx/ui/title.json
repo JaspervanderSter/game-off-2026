@@ -1,0 +1,13 @@
+{
+	"description": "The title's jingle, as the title island bursts out of the clouds: a rising whoosh, a marimba chord on its landing, a three-note tag and a bell.",
+	"group": "ui",
+	"loop": false,
+	"protected": false,
+	"volume_db": -6.0,
+	"volume_jitter_db": 0.0,
+	"pitch": 1.0,
+	"pitch_jitter": 0.0,
+	"cooldown_ms": 300,
+	"pick": "shuffle",
+	"shuffle_refill_after": 0
+}

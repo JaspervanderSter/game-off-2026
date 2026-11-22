@@ -77,33 +77,37 @@ for a draw) and the next rounds as fading dashed rings. When a round resolves,
 the medallion's ring takes the winner's colour; when the next round starts, the
 frieze slides one step left.
 
-## Title (21 November 2026)
+## Title (22 November 2026)
 
-The game opens on its title, formed in the map's sky one screen above the
-islands (`scripts/ui/title_screen.gd`, `TitleScreen`, a child of the map).
-Seventeen creature tokens pop in, each runs through its own transformation
-chain (the most likely outcome each time, two to four steps, with a merge ring
-and `ui/combine`), then becomes a letter: blessed into SHAPESHIFTERS in blue,
-hexed into DUEL in red, with the real shapeshift effects and sounds. The
-letters are thick rounded vector strokes (an ink outline, the colour, a light
-core) and the last creature of each chain perches on its letter. The island
-medallion then appears under the title with the unlock chime: it is the only
-control. Clicking it pans the camera down to the islands over 1.4 s
-(`world_map.menu_blend`): the islands rise from below, the title leaves
-upwards and the stars and clouds drift with parallax; there is no change of
-scene and the sky cycle and ambience carry on. Esc on the map pans back up to
-the formed title. Map discovery waits until the camera reaches the islands.
-A duel returns straight to the islands. The old `menu.tscn` diorama and its
+The game opens on a title island left of the forest, in the world map's own
+space (`scripts/ui/title_screen.gd`, `TitleScreen`, a child of the map's
+world). DUEL stands on it in earth letters with grass on every ledge and
+SHAPESHIFTERS is carved in gold in its cliff, letters built from chamfered
+flat pieces (`TitleScreen.glyph_pieces`). The island bursts out of the clouds
+on the title jingle (`ui/title`, rendered by `tools/make_title_jingle.gd`),
+lands at 0.45 s with a jolt, then keeps moving: it floats, rocks drift, birds
+circle, smoke rises, and a creature on the D changes shape every 3.2 s along
+its chain of most likely outcomes. At 0.95 s a rope bridge unrolls from its
+shore towards the forest (`map_bridge.gd`'s `reach`) and the island medallion,
+the only control, appears on it near the screen's right edge with gold
+chevrons gliding towards it (`scripts/ui/home_road.gd`, `HomeRoad`). A tap or
+a key finishes the animation.
+
+The medallion leads the camera from the title's frame (fitted to the screen)
+to the whole map over 2.8 s (`world_map.menu_blend`, `PAN_TIME`), while gold
+footsteps leave the cottage door, cross the bridge and reach the hunter; the
+clouds drift with parallax. Leaving the title after launch replays the journey: every
+opponent and road hides; on arrival the hunter rises (new journey) or pops up,
+then the footsteps run on along the beaten roads, faster and faster, each
+beaten opponent popping up as they reach it, and the current opponent gets the
+map's own trace and rise. The map's ambience is silent on the title and fades
+in on the way. Esc on the map leads back to the title (1.4 s) and the way back
+is a simple travel, without a replay; a duel returns
+straight to the islands, without replay. The old `menu.tscn` diorama and its
 quit button are gone (closing the window quits).
 
-`tools/title_proposals.tscn` keeps the four proposals compared with the user
-(keys 1 to 4: the journey's opponents, tokens on the board, transformation
-chains, a wand duel), five letter styles (5 to 9) and four backdrops (Q W E
-R), with sounds, to come back to them later:
-
-```
-godot --path . res://tools/title_proposals.tscn
-```
+`tests/capture.tscn -- --title-replay-only` captures the replay of a seven-win
+journey (to a capture folder, never the player's save).
 
 ## Map and duel transition (21 November 2026)
 
@@ -772,7 +776,7 @@ firs dot the forest, the tower stands in the school courtyard, and the forest's
 waterfall pours out of a jagged opening behind hanging roots in its cliff, then
 vanishes into drifting mist. The king stands on top of his keep
 (`world_map.KING_SPOT`); the archdruid guards the rope bridge.
-The menu is the title, in the sky one screen above the islands (see "Title"
+The menu is the title island, left of the forest, joined to it by a rope bridge (see "Title"
 below). Selecting an opponent starts the duel; completed stages stand
 on a soft gold ring, without a star. Unknown opponents and routes have no visible markers,
 silhouettes or padlocks. The protagonist does not appear on the map. Controls use

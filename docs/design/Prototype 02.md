@@ -187,17 +187,27 @@ not a rule that changes combat.
 
 The menu and map have **no music**. Music belongs to duel scenes, starting with
 pack selection and preparation, with the existing combat and resolution
-transitions. **Revised 21 November 2026: the game opens on its title, in the
-map's sky one screen above the islands**; the island medallion under it, the
-only control, pans the camera down to the islands without changing scene, and
-Esc on the map pans back up. The title forms from creatures that run through
-their transformation chains and become letters keeping the last creature on
-top (chosen among four animated proposals made with the game's own assets:
-the journey's opponents hexed into letters, tokens on the board, the chains,
-a wand duel). The letters are thick vector strokes (chosen among pixel,
-blackletter, calligraphic, vector and sprite-filled letters); the backdrop is
-the map's sky (chosen among the board, a starry night and a lit table). The
-splash screen is deferred.
+transitions. **Revised 22 November 2026: the game opens on a title island,
+left of the forest in the world map's own space.** DUEL stands on it in earth
+letters with grass on every ledge, SHAPESHIFTERS is carved in gold in its
+cliff, with firs, a cottage and a creature on the D that changes shape every
+few seconds along its chain of most likely outcomes. The island bursts out of
+the clouds in about half a second on the title jingle (`ui/title`), lands with
+a jolt, then keeps moving: it floats, rocks drift under it, birds circle, smoke
+rises. Once it has landed, a rope bridge unrolls from its shore towards the
+forest and the island medallion, the only control, appears on the bridge near
+the screen's right edge, gold chevrons gliding towards it. It leads the camera
+right along the bridge (2.8 s) while gold footsteps leave the cottage door,
+cross the bridge and reach the hunter. Leaving the title after launch replays the journey:
+every opponent and road hides, the hunter springs out (the full rise on a new
+journey, a pop otherwise), then the footsteps run on along the beaten roads,
+faster and faster, each beaten opponent popping up as they reach it, and the
+current opponent rises at the normal pace, where the tension belongs. The
+title has no waterfall (the forest's is enough); the map's ambience is silent
+on the title and fades in on the way. Esc on the map leads back to the title;
+the way back to the map then simply travels, without a replay.
+Chosen over five rounds of proposals made in the engine (see the decision log,
+22 November). The splash screen is deferred.
 
 **Confirmed after a playtest (21 November 2026): the map has a nature
 ambience that follows the sky cycle**, still without music. By day, a light
@@ -221,7 +231,7 @@ recordings); the per-state levels and call rates are implementation choices.
 | Three / six / ten starting hearts and matching heart capacity in the HUD | Implemented with this decision. |
 | Fifteen full-length opponents, fixed openings and cumulative rule introductions | Implemented from [[Journey and Opponents]]; five per unchanged island. |
 | Wizard appearance milestones outside the map | Still to be defined; the protagonist is not represented on the world map. |
-| Menu | The title forms in the map's sky; a camera pan leads to the islands. Splash screen deferred. |
+| Menu | A title island left of the forest; its bridge and footsteps lead to the hunter, replaying the journey to the current opponent. Splash screen deferred. |
 
 ## Roster and transformation design
 
@@ -541,6 +551,32 @@ The user played the journey and listed 22 changes, handled one at a time.
   that day for hits, placement, victory, defeat, bless, hex, click, fight start,
   purchase and missing gold were deleted from the game, as was the in-game
   comparison between the two sets (21 November).
+
+### 22 November 2026 — the title island
+
+The title of 21 November (creatures turning into stroked letters, one after
+another) read as generic and slow. Five rounds of proposals, each playable in
+the engine with the game's assets, led to the title island:
+- **Round 1, four directions:** an island whose letters are earth and grass, a
+  moonrise with DUEL in silhouette, a hat spitting the letters out, the wand's
+  scroll stamped with the title. The user preferred them all to round 2, but the
+  moonrise broke the pan to the islands (a night scene in the day sky).
+- **Round 2, between the hat and the scroll:** the user found them long (letters
+  appearing one by one) and soft. Kept as rules for the title: the whole title
+  lands at once with impact, its last image must be composed and keep moving,
+  and it gets its own jingle instead of the map's ambience.
+- **Round 3, short and punchy:** the island was chosen.
+- **Round 4, the island in the map's space:** to its left, with footsteps from
+  its cottage to the hunter, for continuity between menu and map. Rejected: a
+  bridge hanging in the sky before the island arrives; footsteps that always end
+  on the hunter, even when the save is further on.
+- **Round 5:** the bridge unrolls from the island once it has landed, together
+  with the medallion; leaving the title replays the journey up to the current
+  opponent. The waterfall was dropped. Then four light variations on the
+  medallion (now on the bridge's side, where the eye goes, rather than under the
+  island) and on how the opponents come back: a fast cascade, a walk with pops,
+  the walk with a rising scale, all at once. **The walk was chosen**, with the
+  medallion on the bridge near the screen's edge and gliding chevrons.
 
 ## Playtest plan and completion criteria
 

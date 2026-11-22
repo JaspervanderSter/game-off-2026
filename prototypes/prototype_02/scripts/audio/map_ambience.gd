@@ -123,7 +123,7 @@ func _by_time(values: Array) -> float:
 
 
 func advance(dt: float) -> void:
-	var shown := map.is_visible_in_tree()
+	var shown: bool = map.ambience_heard()
 	presence = move_toward(presence, 1.0 if shown else 0.0, dt / maxf(0.01, setting("ambience_fade_seconds")))
 	# Smoothstep in amplitude: quiet starts and ends with no volume jumps.
 	var fade := presence * presence * (3.0 - 2.0 * presence)

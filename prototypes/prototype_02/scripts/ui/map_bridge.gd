@@ -10,6 +10,10 @@ var from_point := Vector2.ZERO
 var to_point := Vector2.ZERO
 var magic := false
 var t := 0.0
+## Share of a rope bridge laid out from from_point: the title island's bridge
+## unrolls towards the forest (world_map.gd). The far pier and its lanterns
+## stand once it is whole.
+var reach := 1.0
 const STEP_COUNT := 9
 const STEP_ARCH := -14.0 # the crystal steps rise in an arch rather than sag
 
@@ -42,18 +46,24 @@ func _draw() -> void:
 func _rope_bridge() -> void:
 	var length := from_point.distance_to(to_point)
 	var side := (to_point - from_point).normalized().orthogonal() * 10
-	# Stone piers carry both ends.
-	for p in [from_point, to_point]:
+	# Stone piers carry both ends (only the near one while it unrolls).
+	var ends: Array[Vector2] = [from_point]
+	if reach >= 1.0:
+		ends.append(to_point)
+	for p in ends:
 		_poly([p + Vector2(-16, 2), p + Vector2(16, 2), p + Vector2(10, 22), p + Vector2(-10, 22)], Color("8a8480"))
 		_poly([p + Vector2(4, 2), p + Vector2(16, 2), p + Vector2(10, 22), p + Vector2(2, 22)], Color("6e6a66"))
-	var deck := PackedVector2Array()
-	for i in 65:
-		deck.append(point_at(i / 64.0))
-	Shapes.polyline(self, deck, Color("463938"), 24)
-	Shapes.polyline(self, deck, Color("9b8770"), 18)
+	if reach > 0.02:
+		var deck := PackedVector2Array()
+		for i in mini(64, int(reach * 64.0)) + 1:
+			deck.append(point_at(i / 64.0))
+		Shapes.polyline(self, deck, Color("463938"), 24)
+		Shapes.polyline(self, deck, Color("9b8770"), 18)
 	var steps := maxi(12, roundi(length / 8))
 	var posts: Array[Vector2] = []
 	for i in steps + 1:
+		if i / float(steps) > reach + 0.0001:
+			break
 		var p := point_at(i / float(steps))
 		Shapes.line(self, p - side * 0.9, p + side * 0.9, Color("d2b78c").darkened(0.08 * (i % 2)), 5)
 		if i % 4 == 0:
@@ -68,8 +78,9 @@ func _rope_bridge() -> void:
 				var previous: Vector2 = posts[j - 1] + side * direction - Vector2(0, 24)
 				for k in 9:
 					rope.append(previous.lerp(top, k / 8.0) + Vector2(0, sin(k / 8.0 * PI) * 4))
-		Shapes.polyline(self, rope, Color("71553e"), 2.5)
-	for p in [from_point, to_point]:
+		if rope.size() > 1:
+			Shapes.polyline(self, rope, Color("71553e"), 2.5)
+	for p in ends:
 		for direction in [-1, 1]:
 			var q: Vector2 = p + side * direction
 			Shapes.line(self, q + Vector2(0, 6), q - Vector2(0, 32), Color("7d6048"), 4)

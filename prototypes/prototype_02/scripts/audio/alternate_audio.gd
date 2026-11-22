@@ -123,7 +123,7 @@ func advance(dt: float) -> void:
 		prep.keep_clock = not shown and str(prep.setting("playback_mode")) == "continuous"
 		voices.battle.target = 1.0 if phase == "battle" else 0.0
 		var ambience: MusicVoice = voices.ambience
-		ambience.target = 1.0 if shown else 0.0
+		ambience.target = 1.0 if map.ambience_heard() else 0.0
 		if shown and ambience.stream != null:
 			var duration: float = map.sky.cycle_seconds
 			ambience.pitch_scale = ambience.stream.get_length() / maxf(duration, 0.01)

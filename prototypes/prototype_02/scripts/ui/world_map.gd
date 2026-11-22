@@ -69,14 +69,43 @@ var sky: Node2D
 var world: Node2D
 var roads: Node2D
 var ambience: MapAmbience
-## The menu: the title forms in the sky above the islands. The camera pans
-## between them (menu_blend 1 on the title, 0 on the islands) instead of
-## changing scene.
+## The menu: the title island floats left of the forest, in the map's own
+## space; its bridge leads to the forest's shore. The camera travels between
+## them (menu_blend 1 on the title, 0 on the islands) instead of changing
+## scene, while footsteps leave the cottage for the hunter.
 var title: TitleScreen
+var home_bridge: Node2D
+var home: HomeRoad
 var menu_blend := 0.0
 var menu_target := 0.0
-const PAN_TIME := 1.4
+const PAN_TIME := 2.8 # from the title to the islands, footsteps and all
+const RETURN_TIME := 1.4 # back to the title
 const SKY_PARALLAX := 4.0 # stars and clouds drift less than the islands
+## The title island's grass top, from the forest's shore where its bridge lands
+## (map coordinates); the title's 1280 x 720 frame fills the screen.
+const TITLE_OFFSET := Vector2(-680, -26)
+const TITLE_FRAME := Vector2(1280, 720)
+var _title_anchor := Vector2.ZERO
+var _home_land := Vector2.ZERO
+var _design_size := LANDSCAPE_SIZE
+## Leaving the title at launch replays the journey up to the current opponent: every
+## opponent and road hides, the footsteps reach the hunter, then they run on
+## along the beaten roads, faster and faster, each beaten opponent popping up
+## as they reach it; the current one rises at the normal pace.
+## Only the first departure after the game starts replays it; Esc and back
+## simply travels. _replay: "" (none), "armed" (camera travelling), "walk",
+## "settle".
+var _replay := ""
+var _replay_due := false
+var _replay_clock := 0.0
+var walk := PackedVector2Array() # the beaten roads' dots, end to end
+var walk_stage := PackedInt32Array() # the stage each of those dots leads to
+var walk_pos := 0.0
+var _walk_speed := 0.0
+var _popped := {} # stage -> age of its pop
+const WALK_START_SPEED := 22.0 # dots per second, then faster
+const WALK_ACCELERATION := 90.0
+const WALK_TOP_SPEED := 150.0
 var _world_origin := Vector2.ZERO
 var islands: Array[Node2D] = []
 var bridges: Array[Node2D] = []
@@ -110,6 +139,11 @@ func _ready() -> void:
 	add_child(sky)
 	world = Node2D.new()
 	add_child(world)
+	title = TitleScreen.new()
+	world.add_child(title)
+	home_bridge = Bridge.new()
+	home_bridge.z_index = 1
+	world.add_child(home_bridge)
 	for index in 3:
 		var island := Island.new()
 		island.biome = index
@@ -137,13 +171,14 @@ func _ready() -> void:
 		figure.draw.connect(_draw_figure.bind(index, figure))
 		button.add_child(figure)
 		figures.append(figure)
+	home = HomeRoad.new()
+	home.map = self
+	home.z_index = 3
+	world.add_child(home)
 	_layout()
 	ambience = MapAmbience.new()
 	ambience.map = self
 	add_child(ambience)
-	title = TitleScreen.new()
-	title.z_index = 3
-	add_child(title)
 	_apply_pan()
 
 func _button(parent: Node, rect: Rect2) -> Button:
@@ -180,6 +215,10 @@ func _focus_latest() -> void:
 	buttons[target].grab_focus()
 
 func _sync_discovery() -> void:
+	if _replay != "":
+		# The journey's replay brings every opponent back itself.
+		_discovery_initialized = true
+		return
 	if not _discovery_initialized:
 		# Reloaded progress is already known: do not replay old discovery sequences.
 		for index in buttons.size():
@@ -287,6 +326,7 @@ func _layout() -> void:
 	_layout_size = viewport_size
 	var portrait := viewport_size.y > viewport_size.x
 	var design_size := PORTRAIT_SIZE if portrait else LANDSCAPE_SIZE
+	_design_size = design_size
 	var origins: Array = PORTRAIT_ORIGINS if portrait else LANDSCAPE_ORIGINS
 	var scales: Array = PORTRAIT_SCALES if portrait else LANDSCAPE_SCALES
 	map_scale = minf(viewport_size.x / design_size.x, viewport_size.y / design_size.y)
@@ -319,6 +359,7 @@ func _layout() -> void:
 		figures[index].position = Vector2(0, -RISE_TOP)
 		figures[index].size = Vector2(target_size.x, target_size.y * 0.5 + RISE_TOP)
 	_rebuild_paths()
+	_place_title()
 	if revealing >= 0:
 		_emitted_points = visible_path_points(revealing)
 	_refresh_discovery()
@@ -383,10 +424,10 @@ func _clear_touch() -> void:
 
 func _tap_at(point: Vector2) -> void:
 	if on_title():
-		# The title: a tap finishes its animation, then the medallion goes down to the islands.
+		# The title: a tap finishes its animation, then the medallion leads to the islands.
 		if title.animating():
 			title.finish()
-		elif point.distance_to(title.get_global_transform_with_canvas() * title.medallion_center()) < TitleScreen.MEDALLION_RADIUS:
+		elif point.distance_to(home.get_global_transform_with_canvas() * home.medallion_position()) < TitleScreen.MEDALLION_RADIUS:
 			game.show_map()
 		return
 	var nearest := -1
@@ -409,10 +450,15 @@ func _process(dt: float) -> void:
 	if not is_visible_in_tree():
 		return
 	age += dt
-	menu_blend = move_toward(menu_blend, menu_target, dt / PAN_TIME)
+	menu_blend = move_toward(menu_blend, menu_target, dt / (PAN_TIME if menu_target < menu_blend else RETURN_TIME))
+	if _replay == "armed":
+		_walk_home()
 	if menu_blend > 0.0:
 		title.advance(dt)
 	else:
+		if _replay == "armed":
+			_begin_replay()
+		_advance_replay(dt)
 		# Discovery waits until the camera has reached the islands.
 		advance_discovery(dt)
 	if get_viewport_rect().size != _layout_size:
@@ -426,9 +472,15 @@ func _process(dt: float) -> void:
 		figures[index].queue_redraw()
 	roads.queue_redraw()
 
-## True while the camera looks, or is going, at the title above the islands.
+## True while the camera looks, or is going, at the title island.
 func on_title() -> bool:
 	return menu_target > 0.5
+
+
+## True while the map's ambience should be heard: not on the title, whose
+## jingle stands alone; it fades in on the way to the islands.
+func ambience_heard() -> bool:
+	return is_visible_in_tree() and not on_title()
 
 
 ## Points the camera at the title; `restart` replays its animation.
@@ -436,31 +488,220 @@ func show_title(restart := false, instant := false) -> void:
 	menu_target = 1.0
 	if instant:
 		menu_blend = 1.0
+	_end_replay()
 	if restart:
+		# The game starts: the next departure walks the journey again.
+		_replay_due = true
+		home.shown = 0
 		title.play()
 	get_viewport().gui_release_focus()
 	_apply_pan()
 
 
-## Points the camera at the islands: a pan from the title, or a cut.
+## Points the camera at the islands: from the title, a travel along the
+## footsteps that replays the journey; after a duel, a cut.
 func show_islands(instant := false) -> void:
+	var from_title := menu_blend > 0.0 and not instant
 	menu_target = 0.0
 	if instant:
 		menu_blend = 0.0
 	title.finish()
+	if from_title and _replay_due:
+		_arm_replay()
+	elif _replay == "":
+		home.shown = home.dots.size()
+	_replay_due = false
 	_apply_pan()
 
 
-## The islands sit one screen below the title; the sky follows with parallax.
+## The camera: from the title island's frame, filling the screen, to the whole
+## map, eased, the zoom on a log scale; the sky follows with parallax.
 func _apply_pan() -> void:
 	if title == null:
 		return
-	var height := get_viewport_rect().size.y
-	var eased := smoothstep(0.0, 1.0, menu_blend)
-	world.position = _world_origin + Vector2(0, eased * height)
-	title.position = Vector2(0, (eased - 1.0) * height)
+	var screen := get_viewport_rect().size
+	var e := smoothstep(0.0, 1.0, 1.0 - menu_blend)
+	var title_zoom := minf(screen.x / TITLE_FRAME.x, screen.y / TITLE_FRAME.y) / maxf(map_scale, 0.001)
+	var title_center := _title_anchor + TITLE_FRAME * 0.5 - TitleScreen.FRAME_ANCHOR
+	var center := title_center.lerp(_design_size * 0.5, e)
+	var zoom := exp(lerpf(log(title_zoom), 0.0, e))
+	world.position = screen * 0.5 - center * map_scale * zoom
+	world.scale = Vector2.ONE * map_scale * zoom
 	title.visible = menu_blend > 0.0
-	sky.scroll_offset = eased * height * SKY_PARALLAX
+	sky.scroll_offset = (_design_size.y * 0.5 - center.y) * map_scale * SKY_PARALLAX
+	sky.scroll_x = (center.x - _design_size.x * 0.5) * map_scale * SKY_PARALLAX
+	home_bridge.set_span(_title_point(TitleScreen.SHORE, true), _home_land, false)
+	home_bridge.reach = title.bridge_reach()
+
+
+## A point of the title's frame in map coordinates; `floating`: as the island
+## floats now.
+func _title_point(frame: Vector2, floating := false) -> Vector2:
+	return title.position + frame + (Vector2(0, title.lift()) if floating else Vector2.ZERO)
+
+
+## The title island left of the forest, its bridge landing on the forest's
+## shore, and the footsteps' road from the cottage door to the hunter.
+func _place_title() -> void:
+	_home_land = _bridge_bank(0, islands[0].position + Vector2(-800, -30))
+	_title_anchor = _home_land + TITLE_OFFSET
+	title.position = _title_anchor - TitleScreen.FRAME_ANCHOR
+	var door := _title_point(TitleScreen.DOOR)
+	var shore := _title_point(TitleScreen.SHORE)
+	home_bridge.set_span(shore, _home_land, false)
+	var road := PackedVector2Array([door, door.lerp(shore, 0.5) + Vector2(0, 3), shore])
+	home.deck_from = _length(road)
+	for i in 65:
+		road.append(home_bridge.point_at(i / 64.0))
+	home.deck_to = _length(road)
+	var stops: Array[Vector2] = [_home_land, stage_position(0)]
+	road.append_array(_winding(stops))
+	var length := _length(road) - _footprint_exit(road, 0, true)
+	var count := int(length / DOT_SPACING) + 1
+	var dots := PackedVector2Array()
+	var dot_at := PackedFloat32Array()
+	for i in count:
+		var d := length * i / float(count - 1)
+		dots.append(_sample(road, d))
+		dot_at.append(d)
+	var was_whole: bool = home.shown >= home.dots.size() and home.dots.size() > 0
+	home.dots = dots
+	home.dot_at = dot_at
+	home.shown = dots.size() if was_whole else mini(home.shown, dots.size())
+
+
+# --- The journey's replay, on leaving the title -------------------------------------
+
+## The last opponent the journey has reached: the current one.
+func _current_stage() -> int:
+	var last := 0
+	for index in buttons.size():
+		if game.journey.available(index):
+			last = index
+	return last
+
+
+## Leaving the title: every opponent and road hides until replayed.
+func _arm_replay() -> void:
+	_replay = "armed"
+	home.shown = 0
+	discovered.clear()
+	_pending.clear()
+	revealing = -1
+	appearing = -1
+	walk = PackedVector2Array()
+	walk_stage = PackedInt32Array()
+	walk_pos = 0.0
+	_popped.clear()
+	_refresh_discovery()
+	roads.queue_redraw()
+
+
+## The footsteps follow the camera from the cottage to the hunter.
+func _walk_home() -> void:
+	var target := int(home.dots.size() * clampf((1.0 - menu_blend - 0.06) / 0.86, 0.0, 1.0))
+	if target > home.shown:
+		if target / 2 != home.shown / 2:
+			Sfx.play("ui/map_step")
+		home.shown = target
+
+
+## The camera has arrived: the hunter rises if the journey starts, else he
+## pops up and the footsteps run on along the beaten roads.
+func _begin_replay() -> void:
+	home.shown = home.dots.size()
+	var current := _current_stage()
+	for stage in range(1, current):
+		for p in _paths[stage]:
+			walk.append(p)
+			walk_stage.append(stage)
+	walk_pos = 0.0
+	_walk_speed = WALK_START_SPEED
+	_replay_clock = 0.0
+	if current == 0:
+		_reveal_current(0)
+		return
+	_pop(0)
+	_replay = "walk"
+
+
+## The current opponent: the map's own trace and rise, at the normal pace.
+func _reveal_current(stage: int) -> void:
+	_replay = ""
+	if stage == 0:
+		if 0 not in discovered:
+			discovered.append(0)
+		appearing = 0
+		appear_elapsed = 0.0
+		_refresh_discovery()
+		Sfx.play("ui/map_opponent_appear")
+	else:
+		_pending.clear()
+		_pending.append(stage)
+		_begin_next_reveal()
+
+
+func _advance_replay(dt: float) -> void:
+	_replay_clock += dt
+	if _replay == "walk" and _replay_clock > 0.25:
+		_walk_speed = minf(_walk_speed + WALK_ACCELERATION * dt, WALK_TOP_SPEED)
+		var before := int(walk_pos)
+		walk_pos = minf(walk_pos + _walk_speed * dt, float(walk.size()))
+		if int(walk_pos) / 3 != before / 3:
+			Sfx.play("ui/map_step")
+		# An opponent pops up as the footsteps reach it.
+		for i in range(before, int(walk_pos)):
+			if i == walk.size() - 1 or walk_stage[i + 1] != walk_stage[i]:
+				_pop(walk_stage[i])
+		if walk_pos >= walk.size():
+			_replay = "settle"
+			_replay_clock = 0.0
+	elif _replay == "settle" and _replay_clock > 0.35:
+		_reveal_current(_current_stage())
+	# Popped opponents squash back to their size.
+	for stage: int in _popped.keys():
+		_popped[stage] += dt
+		var a: float = _popped[stage]
+		var s := 1.0
+		if a < 0.12:
+			s = lerpf(0.0, 1.25, a / 0.12)
+		elif a < 0.9:
+			s = 1.0 + 0.25 * exp(-(a - 0.12) * 8.0) * cos((a - 0.12) * 24.0)
+		else:
+			_popped.erase(stage)
+		buttons[stage].scale = Vector2.ONE * s
+
+
+## A beaten opponent pops up, with its road.
+func _pop(stage: int) -> void:
+	_popped[stage] = 0.0
+	if stage not in discovered:
+		discovered.append(stage)
+	_refresh_discovery()
+	roads.queue_redraw()
+	home.burst(stage_position(stage))
+	Sfx.play("coins/pop")
+
+
+## Back on the title before the replay ended: the map takes its state back.
+func _end_replay() -> void:
+	if _replay == "" and _popped.is_empty():
+		return
+	_replay = ""
+	walk = PackedVector2Array()
+	walk_stage = PackedInt32Array()
+	walk_pos = 0.0
+	_popped.clear()
+	for button in buttons:
+		button.scale = Vector2.ONE
+	_pending.clear()
+	revealing = -1
+	appearing = -1
+	for index in buttons.size():
+		if game.journey.available(index) and index not in discovered:
+			discovered.append(index)
+	_refresh_discovery()
+	roads.queue_redraw()
 
 
 ## Seconds since the ground began to open under a stage's opponent; INF once

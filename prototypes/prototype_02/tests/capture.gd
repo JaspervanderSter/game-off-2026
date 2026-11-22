@@ -92,6 +92,19 @@ func _ready() -> void:
 		await _shot("abandon_2_confirm")
 		get_tree().quit()
 		return
+	if "--title-replay-only" in OS.get_cmdline_user_args():
+		# Leaving the title replays a journey of seven wins up to the thief.
+		game.difficulty_progress_path = capture_dir.path_join("replay_progress.cfg")
+		game.journey.completed.assign(range(7))
+		game.show_menu(true)
+		await _seconds(2.0)
+		await _shot("replay_title")
+		game.show_map()
+		for i in 7:
+			await _seconds(0.9)
+			await _shot("replay_%d" % i)
+		get_tree().quit()
+		return
 	if "--map-icons-only" in OS.get_cmdline_user_args():
 		# Every way to the map: the title's medallion and the game-over button.
 		game.show_menu(true)
@@ -99,9 +112,9 @@ func _ready() -> void:
 			await _seconds(0.6)
 			await _shot("title_%d" % i)
 		game.show_map()
-		await _seconds(0.7)
+		await _seconds(1.2)
 		await _shot("title_pan")
-		await _seconds(1.0)
+		await _seconds(game.map_screen.PAN_TIME)
 		await _shot("title_islands")
 		game.show_menu()
 		await _seconds(1.6)

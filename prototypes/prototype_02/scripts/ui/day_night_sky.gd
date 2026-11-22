@@ -5,6 +5,8 @@ extends Node2D
 var elapsed := 0.0
 var drift_time := 0.0
 var scroll_offset := 0.0
+## Horizontal counterpart of scroll_offset: the pan from the title island.
+var scroll_x := 0.0
 const TOP := [Color("688f9f"), Color("bba08b"), Color("655770"), Color("222d44")]
 const BOTTOM := [Color("a8bdba"), Color("e5ca9e"), Color("ad929a"), Color("48546b")]
 const CLOUD := [Color("d1dccf"), Color("ecdbb9"), Color("c5acb4"), Color("637087")]
@@ -75,7 +77,7 @@ func _draw() -> void:
 		moon.append(origin + Vector2(10 + cos(a) * 20, sin(a) * 27))
 	draw_colored_polygon(moon, Color(0.94, 0.89, 0.71, state.night))
 	for i in 9:
-		var x := fposmod(i * 239.0 + drift_time * (1.8 + i % 3), size.x + 340) - 170
+		var x := fposmod(i * 239.0 + drift_time * (1.8 + i % 3) - scroll_x * 0.07, size.x + 340) - 170
 		var y := fposmod(90 + i * 181.0 - scroll_offset * 0.07, size.y + 120) - 30
 		cloud(self, Vector2(x, y), 0.85 + (i % 3) * 0.3, Color(state.cloud, 0.55), state.ribbon)
 
