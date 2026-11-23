@@ -141,14 +141,15 @@ func _ready() -> void:
 
 
 ## The menu is the title in the map's sky: from the islands the camera pans
-## up to it; at launch it appears at once and its animation plays.
+## up to it; at launch it appears at once and its animation plays, on Web only
+## after the first tap or key (title_screen.gd).
 func show_menu(launch := false) -> void:
 	music.transition_to("")
 	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	map_screen.show()
 	board_view.hide()
 	hud.hide()
-	map_screen.show_title(launch, launch)
+	map_screen.show_title(launch, launch, launch and OS.has_feature("web"))
 
 
 ## The journey's islands: a camera pan down from the title, or a cut after a duel.
@@ -774,6 +775,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			var on_title: bool = map_screen.on_title()
 			if event.keycode == KEY_ESCAPE and not on_title:
 				show_menu()
+			elif on_title and map_screen.title.waiting:
+				map_screen.title.play() # the first key starts the waiting title
 			elif on_title and map_screen.title.animating():
 				map_screen.title.finish() # any key finishes the title's animation
 			elif on_title and event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:

@@ -10,6 +10,9 @@ extends Node2D
 ## its chain of most likely outcomes. Once it has landed, the rope bridge
 ## unrolls from its shore towards the forest and the island medallion appears
 ## on it: world_map.gd draws both, and pans the camera along the bridge.
+## On Web the title first waits in the clouds behind a pulsing start medallion:
+## the page loads faster than anyone looks, and the browser only lets sound
+## play after a first click or key, so that input starts it with its jingle.
 ## The island is drawn in its own 1280 x 720 frame, its grass top centred on
 ## FRAME_ANCHOR; world_map.gd places this node in the map's coordinates.
 ## Design: docs/design/Prototype 02.md, "Sky, sound and entry point".
@@ -44,6 +47,10 @@ const DUEL_UNIT := 26.0
 const LINE1_UNIT := 8.5
 
 var t := 0.0
+## Waiting for the first input before playing (Web launch).
+var waiting := false
+var _idle := 0.0 # seconds spent waiting, for the clouds and the start prompt
+var _prompt_leaving := false
 var _fired := {}
 var _silent := false
 var _parts: Array[Dictionary] = []
@@ -54,8 +61,21 @@ func _ready() -> void:
 	_glyphs = glyph_pieces()
 
 
+## Holds the title in the clouds, at its start, until play() is called.
+func wait_for_start() -> void:
+	t = 0.0
+	_idle = 0.0
+	_fired.clear()
+	_parts.clear()
+	waiting = true
+	_prompt_leaving = false
+	queue_redraw()
+
+
 ## Plays the title from its start, with its jingle.
 func play() -> void:
+	_prompt_leaving = waiting
+	waiting = false
 	t = 0.0
 	_fired.clear()
 	_parts.clear()
@@ -65,6 +85,8 @@ func play() -> void:
 
 ## Finishes the animation at once, without its effects.
 func finish() -> void:
+	waiting = false
+	_prompt_leaving = false
 	if t >= READY_AT:
 		return
 	_silent = true
@@ -103,6 +125,10 @@ func lift() -> float:
 
 
 func advance(dt: float) -> void:
+	if waiting:
+		_idle += dt
+		queue_redraw()
+		return
 	t += dt
 	_events()
 	for p in _parts:
@@ -155,10 +181,11 @@ func _shake() -> Vector2:
 func _draw() -> void:
 	var base := _shake()
 	var top := FRAME_ANCHOR.y + lift()
+	var clock := t + _idle # keeps the sky moving while the title waits
 	draw_set_transform(base)
 	# Birds circle far behind.
 	for i in 2:
-		var a := t * 0.45 + i * 2.6
+		var a := clock * 0.45 + i * 2.6
 		_bird(Vector2(640 + cos(a) * 470.0, 170 + sin(a) * 40.0 + i * 30.0), 1.0 - i * 0.25)
 	# Rocks drift under the island.
 	for r in [[Vector2(470, 585), 7.0, 0.0], [Vector2(812, 572), 9.0, 1.7], [Vector2(560, 640), 5.0, 3.1]]:
@@ -211,8 +238,28 @@ func _draw() -> void:
 			Shapes.circle(self, p.pos, p.size * (0.4 + 0.6 * k), Color(p.col, p.col.a * k))
 	draw_set_transform(Vector2.ZERO)
 	var sky := preload("res://scripts/ui/day_night_sky.gd")
-	sky.cloud(self, Vector2(400 + sin(t * 0.3) * 30.0, 640), 0.9, CLOUD)
-	sky.cloud(self, Vector2(920 + sin(t * 0.25 + 2.0) * 34.0, 690), 1.1, CLOUD)
+	sky.cloud(self, Vector2(400 + sin(clock * 0.3) * 30.0, 640), 0.9, CLOUD)
+	sky.cloud(self, Vector2(920 + sin(clock * 0.25 + 2.0) * 34.0, 690), 1.1, CLOUD)
+	if waiting:
+		_start_prompt(clampf(_idle / 0.4, 0.0, 1.0), 1.0 + 0.05 * sin(_idle * 4.0))
+	elif _prompt_leaving and t < 0.25:
+		# Pressed: the medallion swells and fades as the island breaks through.
+		_start_prompt(1.0 - t / 0.25, 1.0 + t * 1.6)
+
+
+## The start medallion while the title waits: a gold play mark in a dark disc,
+## with a ripple inviting the first tap.
+func _start_prompt(alpha: float, scale: float) -> void:
+	var c := Vector2(640, 360)
+	var r := 40.0 * scale
+	if waiting:
+		var k := fmod(_idle * 0.7, 1.0)
+		Shapes.ring(self, c, r + 6.0 + k * 46.0, 3.0, Color(GOLD, 0.6 * (1.0 - k) * alpha))
+	Shapes.circle(self, c, r, Color(Color("30233e"), 0.88 * alpha))
+	Shapes.ring(self, c, r, 3.0, Color(GOLD, alpha))
+	var s := r * 0.42
+	draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.7, -s), c + Vector2(s * 1.1, 0), c + Vector2(-s * 0.7, s)]),
+		Color(GOLD, alpha))
 
 
 # --- The perched creature -----------------------------------------------------------

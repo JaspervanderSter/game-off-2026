@@ -9,6 +9,10 @@ extends Node
 ## Tuning Fork sound events: its volume and fade time are ambience_volume_db and
 ## ambience_fade_seconds in default/music/music.json. tools/make_map_ambience.gd
 ## synthesises the sounds in default/music/ambience/.
+## On Web (browsers on phones included) the live mix is too heavy: up to seven
+## streams decoded and mixed on the main thread made the sound crackle and the
+## frames drop. There it plays instead world_map_cycle.ogg, the same mix baked
+## over one full sky cycle (tools/bake_map_cycle.py), kept on the sky clock.
 ## Design: docs/design/Prototype 02.md, "Sky, sound and entry point".
 
 const SkyCycle := preload("res://scripts/ui/day_night_sky.gd")
@@ -50,6 +54,11 @@ const CALL_LEVELS := {"bird": -3.0, "chime": -9.0, "owl": -5.0}
 ## Islands (0 forest, 1 town, 2 school) a call can come from.
 const CALL_ISLANDS := {"bird": [0, 1], "chime": [2], "owl": [0]}
 const CALL_VOICES := 4
+## One sky cycle of this whole mix, baked; stored 6 dB below the live mix.
+const BAKED_CYCLE := preload("res://default/music/ambience/world_map_cycle.ogg")
+const BAKED_HEADROOM_DB := 6.0
+## Largest gap, in seconds, between the recording and the sky before a seek.
+const BAKED_DRIFT := 0.5
 
 var map: Node2D # world_map.gd
 var presence := 0.0 # 0 while hidden, 1 once faded in on the map
@@ -61,6 +70,9 @@ var _last := {} # kind -> index of the call last played, never repeated at once
 var _settings := {}
 ## Only the Windows alternative replaces the complete procedural mix.
 var replaced := false
+## Plays the baked cycle instead of the live mix.
+var baked := OS.has_feature("web")
+var cycle: AudioStreamPlayer
 var _original_gain := 1.0
 
 
@@ -75,6 +87,12 @@ func _ready() -> void:
 		player.volume_linear = 0.0
 		add_child(player)
 		beds[id] = player
+	cycle = AudioStreamPlayer.new()
+	var recording: AudioStreamOggVorbis = BAKED_CYCLE.duplicate()
+	recording.loop = true
+	cycle.stream = recording
+	cycle.volume_linear = 0.0
+	add_child(cycle)
 	for i in CALL_VOICES:
 		var voice := AudioStreamPlayer2D.new()
 		voice.max_distance = 4000.0
@@ -131,21 +149,42 @@ func advance(dt: float) -> void:
 		_original_gain = move_toward(_original_gain, 0.0 if replaced else 1.0, dt / maxf(0.01, setting("ambience_fade_seconds")))
 		fade *= _original_gain
 	var full := db_to_linear(setting("ambience_volume_db"))
+	_advance_cycle(fade * full * db_to_linear(BAKED_HEADROOM_DB) if baked else 0.0)
 	for id in beds:
 		var player: AudioStreamPlayer = beds[id]
-		player.volume_linear = bed_level(id) * fade * full
-		if fade > 0.0 and not player.playing:
+		player.volume_linear = 0.0 if baked else bed_level(id) * fade * full
+		if player.volume_linear > 0.0 and not player.playing:
 			# Each visit picks up the loop somewhere else.
 			player.play(rng.randf() * player.stream.get_length())
-		elif fade == 0.0 and player.playing:
+		elif player.volume_linear == 0.0 and player.playing:
 			player.stop()
-	if not shown or presence < 0.5 or replaced:
+	if not shown or presence < 0.5 or replaced or baked:
 		return
 	for kind: String in CALLS:
 		_wait[kind] -= dt
 		if _wait[kind] <= 0.0 and rng.randf() < call_rate(kind) * dt:
 			_call(kind, fade * full)
 			_wait[kind] = CALL_GAPS[kind]
+
+
+## The baked cycle at `loudness` (linear), at the sky's time of day; it stops
+## once silent and starts again where the sky is.
+func _advance_cycle(loudness: float) -> void:
+	cycle.volume_linear = loudness
+	if loudness <= 0.0:
+		if cycle.playing:
+			cycle.stop()
+		return
+	var length := cycle.stream.get_length()
+	# A recording of another length is fitted to the cycle by playback speed.
+	cycle.pitch_scale = length / maxf(map.sky.cycle_seconds, 0.01)
+	var position := fposmod(sky_phase(), 1.0) * length
+	if not cycle.playing:
+		cycle.play(position)
+		return
+	var drift := absf(cycle.get_playback_position() - position)
+	if minf(drift, length - drift) > BAKED_DRIFT:
+		cycle.seek(position)
 
 
 ## Plays one call of `kind` from a free voice, on one of its islands.

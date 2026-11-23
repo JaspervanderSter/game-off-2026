@@ -424,8 +424,11 @@ func _clear_touch() -> void:
 
 func _tap_at(point: Vector2) -> void:
 	if on_title():
-		# The title: a tap finishes its animation, then the medallion leads to the islands.
-		if title.animating():
+		# The title: a first tap starts it if it waits, another finishes its
+		# animation, then the medallion leads to the islands.
+		if title.waiting:
+			title.play()
+		elif title.animating():
 			title.finish()
 		elif point.distance_to(home.get_global_transform_with_canvas() * home.medallion_position()) < TitleScreen.MEDALLION_RADIUS:
 			game.show_map()
@@ -483,8 +486,9 @@ func ambience_heard() -> bool:
 	return is_visible_in_tree() and not on_title()
 
 
-## Points the camera at the title; `restart` replays its animation.
-func show_title(restart := false, instant := false) -> void:
+## Points the camera at the title; `restart` replays its animation, or with
+## `wait` holds it until the first tap or key.
+func show_title(restart := false, instant := false, wait := false) -> void:
 	menu_target = 1.0
 	if instant:
 		menu_blend = 1.0
@@ -493,7 +497,10 @@ func show_title(restart := false, instant := false) -> void:
 		# The game starts: the next departure walks the journey again.
 		_replay_due = true
 		home.shown = 0
-		title.play()
+		if wait:
+			title.wait_for_start()
+		else:
+			title.play()
 	get_viewport().gui_release_focus()
 	_apply_pan()
 

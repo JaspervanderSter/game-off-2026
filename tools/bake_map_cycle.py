@@ -2,11 +2,14 @@
 
 Requires Python + numpy and ffmpeg on PATH. Replays the map's existing OGG beds,
 sky weights and seeded random calls into a seamless stereo 160-second OGG.
+Writes the Windows workspace's editable copy (custom/music/) and the copy the
+Web build plays in place of the live mix (default/music/ambience/).
 Run from any directory: python tools/bake_map_cycle.py
 """
 from pathlib import Path
 import json
 import re
+import shutil
 import subprocess
 import tempfile
 import wave
@@ -102,7 +105,9 @@ def bake():
             stream.writeframes((mix * 32767).astype('<i2').tobytes())
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(wav),
                         '-c:a', 'libvorbis', '-q:a', '5', str(output)], check=True)
-    print(json.dumps({'output': str(output), 'seconds': seconds, 'peak': peak}))
+    web_copy = GAME / 'default/music/ambience/world_map_cycle.ogg'
+    shutil.copyfile(output, web_copy)
+    print(json.dumps({'output': str(output), 'web_copy': str(web_copy), 'seconds': seconds, 'peak': peak}))
 
 
 if __name__ == '__main__':

@@ -55,10 +55,12 @@ The alternate mode replaces the procedural ambience with this recording. It
 aligns playback to the sky clock when entering the map and stops outside it.
 A replacement of a different length is fitted to the visual cycle by playback
 speed, so use a 160-second file to keep the intended musical speed and pitch.
-The live procedural system is untouched in Default and Web.
+Default on Windows keeps the live procedural system. Web plays its own copy
+of this reference, `default/music/ambience/world_map_cycle.ogg`, because the
+live mix is too costly there; editing the custom copy does not change it.
 
 The reference is reproducible with `python tools/bake_map_cycle.py` from the
-repository (Python, numpy, ffmpeg). It uses the existing generated OGG sounds,
+repository, which writes both copies (Python, numpy, ffmpeg). It uses the existing generated OGG sounds,
 the sky weights, random-call rates and gaps, a fixed seed, circular call tails
 and a boundary splice. Fixed 6 dB storage headroom plus -8 dB sidecar volume
 matches the procedural mix's -14 dB level; it is not peak-normalized.

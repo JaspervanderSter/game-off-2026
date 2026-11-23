@@ -2116,6 +2116,13 @@ func _test_difficulty() -> void:
 	var map = game.map_screen
 	map._activate(0)
 	check(game.phase == game.Phase.DIFFICULTY, "stages cannot be chosen from the title")
+	# Web launch: the title waits in the clouds for a first input.
+	map.show_title(true, true, true)
+	map._process(3.0)
+	check(map.title.waiting and map.title.t == 0.0 and map.title.bridge_reach() == 0.0,
+		"a title launched to wait does not play on its own")
+	map._tap_at(Vector2(640, 360))
+	check(not map.title.waiting and map.title.animating(), "the first tap starts the waiting title's animation")
 	map._tap_at(Vector2(640, 360))
 	check(not map.title.animating(), "a tap finishes the title's animation")
 	map._tap_at(map.title.get_global_transform_with_canvas() * map.title.medallion_center())
@@ -2371,6 +2378,26 @@ func _test_map_ambience() -> void:
 	game.choose_stage(0)
 	ambience.advance(10.0)
 	check(ambience.presence == 0.0 and not ambience.beds["wind_day"].playing, "a duel fades the ambience out and stops it")
+	# Web: the baked full cycle replaces the live mix, on the sky clock.
+	ambience.baked = true
+	for voice in ambience.voices:
+		voice.stop() # calls left from the live mix above
+	game.show_map()
+	map.sky.elapsed = map.sky.cycle_seconds * 0.5
+	ambience.advance(10.0)
+	var expected := db_to_linear(ambience.setting("ambience_volume_db") + MapAmbience.BAKED_HEADROOM_DB)
+	check(ambience.cycle.playing and is_equal_approx(ambience.cycle.volume_linear, expected)
+		and is_equal_approx(ambience.cycle.pitch_scale, ambience.cycle.stream.get_length() / map.sky.cycle_seconds),
+		"the baked ambience plays at the live mix's level, fitted to the sky cycle")
+	var live_silent := true
+	for id in ambience.beds:
+		live_silent = live_silent and not ambience.beds[id].playing
+	for voice in ambience.voices:
+		live_silent = live_silent and not voice.playing
+	check(live_silent, "the baked ambience plays no live bed or call")
+	map.hide()
+	ambience.advance(10.0)
+	check(not ambience.cycle.playing, "the baked ambience stops once the map hides")
 	game.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://ambience_test_%d.cfg" % OS.get_process_id()))
 

@@ -93,6 +93,12 @@ the only control, appears on it near the screen's right edge with gold
 chevrons gliding towards it (`scripts/ui/home_road.gd`, `HomeRoad`). A tap or
 a key finishes the animation.
 
+On Web the title first waits in the clouds behind a pulsing start medallion
+(a gold play mark with a ripple, `TitleScreen.wait_for_start`): the page loads
+before anyone looks, and the browser only lets sound play after a first click,
+tap or key. That input starts the animation with its jingle; the next one
+finishes it. Windows launches play the title at once.
+
 The medallion leads the camera from the title's frame (fitted to the screen)
 to the whole map over 2.8 s (`world_map.menu_blend`, `PAN_TIME`), while gold
 footsteps leave the cottage door, cross the bridge and reach the hunter; the
@@ -470,6 +476,16 @@ The ambience fades in over `ambience_fade_seconds` (1.5 s) when the map shows
 and out when it hides; it stops once silent, and each visit resumes the loops
 at a random point. Its loudness at full presence is `ambience_volume_db`
 (-14 dB) in `default/music/music.json`. The menu and duels have none.
+
+Web builds, phone browsers included, play a recording instead
+(`MapAmbience.baked`): up to seven Vorbis streams decoded and mixed on the
+single-threaded Web build's main thread made the sound crackle and frames drop
+on mobile. `default/music/ambience/world_map_cycle.ogg` is this same mix baked
+over one 160-second sky cycle by `python tools/bake_map_cycle.py` (which also
+writes the Windows workspace's editable copy, see `AUDIO_WORKSPACE.md`). It is
+one stream, kept on the sky clock (re-seeked beyond 0.5 s of drift), played
+6 dB above `ambience_volume_db` to undo its storage headroom, with the same
+fades. The birds' panning towards their island is the only loss.
 
 The sounds in `default/music/ambience/` are synthesised by
 `tools/make_map_ambience.gd`: filtered noise winds, pulsed cricket tones,
