@@ -376,6 +376,9 @@ func _bridge_bank(index: int, toward: Vector2) -> Vector2:
 func _input(event: InputEvent) -> void:
 	if not is_visible_in_tree():
 		return
+	if game.web_title_pending:
+		get_viewport().set_input_as_handled()
+		return
 	# Swipes cancel selection without moving the map, including over encounters.
 	# Godot's emulated mouse events use device -1; ignore those to avoid a second tap.
 	if (event is InputEventMouseButton or event is InputEventMouseMotion) and event.device == -1:

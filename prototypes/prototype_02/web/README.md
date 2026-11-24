@@ -27,15 +27,27 @@ Godot's standard shell so its measurements do not include this presentation.
 The loader paints before the engine JavaScript is downloaded. `onProgress`
 drives the ring with downloaded bytes divided by total bytes. A zero total
 means unknown size; completion of the download still leaves engine startup to
-finish. Those phases show an orbit rather than a percentage. Only successful
-`startGame()` completion dismisses the loader. Browser capability and download
-errors remain visible on the loading screen.
+finish. Those phases show an orbit rather than a percentage. Successful
+`startGame()` completion, loaded artwork and registration of the rendered Godot
+scene enable a Play medallion inside the completed ring. The ring remains until
+the player clicks/taps it or presses Enter/Space on the button. Browser capability
+and download errors remain visible on the loading screen.
+
+That single trusted input resumes the engine's AudioContexts before any promise
+or timer. The shell briefly observes their creation through transparent
+constructor proxies, then restores the original constructors after startup.
+It fades to white in 400 ms, releases the loading artwork, fades onto the sky in
+400 ms, and waits one second before invoking the registered JavaScriptBridge
+callback. Godot holds its title at time zero, with no in-game Play prompt or
+launch input, until that callback plays the title and its jingle. The white
+curtain blocks input until the handoff is complete. Repeated clicks cannot
+restart the sequence. The default benchmark shell keeps its original behavior.
 
 The composition fits portrait and landscape windows. Background tiles are
 cached at resize, animation is limited to 30 FPS, and device pixel ratio is
 capped at two. Hidden tabs skip drawing, reduced-motion users get a still
-composition, and the animation is cancelled when the loader leaves. The game
-still waits for its own first click before playing the title animation/jingle.
+composition without white fades, and the animation is cancelled when the loader
+leaves. Reduced motion retains the one-second pause before the title.
 Normal presentation uses icons only; errors and screen-reader descriptions
 provide text when needed.
 
@@ -50,6 +62,8 @@ node tests/web_loading.mjs --dir=C:/path/to/temporary-web-export
 
 Pass `--browser=C:/path/to/chrome.exe` to select another browser. The test uses an
 isolated headless browser and local HTTP server, checks real exported HTML with
-controlled download/startup/failure cases, takes desktop and phone-size
-screenshots, and finally starts the real exported game. Its profile and
+controlled download/startup/failure cases, verifies the persistent Play screen,
+audio unlocking from one touch/key input and the delayed title callback, takes
+desktop and phone-size screenshots, and finally starts the real exported game
+with a single click. Its profile and
 screenshots stay beside the temporary export. It does not run the balance suite.

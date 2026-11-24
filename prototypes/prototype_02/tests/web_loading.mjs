@@ -19,7 +19,8 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const stub = `globalThis.Engine = class {
   static getMissingFeatures() { return location.pathname.startsWith('/missing/') ? ['WebGL 2'] : []; }
   startGame(options) { return new Promise((resolve, reject) => {
-    globalThis.__probe = { report: options.onProgress, resolve, reject };
+    globalThis.__probe = { report: options.onProgress, resolve, reject, starts:0, audio:new AudioContext() };
+    window.shapeshifterLoading.registerGame(() => { __probe.starts++; __probe.startedAt = performance.now(); });
   }); }
 };`;
 const types = { '.html':'text/html', '.js':'text/javascript', '.wasm':'application/wasm', '.png':'image/png' };
@@ -85,6 +86,19 @@ try {
     const image = await send('Page.captureScreenshot', { format:'png' });
     fs.writeFileSync(path.join(directory, name + '.png'), Buffer.from(image.data, 'base64'));
   }
+  async function clickPlay(touch = false) {
+    const point = await evaluate(`(() => {
+      const box = document.getElementById('loading-play').getBoundingClientRect();
+      return { x:box.x + box.width / 2, y:box.y + box.height / 2 };
+    })()`);
+    if (touch) {
+      await send('Input.dispatchTouchEvent', { type:'touchStart', touchPoints:[point] });
+      await send('Input.dispatchTouchEvent', { type:'touchEnd', touchPoints:[] });
+    } else {
+      await send('Input.dispatchMouseEvent', { type:'mousePressed', button:'left', clickCount:1, ...point });
+      await send('Input.dispatchMouseEvent', { type:'mouseReleased', button:'left', clickCount:1, ...point });
+    }
+  }
   await send('Page.enable'); await send('Runtime.enable');
   await send('Emulation.setDeviceMetricsOverride', { width:1280, height:800, deviceScaleFactor:1, mobile:false });
   await navigate('/fixture/index.html');
@@ -103,9 +117,31 @@ try {
   assert.equal(await evaluate('document.getElementById("loading").getAttribute("aria-valuetext")'), 'Starting game.');
   assert.equal(await evaluate('!!document.getElementById("loading")'), true);
   await evaluate('__probe.resolve()');
+  await until('!document.getElementById("loading-play").hidden');
+  await sleep(1100);
+  assert.equal(await evaluate('!!document.getElementById("loading")'), true, 'Ready screen must wait for the player');
+  assert.equal(await evaluate('__probe.starts'), 0);
+  await screenshot('loader-ready-mobile');
+  await evaluate('__probe.clickedAt = performance.now()');
+  await clickPlay(true);
+  await until('__probe.audio.state === "running"');
   await until('!document.getElementById("loading")');
+  assert.equal(await evaluate('__probe.starts'), 0, 'White fade must not start the title early');
+  await until('__probe.starts === 1');
+  assert.ok(await evaluate('__probe.startedAt - __probe.clickedAt >= 1700'), 'Title must wait for both fades and its one-second pause');
+  assert.equal(await evaluate('!!document.getElementById("loading-white")'), false);
   assert.equal(await evaluate('document.activeElement.id'), 'canvas');
+  // Keyboard and reduced-motion users get the same single launch, without a white flash.
   await send('Emulation.setEmulatedMedia', { features:[{ name:'prefers-reduced-motion', value:'reduce' }] });
+  await navigate('/fixture/index.html'); await until('typeof __probe === "object"');
+  await evaluate('__probe.resolve()');
+  await until('!document.getElementById("loading-play").hidden');
+  await send('Input.dispatchKeyEvent', { type:'keyDown', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 });
+  await send('Input.dispatchKeyEvent', { type:'keyUp', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 });
+  await until('!document.getElementById("loading")');
+  assert.equal(await evaluate('__probe.starts'), 0);
+  await until('__probe.starts === 1');
+  assert.equal(await evaluate('document.activeElement.id'), 'canvas');
   await navigate('/fixture/index.html'); await until('typeof __probe === "object"');
   await evaluate('__probe.report(40, 100)');
   assert.equal(await evaluate('document.getElementById("loading").getAttribute("aria-valuenow")'), '40');
@@ -118,10 +154,24 @@ try {
   assert.equal(await evaluate('document.getElementById("loading-notice").hidden'), false);
   await send('Emulation.setEmulatedMedia', { features:[] });
   await send('Emulation.setDeviceMetricsOverride', { width:1280, height:800, deviceScaleFactor:1, mobile:false });
-  console.log('Loader checks passed: unknown/zero/partial/completed download, desktop/mobile, reduced motion, startup, failure and missing features.');
+  console.log('Loader checks passed: progress, persistent Play screen, one touch/key launch, audio unlock, white fades and delayed title, reduced motion and errors.');
+  await send('Page.addScriptToEvaluateOnNewDocument', { source:`
+    window.__testAudioContexts = [];
+    const OriginalAudioContext = window.AudioContext;
+    window.AudioContext = new Proxy(OriginalAudioContext, { construct(target, args) {
+      const context = Reflect.construct(target, args); window.__testAudioContexts.push(context); return context;
+    } });
+  ` });
   await navigate('/index.html');
-  await until('!document.getElementById("loading")', 90000);
-  await sleep(1000); await screenshot('game-after-loading');
+  await until('document.getElementById("loading-play") && !document.getElementById("loading-play").hidden', 90000);
+  await sleep(1100); await screenshot('game-ready-to-play');
+  assert.equal(await evaluate('!!document.getElementById("loading")'), true);
+  await clickPlay();
+  await until('!document.getElementById("loading")');
+  await screenshot('game-white-transition');
+  await until('!document.getElementById("loading-white")');
+  assert.equal(await evaluate('__testAudioContexts.every(context => context.state === "running")'), true);
+  await sleep(1800); await screenshot('game-after-loading');
   assert.equal(await evaluate('document.activeElement.id'), 'canvas');
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
   console.log('Real exported game started successfully with no JavaScript exceptions. Screenshots: ' + directory);

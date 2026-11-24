@@ -90,6 +90,9 @@ var switch_flash: SwitchFlash
 var transition: ScreenTransition
 var fps_counter: Control
 var alternate_audio: Node
+## The HTML loading screen owns the one Web launch click and white transition.
+var web_title_pending := false
+var _web_title_callback: JavaScriptObject
 
 
 func _ready() -> void:
@@ -138,11 +141,30 @@ func _ready() -> void:
 	new_duel()
 	# The game opens on the title, in the sky above the journey's islands.
 	show_menu(true)
+	if OS.has_feature("web"):
+		var loader := JavaScriptBridge.get_interface("shapeshifterLoading")
+		if loader != null:
+			web_title_pending = true
+			_web_title_callback = JavaScriptBridge.create_callback(_start_web_title)
+			_register_web_title.call_deferred(loader)
+
+
+## Register after the first frame, so the HTML Play button only appears once
+## the title's waiting sky has actually rendered behind the loading screen.
+func _register_web_title(loader: JavaScriptObject) -> void:
+	await get_tree().process_frame
+	loader.registerGame(_web_title_callback)
+
+
+func _start_web_title(_args: Array) -> void:
+	if not web_title_pending:
+		return
+	web_title_pending = false
+	map_screen.title.play()
 
 
 ## The menu is the title in the map's sky: from the islands the camera pans
-## up to it; at launch it appears at once and its animation plays, on Web only
-## after the first tap or key (title_screen.gd).
+## up to it; on Web it waits for the HTML loading screen's Play transition.
 func show_menu(launch := false) -> void:
 	music.transition_to("")
 	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
@@ -706,6 +728,9 @@ func _owned_at(pos: Vector2) -> OwnedCreature:
 
 
 func _input(event: InputEvent) -> void:
+	if web_title_pending:
+		get_viewport().set_input_as_handled()
+		return
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
 	if alternate_audio != null:

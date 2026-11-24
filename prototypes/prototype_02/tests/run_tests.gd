@@ -2121,6 +2121,20 @@ func _test_difficulty() -> void:
 	map._process(3.0)
 	check(map.title.waiting and map.title.t == 0.0 and map.title.bridge_reach() == 0.0,
 		"a title launched to wait does not play on its own")
+	game.web_title_pending = true
+	var start_key := InputEventKey.new()
+	start_key.keycode = KEY_ENTER
+	start_key.pressed = true
+	game._input(start_key)
+	map._input(start_key)
+	check(map.title.waiting, "game input cannot bypass the HTML launch transition")
+	game._start_web_title([])
+	check(not game.web_title_pending and not map.title.waiting and map.title.animating(),
+		"the HTML launch callback starts the title without a second click")
+	map.title.advance(0.2)
+	game._start_web_title([])
+	check(is_equal_approx(map.title.t, 0.2), "a duplicate Web launch callback does not restart the jingle or animation")
+	map.show_title(true, true, true)
 	map._tap_at(Vector2(640, 360))
 	check(not map.title.waiting and map.title.animating(), "the first tap starts the waiting title's animation")
 	map._tap_at(Vector2(640, 360))

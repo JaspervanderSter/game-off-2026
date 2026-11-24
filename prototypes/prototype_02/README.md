@@ -18,8 +18,10 @@ Play** in the **Game** tab's window options, then relaunch with F5.
 The Web preset uses `web/loading.html`: the Godot mark sits inside a gold progress
 ring, surrounded by the game's creature sprites on the magic school's tiled
 floor. Creatures light up as the download advances; small clouds accompany a
-rabbit/turtle metamorphosis. The screen fades into the title's click-to-start
-clouds when the engine is ready. It uses existing artwork only, with no external
+rabbit/turtle metamorphosis. Once the engine and its first scene are ready, the
+ring stays visible with a Play medallion. One click unlocks audio, fades through
+white to the waiting sky, then starts the title and jingle after one second.
+There is no second Play button in Godot. It uses existing artwork only, with no external
 image requests. Unknown download sizes and engine startup use an indeterminate
 orbit instead of an invented percentage.
 
@@ -108,11 +110,14 @@ the only control, appears on it near the screen's right edge with gold
 chevrons gliding towards it (`scripts/ui/home_road.gd`, `HomeRoad`). A tap or
 a key finishes the animation.
 
-On Web the title first waits in the clouds behind a pulsing start medallion
-(a gold play mark with a ripple, `TitleScreen.wait_for_start`): the page loads
-before anyone looks, and the browser only lets sound play after a first click,
-tap or key. That input starts the animation with its jingle; the next one
-finishes it. Windows launches play the title at once.
+On Web the HTML loading screen keeps its creature ring after loading, with a
+pulsing Play medallion below the Godot mark. A click/tap (or Enter/Space on the
+button) unlocks the engine's audio. A 0.4-second fade to white hides the ring,
+then a 0.4-second fade reveals the waiting sky (`TitleScreen.wait_for_start`).
+After one second the HTML-to-Godot callback starts the animation with its jingle;
+input stays blocked through that transition so it cannot accidentally skip it.
+Godot draws no Play prompt. Reduced-motion users skip the white fades and keep
+the one-second pause. Windows launches play the title at once.
 
 The medallion leads the camera from the title's frame (fitted to the screen)
 to the whole map over 2.8 s (`world_map.menu_blend`, `PAN_TIME`), while gold
