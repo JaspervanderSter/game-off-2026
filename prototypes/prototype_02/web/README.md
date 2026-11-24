@@ -29,7 +29,9 @@ drives the ring with downloaded bytes divided by total bytes. A zero total
 means unknown size; completion of the download still leaves engine startup to
 finish. Those phases show an orbit rather than a percentage. Successful
 `startGame()` completion, loaded artwork and registration of the rendered Godot
-scene enable a Play medallion inside the completed ring. The ring remains until
+scene enable a Play medallion below the Godot mark, at the bottom of the completed
+ring. The Godot mark keeps exactly the same position and size in every loading
+and ready frame; only Play appears, without rearranging the composition. The ring remains until
 the player clicks/taps it or presses Enter/Space on the button. Browser capability
 and download errors remain visible on the loading screen.
 

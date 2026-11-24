@@ -13,7 +13,7 @@
     #loading { position:fixed; inset:0; z-index:2; background:#171321; }
     #loading-art { display:block; width:100%; height:100%; }
     #loading.ready { cursor:pointer; }
-    #loading-play { position:absolute; left:50%; top:calc(50% + var(--play-offset,54px)); transform:translate(-50%,-50%); width:var(--play-size,52px); height:var(--play-size,52px); padding:0; border:2px solid #e7cd94; border-radius:50%; background:#30233e; color:#e7cd94; cursor:pointer; box-shadow:0 0 22px #e7cd9424; }
+    #loading-play { position:absolute; left:50%; top:calc(50% + var(--play-offset,85px)); transform:translate(-50%,-50%); width:var(--play-size,52px); height:var(--play-size,52px); padding:0; border:2px solid #e7cd94; border-radius:50%; background:#30233e; color:#e7cd94; cursor:pointer; box-shadow:0 0 22px #e7cd9424; }
     #loading-play::after { content:''; position:absolute; left:39%; top:29%; width:0; height:0; border-top:calc(var(--play-size,52px) * .19) solid transparent; border-bottom:calc(var(--play-size,52px) * .19) solid transparent; border-left:calc(var(--play-size,52px) * .29) solid currentColor; }
     #loading-play::before { content:''; position:absolute; inset:-3px; border:2px solid #e7cd94; border-radius:50%; animation:invite 2.3s ease-out infinite; }
     #loading-play[hidden] { display:none; }
@@ -60,7 +60,7 @@
     let progress = null, shownProgress = 0, lastPercent = -1;
     let time = 0, previousFrame = 0, lastDraw = 0, frame = 0;
     let active = true, failed = false, assetsReady = false, finishing = false, engineReady = false, ready = false;
-    let startTitle = null, readyBlend = 0;
+    let startTitle = null;
     // Keep the engine's own contexts so the HTML click can resume them inside
     // the browser's trusted user gesture. Restore the constructors after startup.
     const audioContexts = new Set();
@@ -124,7 +124,7 @@
       width = window.innerWidth; height = window.innerHeight;
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       zoom = Math.min(width / 480, height / 480, 1.65);
-      overlay.style.setProperty('--play-offset', `${54 * zoom}px`);
+      overlay.style.setProperty('--play-offset', `${85 * zoom}px`);
       overlay.style.setProperty('--play-size', `${Math.max(44, 52 * zoom)}px`);
       art.width = Math.max(1, Math.round(width * dpr));
       art.height = Math.max(1, Math.round(height * dpr));
@@ -148,8 +148,8 @@
       glow(context, 0, 0, 111, '#c6b4e51c');
       const logo = images.godot;
       if (logo && logo.naturalWidth) {
-        const size = 94 - readyBlend * 10;
-        context.drawImage(logo, -size / 2, -readyBlend * 22 - size * 143 / 151 / 2, size, size * 143 / 151);
+        // Identical bounds while downloading, initializing and waiting for Play.
+        context.drawImage(logo, -47, -44.5, 94, 89);
       }
       const amount = progress === null ? shownProgress : progress;
       for (let i = 0; i < forms.length; i++) {
@@ -182,7 +182,6 @@
       const dt = previousFrame ? Math.min((now - previousFrame) / 1000, 0.1) : 0;
       previousFrame = now; lastDraw = now;
       if (!reducedMotion.matches) time += dt;
-      readyBlend += ((ready ? 1 : 0) - readyBlend) * Math.min(1, dt * 10);
       if (progress !== null) {
         shownProgress = reducedMotion.matches ? progress : shownProgress + (progress - shownProgress) * Math.min(1, dt * 12);
       }
@@ -228,7 +227,6 @@
       overlay.setAttribute('aria-label', 'Shapeshifter Duel ready to play');
       description.textContent = 'Game ready. Press Play.';
       overlay.classList.add('ready'); play.hidden = false;
-      if (reducedMotion.matches) readyBlend = 1;
       draw(); play.focus({ preventScroll: true });
     }
     function finish() {
