@@ -13,6 +13,21 @@ Open `prototypes/prototype_02/project.godot` in Godot 4.7 and press F5.
 To use fullscreen when launching from the editor, turn off **Embed Game on Next
 Play** in the **Game** tab's window options, then relaunch with F5.
 
+## Web loading screen
+
+The Web preset uses `web/loading.html`: the Godot mark sits inside a gold progress
+ring, surrounded by the game's creature sprites on the magic school's tiled
+floor. Creatures light up as the download advances; small clouds accompany a
+rabbit/turtle metamorphosis. The screen fades into the title's click-to-start
+clouds when the engine is ready. It uses existing artwork only, with no external
+image requests. Unknown download sizes and engine startup use an indeterminate
+orbit instead of an invented percentage.
+
+After changing its artwork or `web/loading.template.html`, run
+`python tools/build_web_shell.py` from the repository root and commit the rebuilt
+shell with its sources. Ordinary Web exports need no additional step. See
+[`web/README.md`](web/README.md) for artwork sources and browser verification.
+
 ## How to play (no text in game: everything is icons)
 
 | Action | Control |

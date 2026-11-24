@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#171321">
+  <title>$GODOT_PROJECT_NAME</title>
+  $GODOT_HEAD_INCLUDE
+  <style>
+    html, body { margin:0; width:100%; height:100%; overflow:hidden; background:#171321; }
+    #canvas { display:block; width:100%; height:100%; touch-action:none; }
+    #canvas:focus { outline:none; }
+    #loading { position:fixed; inset:0; z-index:2; background:#171321; opacity:1; transition:opacity 220ms ease; }
+    #loading-art { display:block; width:100%; height:100%; }
+    #loading.leaving { opacity:0; pointer-events:none; }
+    #loading-notice { position:absolute; left:50%; bottom:max(24px,env(safe-area-inset-bottom)); transform:translateX(-50%); box-sizing:border-box; width:max-content; max-width:calc(100% - 40px); padding:14px 18px; background:#302539; color:#e7cd94; border:1px solid #8a6d59; font:15px/1.5 system-ui,sans-serif; text-align:center; white-space:pre-line; }
+    #loading-notice[hidden] { display:none; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+    noscript { position:fixed; inset:45% 20px auto; color:#e7cd94; font:16px system-ui,sans-serif; text-align:center; z-index:3; }
+    @media(prefers-reduced-motion:reduce) { #loading { transition:none; } }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" tabindex="0" aria-label="Shapeshifter Duel"></canvas>
+  <div id="loading" role="progressbar" aria-label="Loading Shapeshifter Duel" aria-valuemin="0" aria-valuemax="100" aria-busy="true">
+    <canvas id="loading-art" aria-hidden="true"></canvas>
+    <div id="loading-notice" role="alert" hidden></div>
+    <span id="loading-description" class="sr-only" role="status" aria-live="polite">Downloading game.</span>
+  </div>
+  <noscript>JavaScript is required to play Shapeshifter Duel.</noscript>
+  <!-- Paint and animate before downloading the engine's JavaScript. -->
+  <script>
+  const loadingScreen = (() => {
+    'use strict';
+    const sources = __LOADING_ASSETS__;
+    const overlay = document.getElementById('loading');
+    const art = document.getElementById('loading-art');
+    const context = art.getContext('2d');
+    const notice = document.getElementById('loading-notice');
+    const description = document.getElementById('loading-description');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const background = document.createElement('canvas');
+    const images = {};
+    const forms = ['Rabbit', 'Deer', 'Wolf', 'Guardian', 'Pyromancer', 'Eagle'];
+    const gold = '#e7cd94';
+    let width = 0, height = 0, zoom = 1, dpr = 1;
+    let progress = null, shownProgress = 0, lastPercent = -1;
+    let time = 0, previousFrame = 0, lastDraw = 0, frame = 0;
+    let active = true, failed = false, assetsReady = false, finishing = false;
+
+    function circle(c, x, y, radius, fill) {
+      c.beginPath(); c.arc(x, y, radius, 0, Math.PI * 2); c.fillStyle = fill; c.fill();
+    }
+    function glow(c, x, y, radius, color) {
+      const gradient = c.createRadialGradient(x, y, 0, x, y, radius);
+      gradient.addColorStop(0, color); gradient.addColorStop(1, 'transparent');
+      circle(c, x, y, radius, gradient);
+    }
+    function ring(c, x, y, radius, color, thickness, start = 0, end = Math.PI * 2) {
+      c.beginPath(); c.arc(x, y, radius, start, end);
+      c.strokeStyle = color; c.lineWidth = thickness; c.stroke();
+    }
+    function sprite(name, x, y, size, opacity) {
+      const image = images[name];
+      if (!image || !image.naturalWidth) return;
+      context.save(); context.globalAlpha = opacity; context.imageSmoothingEnabled = false;
+      context.drawImage(image, x - size / 2, y - size / 2, size, size); context.restore();
+    }
+    // Tiles and vignette are drawn only on resize, never in the animation loop.
+    function rebuildBackground() {
+      background.width = art.width; background.height = art.height;
+      const c = background.getContext('2d');
+      c.scale(dpr, dpr); c.fillStyle = '#292337'; c.fillRect(0, 0, width, height);
+      const tiles = ['light-slab-1', 'dark-slab-1', 'light-slab-2', 'dark-slab-2'];
+      const tileSize = Math.max(48, 72 * zoom);
+      c.imageSmoothingEnabled = false; c.globalAlpha = 0.28;
+      if (assetsReady) {
+        for (let y = 0; y < height / tileSize + 1; y++) {
+          for (let x = 0; x < width / tileSize + 1; x++) {
+            const image = images[tiles[(x + y) % 2 + (y % 2) * 2]];
+            if (image.naturalWidth) c.drawImage(image, x * tileSize, y * tileSize, tileSize, tileSize);
+          }
+        }
+      }
+      c.globalAlpha = 1;
+      const shade = c.createRadialGradient(width / 2, height / 2, 5, width / 2, height / 2, Math.max(width, height) * 0.65);
+      shade.addColorStop(0, '#21172b8c'); shade.addColorStop(1, '#0c0d19ed');
+      c.fillStyle = shade; c.fillRect(0, 0, width, height);
+    }
+    function resize() {
+      if (!active || !context) return;
+      width = window.innerWidth; height = window.innerHeight;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      zoom = Math.min(width / 480, height / 480, 1.65);
+      art.width = Math.max(1, Math.round(width * dpr));
+      art.height = Math.max(1, Math.round(height * dpr));
+      rebuildBackground(); draw();
+    }
+    function draw() {
+      if (!context || !active) return;
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.drawImage(background, 0, 0);
+      context.setTransform(dpr * zoom, 0, 0, dpr * zoom, width * dpr / 2, height * dpr / 2);
+      glow(context, 0, 0, 200, '#9e6fc32b');
+      ring(context, 0, 0, 111, '#88759533', 5);
+      if (progress !== null) {
+        ring(context, 0, 0, 111, gold, 5, -Math.PI / 2, -Math.PI / 2 + Math.max(0.00001, shownProgress * Math.PI * 2));
+      } else {
+        // Unknown length and engine initialization: an orbit, never a fake percentage.
+        const start = time * 0.9 - Math.PI / 2;
+        ring(context, 0, 0, 111, gold, 5, start, start + Math.PI * 0.46);
+      }
+      ring(context, 0, 0, 95, '#b192c41a', 1);
+      glow(context, 0, 0, 111, '#c6b4e51c');
+      const logo = images.godot;
+      if (logo && logo.naturalWidth) context.drawImage(logo, -47, -44.5, 94, 89);
+      const amount = progress === null ? shownProgress : progress;
+      for (let i = 0; i < forms.length; i++) {
+        const angle = -Math.PI / 2 + i * Math.PI / 3;
+        const x = Math.cos(angle) * 165, y = Math.sin(angle) * 165;
+        const lit = amount > 0 && amount >= i / forms.length;
+        context.beginPath(); context.moveTo(Math.cos(angle) * 119, Math.sin(angle) * 119);
+        context.lineTo(Math.cos(angle) * 137, Math.sin(angle) * 137);
+        context.strokeStyle = lit ? '#e7cd9460' : '#b192c41a'; context.lineWidth = 1; context.stroke();
+        if (lit) glow(context, x, y, 48, '#d3afef1f');
+        const phase = (time + i * 0.8) % 6;
+        const name = i === 0 && Math.floor(time / 6) % 2 === 1 ? 'Turtle' : forms[i];
+        sprite(name, x, y + (reducedMotion.matches ? 0 : Math.sin(time * 1.2 + i) * 2), 76, lit ? 1 : 0.28);
+        if (lit) ring(context, x, y, 33, '#e7cd9470', 1);
+        if (!reducedMotion.matches && phase < 0.65 && lit) {
+          for (let j = 0; j < 6; j++) {
+            const a = j * Math.PI / 3 + phase, distance = phase * 57;
+            circle(context, x + Math.cos(a) * distance, y + Math.sin(a) * distance,
+              7 * (1 - phase / 0.65), `rgba(225,211,235,${0.45 * (1 - phase / 0.65)})`);
+          }
+        }
+      }
+      const angle = progress === null ? time * 0.9 - Math.PI / 2 : -Math.PI / 2 + shownProgress * Math.PI * 2;
+      glow(context, Math.cos(angle) * 111, Math.sin(angle) * 111, 20, '#ffe3a54a');
+    }
+    function animate(now) {
+      if (!active || failed) return;
+      frame = requestAnimationFrame(animate);
+      if (document.hidden || now - lastDraw < 1000 / 30) return;
+      const dt = previousFrame ? Math.min((now - previousFrame) / 1000, 0.1) : 0;
+      previousFrame = now; lastDraw = now;
+      if (!reducedMotion.matches) time += dt;
+      if (progress !== null) {
+        shownProgress = reducedMotion.matches ? progress : shownProgress + (progress - shownProgress) * Math.min(1, dt * 12);
+      }
+      draw();
+    }
+    function setProgress(current, total) {
+      if (!active || failed) return;
+      if (!(total > 0 && current >= 0)) {
+        progress = null; overlay.removeAttribute('aria-valuenow');
+        overlay.setAttribute('aria-valuetext', 'Downloading game.');
+        return;
+      }
+      const fraction = Math.max(0, Math.min(1, current / total));
+      const percent = Math.floor(fraction * 100);
+      // Completion of the download is followed by engine startup, not game readiness.
+      progress = fraction < 1 ? fraction : null;
+      if (fraction === 1) {
+        shownProgress = 1; overlay.removeAttribute('aria-valuenow');
+        overlay.setAttribute('aria-valuetext', 'Starting game.');
+        if (lastPercent !== 100) description.textContent = 'Starting game.';
+      } else {
+        overlay.setAttribute('aria-valuenow', String(percent));
+        overlay.removeAttribute('aria-valuetext');
+        if (Math.floor(percent / 25) !== Math.floor(lastPercent / 25)) description.textContent = `Downloading game: ${percent} percent.`;
+      }
+      lastPercent = percent;
+      if (reducedMotion.matches || !frame) { shownProgress = fraction; draw(); }
+    }
+    function fail(error) {
+      if (!active || finishing) return;
+      failed = true; cancelAnimationFrame(frame);
+      overlay.setAttribute('aria-busy', 'false'); overlay.removeAttribute('role');
+      notice.textContent = error instanceof Error ? error.message : String(error || 'Unable to load the game.');
+      notice.hidden = false; description.textContent = 'Unable to load the game.';
+      console.error(error);
+    }
+    function finish() {
+      if (!active || failed || finishing) return;
+      finishing = true;
+      overlay.setAttribute('aria-busy', 'false'); description.textContent = 'Game ready.';
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', resize);
+      overlay.classList.add('leaving');
+      // Keep input blocked through the fade so a click cannot skip the title behind it.
+      overlay.style.pointerEvents = 'auto';
+      setTimeout(() => {
+        active = false; overlay.remove();
+        background.width = 0; background.height = 0;
+        art.width = 0; art.height = 0;
+        Object.keys(images).forEach(name => { images[name].removeAttribute('src'); delete images[name]; });
+        document.getElementById('canvas').focus({ preventScroll: true });
+      }, reducedMotion.matches ? 0 : 240);
+    }
+    window.addEventListener('resize', resize);
+    window.addEventListener('error', event => {
+      if (event.target && event.target.id === 'engine-script') fail('Unable to download the game engine. Please reload the page.');
+    }, true);
+    // No external image requests: all artwork is included in this tiny shell.
+    Promise.all(Object.entries(sources).map(([name, src]) => new Promise(resolve => {
+      const image = new Image(); images[name] = image;
+      image.onload = resolve; image.onerror = resolve; image.src = src;
+    }))).then(() => { if (active) { assetsReady = true; resize(); } });
+    resize();
+    if (!reducedMotion.matches) frame = requestAnimationFrame(animate);
+    return { setProgress, finish, fail };
+  })();
+  </script>
+  <script id="engine-script" src="$GODOT_URL"></script>
+  <script>
+  (() => {
+    'use strict';
+    if (typeof Engine === 'undefined') {
+      loadingScreen.fail('Unable to start the game engine. Please reload the page.');
+      return;
+    }
+    const configuration = $GODOT_CONFIG;
+    const missing = Engine.getMissingFeatures({ threads: $GODOT_THREADS_ENABLED });
+    if (missing.length) {
+      loadingScreen.fail('Your browser is missing features required by this game:\n' + missing.join('\n'));
+      return;
+    }
+    try {
+      const engine = new Engine(configuration);
+      engine.startGame({ onProgress: loadingScreen.setProgress }).then(loadingScreen.finish, loadingScreen.fail);
+    } catch (error) {
+      loadingScreen.fail(error);
+    }
+  })();
+  </script>
+</body>
+</html>
