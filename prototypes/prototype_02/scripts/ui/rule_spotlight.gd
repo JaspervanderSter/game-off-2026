@@ -35,6 +35,71 @@ var track := Callable()
 ## negative while it runs its full course.
 var _dismissed_at := -1.0
 var _dismissed_from := 0.0
+static var _mask_mesh: ArrayMesh
+static var _directions := _make_directions()
+var _mask_material: ShaderMaterial
+
+static func _make_directions() -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in SEGMENTS + 1:
+		points.append(Vector2.from_angle(TAU * i / SEGMENTS))
+	return points
+
+## The old 48 feather quads and 48 outer quads, with immutable topology.
+## UV.x identifies the inner edge, feather edge and far edge. The GPU moves
+## their vertices; following a target or focusing the lens never retriangulates.
+func prepare_mask(canvas: CanvasItem) -> void:
+	if _mask_mesh == null:
+		var vertices := PackedVector3Array()
+		var uv := PackedVector2Array()
+		var colors := PackedColorArray()
+		var indices := PackedInt32Array()
+		for i in SEGMENTS:
+			var a := _directions[i]
+			var b := _directions[i + 1]
+			for outer in 2:
+				var directions := [a, b, b, a]
+				var levels := [0, 0, 1, 1] if outer == 0 else [1, 1, 2, 2]
+				var polygon := PackedVector2Array()
+				var offset := vertices.size()
+				for j in 4:
+					var d: Vector2 = directions[j]
+					var level: int = levels[j]
+					vertices.append(Vector3(d.x * FAR, d.y * FAR, 0))
+					uv.append(Vector2(level, 0))
+					colors.append(Color(1, 1, 1, 0 if level == 0 else 1))
+					polygon.append(d * (Vector2(100, 70) + Vector2.ONE * FEATHER * level) if level < 2 else d * FAR)
+				for index in Geometry2D.triangulate_polygon(polygon):
+					indices.append(offset + index)
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = vertices
+		arrays[Mesh.ARRAY_TEX_UV] = uv
+		arrays[Mesh.ARRAY_COLOR] = colors
+		arrays[Mesh.ARRAY_INDEX] = indices
+		_mask_mesh = ArrayMesh.new()
+		_mask_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_mask_material = ShaderMaterial.new()
+	_mask_material.shader = preload("res://scripts/ui/spotlight_mask.gdshader")
+	_mask_material.set_shader_parameter("dim_color", DIM)
+	_mask_material.set_shader_parameter("far_distance", FAR)
+	_mask_material.set_shader_parameter("feather_size", FEATHER)
+	canvas.material = _mask_material
+	update_mask(canvas)
+
+func update_mask(canvas: CanvasItem) -> void:
+	canvas.visible = active()
+	if not active():
+		return
+	_mask_material.set_shader_parameter("focus", center)
+	_mask_material.set_shader_parameter("radii", _focused_radii())
+	_mask_material.set_shader_parameter("strength", _strength())
+
+func draw_mask(canvas: CanvasItem) -> void:
+	canvas.draw_mesh(_mask_mesh, null)
+
+func _focused_radii() -> Vector2:
+	return radii * lerpf(1.25, 1.0, smoothstep(0.0, FADE_IN, time))
 
 
 ## Prepares a duel: `introduced_rule` waits for its moment ("" for none).
@@ -114,31 +179,17 @@ func _strength() -> float:
 	return 1.0 - smoothstep(FADE_IN + hold, duration(), time)
 
 
-func draw(ci: CanvasItem) -> void:
+func draw_glow(ci: CanvasItem) -> void:
 	if not active():
 		return
 	var k := _strength()
 	# The opening widens slightly as it settles, like a lens focusing.
-	var r := radii * lerpf(1.25, 1.0, smoothstep(0.0, FADE_IN, time))
-	var dim := Color(DIM, DIM.a * k)
-	var clear := Color(DIM, 0.0)
-	for i in SEGMENTS:
-		var a := TAU * i / SEGMENTS
-		var b := TAU * (i + 1) / SEGMENTS
-		var da := Vector2(cos(a), sin(a))
-		var db := Vector2(cos(b), sin(b))
-		var ia := center + da * r
-		var ib := center + db * r
-		var fa := center + da * (r + Vector2.ONE * FEATHER)
-		var fb := center + db * (r + Vector2.ONE * FEATHER)
-		ci.draw_polygon(PackedVector2Array([ia, ib, fb, fa]), PackedColorArray([clear, clear, dim, dim]))
-		ci.draw_colored_polygon(PackedVector2Array([fa, fb, center + db * FAR, center + da * FAR]), dim)
+	var r := _focused_radii()
 	# A pulsing gold ring and sparkles orbiting the new element.
 	var pulse := 1.0 + sin(time * 7.0) * 0.04
 	var ring := PackedVector2Array()
-	for i in SEGMENTS + 1:
-		var a := TAU * i / SEGMENTS
-		ring.append(center + Vector2(cos(a) * r.x, sin(a) * r.y) * pulse)
+	for direction in _directions:
+		ring.append(center + direction * r * pulse)
 	Shapes.polyline(ci, ring, Color(GOLD, 0.9 * k), 3.0, true)
 	for i in 6:
 		var a := time * 1.6 + TAU * i / 6.0

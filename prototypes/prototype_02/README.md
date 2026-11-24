@@ -1178,6 +1178,38 @@ in any of the five views.
 
 How the game keeps frames cheap:
 
+- **Tutorial dimming retains one shared mesh.** The old spotlight generated 48
+  feather quads and 48 outer quads every frame. `RuleSpotlight` now constructs
+  their topology once; a vertex shader follows the target and changes the lens
+  radii, feather and fade without rebuilding draw commands. Separate HUD layers
+  preserve the original order: travelling effects, dimming, gold ring/sparks,
+  then harvest gains and abandon controls. The ring's directions are cached too.
+- **Interface silhouettes share bounded mesh storage.** `Shapes.polygon` reuses
+  local geometry independently of position, size and tint. Creature silhouettes,
+  hats, flames, capacity gems, full/empty charge crystals, the combat medallion
+  halves and its sword/wand emblem use it. Storage is capped at 512 shapes; use
+  it only for a finite set of fixed silhouettes, never continuously deforming
+  vertices. The shop's fixed stall/awning has its own retained layer, moved by
+  a transform and invalidated only when the column layout changes. Button
+  glints and offer flips no longer redraw it.
+
+`tests/ui_cache.tscn -- --no-sound --output=<temporary-folder>` captures fixed
+tutorial times and checks that moving/resizing the focus does not redraw its
+mask, and repeated icon rendering does not create more meshes. A 15-image
+comparison with the previous version found at most two 8-bit colour levels of
+difference. The real fight, harvest and trade lesson captures also passed forced
+redraw checks. `tools/web_benchmark.mjs --ui-effects --headless --out=<temporary-folder>`
+measures a visible unlocked shop plus fixed and moving spotlights without
+simulating duels. Local Edge/WebGL reached the 60 Hz ceiling in both spotlight
+scenarios (16.68 ms average, 17.00 ms p95, zero audio underruns there). An isolated
+66.6 ms frame with 10 audio underrun blocks occurred in the initial shop segment;
+the repeated shop segment averaged 16.68 ms. These are desktop measurements.
+
+Circles, rings, stars, hearts, particles and antialiased line bands already use
+the shared atlas below. Their moving draw rectangles do not retriangulate shapes.
+Genuinely changing clipped fills/glints, lightning and streamers remain dynamic;
+this pass does not claim to eliminate all per-frame UI work.
+
 - **Combat primitives use a shared atlas.** Godot builds a GPU vertex buffer and vertex
   array for every `draw_circle`, `draw_arc`, `draw_polyline`, antialiased
   `draw_line` and polygon each time a canvas item redraws. Natively that is cheap;

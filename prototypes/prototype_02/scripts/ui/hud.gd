@@ -74,6 +74,13 @@ const UPGRADE_STEP := 44.0
 const FIGHT_GLINT_PERIOD := 4.0
 const FIGHT_GLINT_SWEEP := 0.72
 const FIGHT_HOVER_SCALE := 1.07
+static var _fight_half := _make_fight_half()
+
+static func _make_fight_half() -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in 17:
+		points.append(Vector2.from_angle(PI * 0.5 + PI * i / 16.0))
+	return points
 # Reroll button: while a reroll makes sense (main.reroll_sensible), a glint
 # sweeps across it every REROLL_GLINT_PERIOD, the first one REROLL_GLINT_DELAY
 # after it starts making sense. A reroll turns each replaced offer over on a
@@ -147,8 +154,8 @@ var _tooltip_start := 0.0 # when that hover began, in seconds
 ## Canvas item the drawing functions draw on: one of the layers below.
 var _ci: CanvasItem = self
 ## Child canvas items in drawing order, each {"node", "key"}. Every redraw
-## rebuilds a layer's draw commands, so the side panels and the shop column
-## redraw only when what they show changes (their key); the others every frame.
+## rebuilds a layer's draw commands. Fixed layers declare their dependencies;
+## transient effects redraw each frame, above or below the retained tutorial mask.
 var _layers := {}
 var _merge_ghost: Node2D
 ## The merge demonstration flies each copy in for this long, in seconds, then
@@ -161,12 +168,13 @@ func _ready() -> void:
 	font = ThemeDB.fallback_font
 	difficulty_halo = _make_choice_halo(DIFFICULTY_CARD_SIZE)
 	pack_halo = _make_choice_halo(PACK_CARD_SIZE)
-	for layer_name in ["panels", "base", "shop", "overlay"]:
+	for layer_name in ["panels", "base", "stall", "shop", "overlay", "spotlight_mask", "spotlight_glow", "foreground"]:
 		var layer := Node2D.new()
 		layer.name = layer_name.capitalize()
 		layer.draw.connect(_draw_layer.bind(layer_name, layer))
 		add_child(layer)
 		_layers[layer_name] = {"node": layer, "key": null}
+	game.spotlight.prepare_mask(_layers.spotlight_mask.node)
 	# The merge lesson's translucent copy needs its own alpha (modulate).
 	_merge_ghost = Node2D.new()
 	_merge_ghost.name = "MergeGhost"
@@ -589,6 +597,10 @@ static func charge_pos(i: int) -> Vector2:
 # --- Drawing ------------------------------------------------------------------------
 
 func _refresh_layers() -> void:
+	game.spotlight.update_mask(_layers.spotlight_mask.node)
+	var slide := smoothstep(0.0, 1.0, float(game.shop_out))
+	_layers.stall.node.position.x = SHOP_SLIDE * slide
+	_layers.stall.node.visible = game.ruleset.has(Ruleset.SHOP) and slide < 1.0
 	for layer_name in _layers:
 		var layer: Dictionary = _layers[layer_name]
 		var key: Variant = _layer_key(layer_name)
@@ -601,6 +613,10 @@ func _refresh_layers() -> void:
 ## layers that animate every frame.
 func _layer_key(layer_name: String) -> Variant:
 	match layer_name:
+		"stall":
+			return column_dy
+		"spotlight_mask":
+			return true # retained mesh; only shader parameters change
 		"panels":
 			return [game.phase, game.round_num, _wizard_key(game.enemy), _wizard_key(game.player)]
 		"shop":
@@ -669,6 +685,8 @@ func _draw_layer(layer_name: String, layer: CanvasItem) -> void:
 					_draw_game_over()
 		"shop":
 			_draw_shop_column()
+		"stall":
+			_draw_stall()
 		"overlay":
 			_draw_learning_cast_hint()
 			_draw_merge_lesson()
@@ -684,7 +702,11 @@ func _draw_layer(layer_name: String, layer: CanvasItem) -> void:
 				var p: Vector2 = game.shop_drag_position
 				Shapes.circle(_ci, p + Vector2(4, 10), 22, Color(0, 0, 0, 0.3))
 				Icons.token(_ci, game.drag.form_id, p, Rules.BODY_RADIUS * Rules.CELL * 1.1, 0, true)
-			game.spotlight.draw(_ci)
+		"spotlight_mask":
+			game.spotlight.draw_mask(_ci)
+		"spotlight_glow":
+			game.spotlight.draw_glow(_ci)
+		"foreground":
 			_draw_harvest_gain()
 			_draw_abandon()
 	_ci = self
@@ -1113,7 +1135,6 @@ func _draw_shop_column() -> void:
 	Shapes.set_transform(_ci, Vector2(SHOP_SLIDE * k, 0), 0.0, Vector2.ONE)
 	# The stall and the scroll appear as the journey introduces their rules.
 	if game.ruleset.has(Ruleset.SHOP):
-		_draw_stall()
 		_draw_shop()
 	if game.ruleset.any_upgrade():
 		_draw_wand_scroll()
@@ -1288,13 +1309,8 @@ func _draw_fight_button() -> void:
 	# Medallion split vertically: red combat half left, purple magic half right.
 	var left := Color(0.6, 0.16, 0.12) if ok else Color(0.25, 0.2, 0.2)
 	var right := Color(0.29, 0.16, 0.4) if ok else Color(0.22, 0.2, 0.25)
-	var half := PackedVector2Array()
-	for i in 17:
-		half.append(c + Vector2.from_angle(PI * 0.5 + PI * i / 16.0) * r)
-	_ci.draw_colored_polygon(half, left)
-	for i in half.size():
-		half[i] = c * 2.0 - half[i]
-	_ci.draw_colored_polygon(half, right)
+	Shapes.polygon(_ci, _fight_half, left, c, r)
+	Shapes.polygon(_ci, _fight_half, right, c, -r)
 	var ring := Icons.GOLD if ok else Color(0.4, 0.35, 0.3)
 	Shapes.line(_ci, c + Vector2(0, -r), c + Vector2(0, r), ring, 2.0)
 	Icons.sword_and_wand(_ci, c, r, not ok)

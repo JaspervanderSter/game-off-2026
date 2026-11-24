@@ -18,6 +18,7 @@ extends Node
 ##   --map-pan          title-to-map pans, removing components one at a time
 ##   --map-pan-cache-only  pans with island draw commands retained instead of rebuilt
 ##   --cloud-transition three map/level round trips, without playing any duels
+##   --ui-effects       shop, fixed and moving tutorial spotlights; no duels
 
 const SPIKE_MS := 1000.0 / 60.0 # a frame missing the 60 Hz deadline
 const BIG_SPIKE_MS := 1000.0 / 30.0
@@ -166,6 +167,9 @@ func _drive_hover() -> void:
 # --- Scenarios ------------------------------------------------------------------
 
 func _run() -> void:
+	if "--ui-effects" in OS.get_cmdline_user_args():
+		await _run_ui_effects()
+		return
 	if "--cloud-transition" in OS.get_cmdline_user_args():
 		await _run_cloud_transition()
 		return
@@ -227,6 +231,31 @@ func _run_map_pan() -> void:
 			await _seconds(map.PAN_TIME + 0.05)
 			scenario = variant + "_map"
 			await _seconds(0.6)
+
+
+func _run_ui_effects() -> void:
+	game.web_title_pending = false
+	game.journey.completed.assign(range(12))
+	game.choose_stage(12)
+	game.choose_pack(0)
+	assert(game.phase == game.Phase.PREP and game.hud.visible, "UI benchmark must render the shop")
+	game.player.gold += 20
+	EnemyAI.shop(game.player, game.rng, EnemyAI.profile_for(Difficulty.ARCHMAGE))
+	await _seconds(1.0)
+	scenario = "ui_shop"
+	await _seconds(3.0)
+	scenario = "ui_spotlight"
+	game.spotlight.reset("")
+	game.spotlight.begin(Rules.FIGHT_CENTER, Vector2(76, 76), null, 2.4)
+	await _seconds(3.3)
+	scenario = "ui_tracking"
+	game.spotlight.begin(Vector2(600, 300), Vector2(140, 60), null, 2.4, func():
+		var age: float = game.spotlight.time
+		return [Vector2(600 + sin(age * 2.0) * 180.0, 300), Vector2(140 + sin(age) * 30, 60)]
+	)
+	await _seconds(3.3)
+	scenario = "ui_shop_repeat"
+	await _seconds(3.0)
 
 
 func _run_cloud_transition() -> void:

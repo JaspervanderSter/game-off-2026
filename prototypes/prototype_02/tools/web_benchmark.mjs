@@ -6,7 +6,7 @@
 //   node tools/web_benchmark.mjs [--rounds=3] [--gpu=default|high] [--label=name]
 //        [--godot=<Godot console exe>] [--browser=<msedge/chrome exe>]
 //        [--out=<folder>] [--no-export] [--port=8765]
-//        [--map-pan | --map-pan-cache-only | --cloud-transition] [--headless]
+//        [--map-pan | --map-pan-cache-only | --cloud-transition | --ui-effects] [--headless]
 // Map modes measure the title-to-map camera move only, with component ablations
 // or retained island drawing commands. No duels or balance simulations run.
 //
@@ -107,6 +107,7 @@ function serve() {
       const gameArgs = ["--", `--rounds=${rounds}`];
       if (options["map-pan"]) gameArgs.push("--map-pan");
       if (options["cloud-transition"]) gameArgs.push("--cloud-transition");
+      if (options["ui-effects"]) gameArgs.push("--ui-effects");
       if (options["map-pan-cache-only"]) gameArgs.push("--map-pan", "--map-pan-cache-only");
       data = Buffer.from(data.toString().replace('"args":[]', `"args":${JSON.stringify(gameArgs)}`));
     }
@@ -169,7 +170,7 @@ async function run() {
     await send("Page.enable");
     await send("Page.addScriptToEvaluateOnNewDocument", { source: GL_COUNTER });
     await send("Page.navigate", { url: `http://127.0.0.1:${port}/index.html` });
-    console.log(options["cloud-transition"] ? "Measuring map/level cloud transitions in the browser ..." : options["map-pan"] || options["map-pan-cache-only"]
+    console.log(options["ui-effects"] ? "Measuring shop and tutorial effects in the browser ..." : options["cloud-transition"] ? "Measuring map/level cloud transitions in the browser ..." : options["map-pan"] || options["map-pan-cache-only"]
       ? "Measuring title-to-map transitions in the browser ..."
       : `Playing ${rounds} round(s) in the browser ...`);
     const deadline = Date.now() + 15 * 60 * 1000;

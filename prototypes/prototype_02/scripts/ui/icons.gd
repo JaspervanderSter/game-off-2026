@@ -8,6 +8,14 @@ const SKIN := Color(0.98, 0.82, 0.66)
 const DARK := Color(0.1, 0.08, 0.08)
 const GOLD := Color(1.0, 0.82, 0.25)
 const MAGIC := Color(0.72, 0.42, 1.0)
+static var _gem_outline := _make_gem_outline()
+static var _crystal_outline := PackedVector2Array([Vector2(0, -1.2), Vector2(0.52, -0.744), Vector2(0.52, 0.744), Vector2(0, 1.2), Vector2(-0.52, 0.744), Vector2(-0.52, -0.744)])
+
+static func _make_gem_outline() -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in 8:
+		points.append(Vector2.from_angle(PI / 8 + i * PI / 4))
+	return points
 
 
 static func team_color(team: int) -> Color:
@@ -24,7 +32,7 @@ static func _pts(p: Vector2, s: float, arr: Array) -> PackedVector2Array:
 
 
 static func _poly(ci: CanvasItem, p: Vector2, s: float, arr: Array, col: Color) -> void:
-	ci.draw_colored_polygon(_pts(p, s, arr), col)
+	Shapes.polygon(ci, PackedVector2Array(arr), col, p, s)
 
 
 static func _line(ci: CanvasItem, p: Vector2, s: float, a: Vector2, b: Vector2, col: Color, w: float) -> void:
@@ -257,8 +265,8 @@ static func creature(ci: CanvasItem, id: String, p: Vector2, s: float) -> void:
 
 
 static func _flame(ci: CanvasItem, p: Vector2, s: float) -> void:
-	ci.draw_colored_polygon(_pts(p, s, [Vector2(-0.5, 0.3), Vector2(-0.3, -0.4), Vector2(0.0, -1.0), Vector2(0.3, -0.4), Vector2(0.5, 0.3), Vector2(0.0, 0.6)]), Color(1.0, 0.45, 0.1))
-	ci.draw_colored_polygon(_pts(p, s, [Vector2(-0.25, 0.3), Vector2(0.0, -0.45), Vector2(0.25, 0.3), Vector2(0.0, 0.45)]), Color(1.0, 0.9, 0.3))
+	_poly(ci, p, s, [Vector2(-0.5, 0.3), Vector2(-0.3, -0.4), Vector2(0.0, -1.0), Vector2(0.3, -0.4), Vector2(0.5, 0.3), Vector2(0.0, 0.6)], Color(1.0, 0.45, 0.1))
+	_poly(ci, p, s, [Vector2(-0.25, 0.3), Vector2(0.0, -0.45), Vector2(0.25, 0.3), Vector2(0.0, 0.45)], Color(1.0, 0.9, 0.3))
 
 
 static func _snowflake(ci: CanvasItem, p: Vector2, s: float, col: Color) -> void:
@@ -329,15 +337,9 @@ static func merge_progress(ci: CanvasItem, center: Vector2, copies: int, stars: 
 static func gem(ci: CanvasItem, p: Vector2, r: float, col: Color) -> void:
 	if r < 0.5:
 		return
-	var girdle := PackedVector2Array()
-	var table := PackedVector2Array()
-	for i in 8:
-		var dir := Vector2.from_angle(PI / 8 + i * PI / 4)
-		girdle.append(p + dir * r)
-		table.append(p + dir * r * 0.55)
-	ci.draw_colored_polygon(girdle, col.darkened(0.25))
-	ci.draw_colored_polygon(table, col.lightened(0.28))
-	ci.draw_colored_polygon(PackedVector2Array([girdle[4], girdle[5], table[5], table[4]]), col.lightened(0.45))
+	Shapes.polygon(ci, _gem_outline, col.darkened(0.25), p, r)
+	Shapes.polygon(ci, _gem_outline, col.lightened(0.28), p, r * 0.55)
+	Shapes.polygon(ci, PackedVector2Array([_gem_outline[4], _gem_outline[5], _gem_outline[5] * 0.55, _gem_outline[4] * 0.55]), col.lightened(0.45), p, r)
 	Shapes.circle(ci, p + Vector2(-r * 0.3, -r * 0.3), r * 0.22, Color(1, 1, 1, 0.85))
 
 
@@ -522,7 +524,7 @@ static func coin(ci: CanvasItem, p: Vector2, r: float) -> void:
 
 static func wizard_hat(ci: CanvasItem, p: Vector2, r: float, team: int) -> void:
 	var col := team_color(team)
-	ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-r, r * 0.6), p + Vector2(r, r * 0.6), p + Vector2(r * 0.15, -r)]), col.darkened(0.2))
+	_poly(ci, p, r, [Vector2(-1, 0.6), Vector2(1, 0.6), Vector2(0.15, -1)], col.darkened(0.2))
 	ci.draw_rect(Rect2(p + Vector2(-r * 1.2, r * 0.5), Vector2(r * 2.4, r * 0.3)), col.darkened(0.45))
 	star(ci, p + Vector2(0, r * 0.05), r * 0.3)
 
@@ -537,17 +539,16 @@ static func charge_crystal(ci: CanvasItem, p: Vector2, r: float, filled: bool, p
 	var w := r * 0.52
 	var shape := PackedVector2Array([p + Vector2(0, -h), p + Vector2(w, -h * 0.62), p + Vector2(w, h * 0.62),
 		p + Vector2(0, h), p + Vector2(-w, h * 0.62), p + Vector2(-w, -h * 0.62)])
-	ci.draw_colored_polygon(shape, Color(0.11, 0.08, 0.19))
+	Shapes.polygon(ci, _crystal_outline, Color(0.11, 0.08, 0.19), p, r)
 	var level := 1.0 if filled else clampf(progress, 0.0, 1.0)
 	if level >= 1.0:
-		ci.draw_colored_polygon(shape, MAGIC)
+		Shapes.polygon(ci, _crystal_outline, MAGIC, p, r)
 	elif level > 0.0:
 		var top := p.y + h - 2.0 * h * level
 		_fill_clipped(ci, shape, _band(p.x - w - 1, p.x + w + 1, top, p.y + h + 1), MAGIC)
 		_fill_clipped(ci, shape, _band(p.x - w - 1, p.x + w + 1, top, top + maxf(1.5, r * 0.09)), MAGIC.lightened(0.6))
 	if filled:
-		ci.draw_colored_polygon(PackedVector2Array([p + Vector2(-w * 0.72, -h * 0.5), p + Vector2(-w * 0.3, -h * 0.6),
-			p + Vector2(-w * 0.3, h * 0.3), p + Vector2(-w * 0.72, h * 0.4)]), Color(1, 1, 1, 0.35))
+		_poly(ci, p, r, [Vector2(-0.3744, -0.6), Vector2(-0.156, -0.72), Vector2(-0.156, 0.36), Vector2(-0.3744, 0.48)], Color(1, 1, 1, 0.35))
 	var facet := Color(1, 1, 1, 0.3)
 	var fw := maxf(1.0, r * 0.06)
 	Shapes.line(ci, p + Vector2(0, -h), p + Vector2(0, h), facet, fw, true)
@@ -609,8 +610,8 @@ static func sword_and_wand(ci: CanvasItem, p: Vector2, r: float, dim := false) -
 	var draw_tools := func(o: float, outline := Color()) -> void:
 		var pick := func(col: Color) -> Color: return outline if o > 0.0 else col
 		_blade_quad(ci, p, u, v, -0.25 * r - o, 0.68 * r, 0.075 * r + o, pick.call(steel))
-		ci.draw_colored_polygon(PackedVector2Array([p + u * 0.68 * r + v * (0.075 * r + o),
-			p + u * (0.84 * r + o * 1.6), p + u * 0.68 * r - v * (0.075 * r + o)]), pick.call(steel))
+		Shapes.polygon(ci, PackedVector2Array([u * 0.68 * r + v * (0.075 * r + o),
+			u * (0.84 * r + o * 1.6), u * 0.68 * r - v * (0.075 * r + o)]), pick.call(steel), p)
 		if o == 0.0:
 			_blade_quad(ci, p, u, v, -0.22 * r, 0.66 * r, 0.018 * r, edge)
 		_blade_quad(ci, p, u, v, -0.33 * r - o, -0.25 * r + o, 0.25 * r + o, pick.call(gold))
@@ -620,8 +621,8 @@ static func sword_and_wand(ci: CanvasItem, p: Vector2, r: float, dim := false) -
 		_blade_quad(ci, p, w, x, -0.46 * r - o, -0.39 * r + o, 0.08 * r + o, pick.call(gold))
 		var points := PackedVector2Array()
 		for i in 8:
-			points.append(star + Vector2.from_angle(-PI / 2 + i * PI / 4) * ((0.27 * r if i % 2 == 0 else 0.075 * r) + o * 1.4))
-		ci.draw_colored_polygon(points, pick.call(glow))
+			points.append(Vector2.from_angle(-PI / 2 + i * PI / 4) * ((0.27 * r if i % 2 == 0 else 0.075 * r) + o * 1.4))
+		Shapes.polygon(ci, points, pick.call(glow), star)
 	draw_tools.call(0.045 * r, Color(0.08, 0.04, 0.03, 0.8 if not dim else 0.4))
 	draw_tools.call(0.0)
 	Shapes.circle(ci, star, 0.07 * r, MAGIC.lightened(0.6) if not dim else glow)
@@ -629,8 +630,8 @@ static func sword_and_wand(ci: CanvasItem, p: Vector2, r: float, dim := false) -
 
 ## Rectangle from a0 to a1 along unit axis u, half-width hw across it (along v).
 static func _blade_quad(ci: CanvasItem, p: Vector2, u: Vector2, v: Vector2, a0: float, a1: float, hw: float, col: Color) -> void:
-	ci.draw_colored_polygon(PackedVector2Array([p + u * a0 + v * hw, p + u * a1 + v * hw,
-		p + u * a1 - v * hw, p + u * a0 - v * hw]), col)
+	Shapes.polygon(ci, PackedVector2Array([u * a0 + v * hw, u * a1 + v * hw,
+		u * a1 - v * hw, u * a0 - v * hw]), col, p)
 
 
 static func wand(ci: CanvasItem, p: Vector2, r: float) -> void:

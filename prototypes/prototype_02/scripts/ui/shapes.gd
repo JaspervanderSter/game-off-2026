@@ -33,6 +33,35 @@ static var _atlas: CanvasTexture
 static var _ring_t := PackedFloat32Array()
 ## Transform last set on each canvas item through set_transform, by instance id.
 static var _transforms := {}
+## Finite local silhouettes, independent of position, scale and colour. Never
+## cache continuously deforming vertices: the cap also bounds accidental use.
+const POLYGON_CACHE_LIMIT := 512
+static var _polygon_meshes := {}
+
+static func polygon(ci: CanvasItem, points: PackedVector2Array, color: Color, at := Vector2.ZERO, scale_factor := 1.0) -> void:
+	var mesh: ArrayMesh = _polygon_meshes.get(points)
+	if mesh == null and _polygon_meshes.size() < POLYGON_CACHE_LIMIT:
+		var indices := Geometry2D.triangulate_polygon(points)
+		if indices.is_empty():
+			return
+		var vertices := PackedVector3Array()
+		for point in points:
+			vertices.append(Vector3(point.x, point.y, 0))
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = vertices
+		arrays[Mesh.ARRAY_INDEX] = indices
+		mesh = ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		_polygon_meshes[points] = mesh
+	var transform := Transform2D(0.0, Vector2.ONE * scale_factor, 0.0, at)
+	if mesh != null:
+		ci.draw_mesh(mesh, null, transform, color)
+	else:
+		var base := current_transform(ci)
+		ci.draw_set_transform_matrix(base * transform)
+		ci.draw_colored_polygon(points, color)
+		ci.draw_set_transform_matrix(base)
 
 
 ## The atlas, built on first use (Shapes.warm_up() builds it at startup).

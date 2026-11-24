@@ -17,7 +17,8 @@ static func run(game: Node) -> Dictionary:
 	var previous_scale := Engine.time_scale
 	Engine.time_scale = 0.0
 	game._shake_t = 0.0 # the board keeps its current offset
-	var hidden: Array[CanvasItem] = [game.fx, game.switch_flash, game.hud._layers.base.node, game.hud._layers.overlay.node]
+	var hidden: Array[CanvasItem] = [game.fx, game.switch_flash, game.hud._layers.base.node,
+		game.hud._layers.overlay.node, game.hud._layers.spotlight_glow.node, game.hud._layers.foreground.node]
 	if game.battle != null:
 		hidden.append(game.battle)
 	var was_visible: Array[bool] = []
