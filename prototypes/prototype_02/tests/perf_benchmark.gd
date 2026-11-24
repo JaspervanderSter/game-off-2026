@@ -17,6 +17,7 @@ extends Node
 ##   --no-sound         no sound (the game's own option)
 ##   --map-pan          title-to-map pans, removing components one at a time
 ##   --map-pan-cache-only  pans with island draw commands retained instead of rebuilt
+##   --cloud-transition three map/level round trips, without playing any duels
 
 const SPIKE_MS := 1000.0 / 60.0 # a frame missing the 60 Hz deadline
 const BIG_SPIKE_MS := 1000.0 / 30.0
@@ -165,6 +166,9 @@ func _drive_hover() -> void:
 # --- Scenarios ------------------------------------------------------------------
 
 func _run() -> void:
+	if "--cloud-transition" in OS.get_cmdline_user_args():
+		await _run_cloud_transition()
+		return
 	if "--map-pan" in OS.get_cmdline_user_args():
 		await _run_map_pan()
 		return
@@ -223,6 +227,23 @@ func _run_map_pan() -> void:
 			await _seconds(map.PAN_TIME + 0.05)
 			scenario = variant + "_map"
 			await _seconds(0.6)
+
+
+func _run_cloud_transition() -> void:
+	game.web_title_pending = false
+	game.map_screen.show_islands(true)
+	await _seconds(1.0)
+	for attempt in 3:
+		scenario = "cloud_to_level"
+		game.enter_stage(0)
+		await _seconds(ScreenTransition.COVER + ScreenTransition.HOLD + ScreenTransition.REVEAL + 0.1)
+		scenario = "level_settle"
+		await _seconds(0.4)
+		scenario = "cloud_to_map"
+		game.leave_duel()
+		await _seconds(ScreenTransition.COVER + ScreenTransition.HOLD + ScreenTransition.REVEAL + 0.1)
+		scenario = "map_settle"
+		await _seconds(0.4)
 
 
 func _play_duel() -> void:

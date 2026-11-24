@@ -107,16 +107,25 @@ func _update_layers() -> void:
 		_clouds[i].scale = Vector2(lerpf(1.0, 1.25, state.ribbon), lerpf(1.0, 0.28, state.ribbon)) * (0.85 + (i % 3) * 0.3)
 		_clouds[i].modulate = Color(state.cloud, 0.55)
 
-static func cloud(ci: CanvasItem, p: Vector2, scale_factor: float, color: Color, ribbon := 0.0) -> void:
-	# One outline per cloud prevents overlapping translucent discs.
-	var outline := PackedVector2Array()
+static var _cloud_outline := PackedVector2Array()
+
+## Shared, immutable silhouette, also used by the transition's retained mesh.
+static func cloud_outline() -> PackedVector2Array:
+	if not _cloud_outline.is_empty():
+		return _cloud_outline
 	var knots := [Vector2(-90, 8), Vector2(-43, -14), Vector2(9, -27), Vector2(49, -12), Vector2(92, 12), Vector2(-90, 8)]
 	var controls := [Vector2(-85, -10), Vector2(-65, -17), Vector2(-35, -42), Vector2(-10, -39), Vector2(26, -41), Vector2(49, -25), Vector2(83, -21), Vector2(110, 0), Vector2(32, 22), Vector2(-50, 24)]
 	for segment in 5:
 		for i in 9:
 			var t := i / 8.0
 			var q: Vector2 = knots[segment].bezier_interpolate(controls[segment * 2], controls[segment * 2 + 1], knots[segment + 1], t)
-			q.y *= lerpf(1.0, 0.28, ribbon)
-			q.x *= lerpf(1.0, 1.25, ribbon)
-			outline.append(p + q * scale_factor)
+			_cloud_outline.append(q)
+	return _cloud_outline
+
+static func cloud(ci: CanvasItem, p: Vector2, scale_factor: float, color: Color, ribbon := 0.0) -> void:
+	# One outline per cloud prevents overlapping translucent discs.
+	var outline := PackedVector2Array()
+	var stretch := Vector2(lerpf(1.0, 1.25, ribbon), lerpf(1.0, 0.28, ribbon))
+	for q: Vector2 in cloud_outline():
+		outline.append(p + q * stretch * scale_factor)
 	ci.draw_colored_polygon(outline, color)

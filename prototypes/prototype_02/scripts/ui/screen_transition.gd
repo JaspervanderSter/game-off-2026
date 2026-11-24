@@ -15,6 +15,7 @@ const COVER := 0.65
 const HOLD := 0.1
 const REVEAL := 0.65
 const SkyCycle := preload("res://scripts/ui/day_night_sky.gd")
+const Retained := preload("res://scripts/ui/retained_drawing.gd")
 ## Per layer, back to front: cloud scale (map cloud = 1), speed, shade.
 const LAYERS := [[2.3, 0.86, -0.08], [2.8, 0.94, -0.03], [3.3, 1.0, 0.04]]
 const ROWS := 8
@@ -26,6 +27,13 @@ var to := Vector2.ZERO
 var cloud := Color("d1dccf") # the sky's cloud colour when the transition began
 var _swap := Callable()
 var _swapped := false
+var _cloud_mesh: ArrayMesh
+var _curtain: Node2D
+var _bank: ColorRect
+var _halves: Array[Node2D] = []
+var _clouds: Array[Dictionary] = []
+var _layout_size := Vector2.ZERO
+var _painted_cloud := Color(-1, -1, -1)
 var _blocker: Control
 
 
@@ -34,6 +42,7 @@ func _ready() -> void:
 	_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
 	_blocker.visible = false
 	add_child(_blocker)
+	_build_curtain()
 
 
 ## Covers the screen with clouds, calls `swap` once covered, then parts them.
@@ -49,6 +58,7 @@ func play(cover_at: Vector2, reveal_at: Vector2, swap: Callable, cloud_colour :=
 	_blocker.size = get_viewport_rect().size
 	_blocker.visible = true
 	Sfx.play("ui/clouds")
+	_update_curtain()
 
 
 func active() -> bool:
@@ -66,7 +76,7 @@ func _process(dt: float) -> void:
 	if t >= COVER + HOLD + REVEAL:
 		t = -1.0
 		_blocker.visible = false
-	queue_redraw()
+	_update_curtain()
 
 
 ## 0 open to 1 fully covered, then back to 0.
@@ -80,49 +90,75 @@ func coverage() -> float:
 	return 1.0 - smoothstep(COVER + HOLD, COVER + HOLD + REVEAL, t)
 
 
-func _draw() -> void:
-	if t < 0.0:
+## The only triangulation happens at creation. Every cloud and tone shares it.
+func _build_curtain() -> void:
+	var outline := SkyCycle.cloud_outline()
+	var vertices := PackedVector3Array()
+	for point in outline:
+		vertices.append(Vector3(point.x, point.y, 0.0))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_INDEX] = Geometry2D.triangulate_polygon(outline)
+	_cloud_mesh = ArrayMesh.new()
+	_cloud_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_curtain = Node2D.new()
+	_curtain.visible = false
+	add_child(_curtain)
+	_bank = ColorRect.new()
+	_bank.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_curtain.add_child(_bank)
+	for layer in LAYERS.size():
+		var s: float = LAYERS[layer][0]
+		var spacing := CLOUD_WIDTH * s * 0.62
+		for side: float in [-1.0, 1.0]:
+			var half := Node2D.new()
+			_curtain.add_child(half)
+			_halves.append(half)
+			for row in ROWS:
+				var stagger := (row % 2) * spacing * 0.5
+				for depth in 3:
+					var flip := -1.0 if (row + depth + layer) % 2 == 0 else 1.0
+					var node := Retained.make(half, func(canvas: Node2D): _paint_cloud(canvas, layer, flip))
+					node.scale = Vector2.ONE * s * (0.92 + 0.08 * ((row + depth) % 3))
+					_clouds.append({"node": node, "layer": layer, "side": side, "row": row,
+						"depth": depth, "offset": side * (depth * spacing + stagger)})
+
+## Re-record tint only when a new transition's sky colour changes. Mesh vertices
+## and indices stay shared; drifting and resizing never rebuild a silhouette.
+func _paint_cloud(canvas: Node2D, layer: int, flip: float) -> void:
+	var base := _tone(layer)
+	canvas.draw_mesh(_cloud_mesh, null, Transform2D(0.0, Vector2(0, 9)), base.darkened(0.12))
+	canvas.draw_mesh(_cloud_mesh, null, Transform2D.IDENTITY, base)
+	canvas.draw_mesh(_cloud_mesh, null, Transform2D(0.0, Vector2.ONE * 0.55, 0.0, Vector2(-16 * flip, -9)), base.lightened(0.2))
+
+func _update_curtain() -> void:
+	_curtain.visible = active()
+	if not active():
 		return
 	var k := coverage()
 	var size := get_viewport_rect().size
-	# Once the curtains overlap, a flat bank of the back clouds' tone closes
-	# any gap between them.
-	if k > 0.9:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(_tone(0), smoothstep(0.9, 1.0, k)))
+	_blocker.size = size
+	_bank.size = size
+	_bank.color = Color(_tone(0), smoothstep(0.9, 1.0, k))
+	_bank.visible = k > 0.9
 	for layer in LAYERS.size():
-		_layer(layer, k, size)
+		var width: float = CLOUD_WIDTH * LAYERS[layer][0]
+		var reach := smoothstep(0.0, LAYERS[layer][1], k)
+		_halves[layer * 2].position.x = lerpf(-width * 0.55, size.x * 0.5 + width * 0.3, reach)
+		_halves[layer * 2 + 1].position.x = lerpf(size.x + width * 0.55, size.x * 0.5 - width * 0.3, reach)
+	for entry in _clouds:
+		var node: Node2D = entry.node
+		var drift := sin(t * 0.9 + entry.row * 1.7 + entry.layer * 2.3 + entry.depth) * 8.0
+		node.position.x = entry.offset + drift * entry.side
+		if size != _layout_size:
+			node.position.y = size.y * (entry.row + 0.2) / (ROWS - 0.8) + entry.layer * 10.0
+		if cloud != _painted_cloud:
+			node.queue_redraw()
+	_layout_size = size
+	_painted_cloud = cloud
 
 
 func _tone(layer: int) -> Color:
 	var shade: float = LAYERS[layer][2]
 	return cloud.lightened(shade) if shade > 0.0 else cloud.darkened(-shade)
-
-
-## One map cloud in three flat tones: a darker underside, the body, a light crest.
-func _cloud(p: Vector2, s: float, base: Color, flip: float) -> void:
-	SkyCycle.cloud(self, p + Vector2(0, 9 * s), s, base.darkened(0.12))
-	SkyCycle.cloud(self, p, s, base)
-	SkyCycle.cloud(self, p + Vector2(-16 * s * flip, -9 * s), s * 0.55, base.lightened(0.2))
-
-
-## One layer of both curtains: rows of clouds, each row three clouds deep, the
-## front cloud leading and the others trailing outward.
-func _layer(layer: int, k: float, size: Vector2) -> void:
-	var s: float = LAYERS[layer][0]
-	var speed: float = LAYERS[layer][1]
-	var tone := _tone(layer)
-	var width := CLOUD_WIDTH * s
-	var spacing := width * 0.62
-	# The curtains start fully off screen and ease in until they overlap.
-	var reach := smoothstep(0.0, speed, k)
-	for side: float in [-1.0, 1.0]:
-		var lead: float = lerpf(-width * 0.55, size.x * 0.5 + width * 0.3, reach) if side < 0.0 \
-			else lerpf(size.x + width * 0.55, size.x * 0.5 - width * 0.3, reach)
-		for row in ROWS:
-			var y := size.y * (row + 0.2) / (ROWS - 0.8) + layer * 10.0
-			var stagger := (row % 2) * spacing * 0.5
-			for depth in 3:
-				var x: float = lead + side * (depth * spacing + stagger)
-				var drift := sin(t * 0.9 + row * 1.7 + layer * 2.3 + depth) * 8.0
-				var flip := -1.0 if (row + depth + layer) % 2 == 0 else 1.0
-				_cloud(Vector2(x + drift * side, y), s * (0.92 + 0.08 * ((row + depth) % 3)), tone, flip)

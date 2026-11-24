@@ -149,7 +149,23 @@ underside, the body, a light crest), tinted with the map's cloud colour of the
 moment. A soft whoosh (`ui/clouds`) plays each way, and input waits until the
 transition is done. The map enters a duel through `main.enter_stage` and leaves
 it through `main.leave_duel`; `choose_stage` and `new_duel` stay immediate for
-tests and tools. The whoosh is synthesised (filtered noise sweeping up then
+tests and tools. The 144 clouds share one mesh triangulated at creation. Each
+retains its underside, body and crest draw commands; the six curtain halves and
+individual clouds move through transforms. Resizing changes row positions only;
+a different sky tint re-records colours once without rebuilding the shared mesh.
+No cloud silhouette is generated during animation. Fixed-time captures of the
+previous and retained versions matched pixel for pixel in 28 images (landscape
+and portrait, day and night, cover/hold/reveal).
+
+`tests/cloud_cache.tscn` captures these views and asserts that the mesh and cloud
+draw-command counts stay unchanged during movement. Run with
+`-- --no-sound --output=<temporary-folder>`. The focused browser benchmark
+`node prototypes/prototype_02/tools/web_benchmark.mjs --cloud-transition --headless --out=<temporary-folder>`
+plays three map/level round trips without playing any duels. Local Edge/WebGL
+on an RTX 4080 SUPER averaged 16.74 ms into a level and 16.68 ms back to the map,
+with no audio underruns; these are desktop measurements, not mobile results.
+
+The whoosh is synthesised (filtered noise sweeping up then
 down):
 
 ```
