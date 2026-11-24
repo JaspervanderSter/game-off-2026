@@ -21,3 +21,6 @@ __pycache__/
 
 # Local sketches, image concepts, and disposable experiments (never committed)
 /brainstorm/
+
+# Local previews, test exports, logs, and isolated browser profiles
+/work/
