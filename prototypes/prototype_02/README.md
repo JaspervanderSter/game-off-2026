@@ -125,8 +125,8 @@ footsteps leave the cottage door, cross the bridge and reach the hunter; the
 clouds drift with parallax. Leaving the title after launch replays the journey: every
 opponent and road hides; on arrival the hunter rises (new journey) or pops up,
 then the footsteps run on along the beaten roads, faster and faster, each
-beaten opponent popping up as they reach it, and the current opponent gets the
-map's own trace and rise. The map's ambience is silent on the title and fades
+beaten opponent popping up as they reach it; they run on along the current
+opponent's road at the same pace and it rises out of the ground as they arrive. The map's ambience is silent on the title and fades
 in on the way. Esc on the map leads back to the title (1.4 s) and the way back
 is a simple travel, without a replay; a duel returns
 straight to the islands, without replay. The old `menu.tscn` diorama and its

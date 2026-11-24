@@ -64,6 +64,7 @@ func _ready() -> void:
 	_test_day_night_cycle()
 	_test_journey_health()
 	_test_journey_discovery()
+	_test_title_replay()
 	await _test_progress_reset_shortcuts()
 	await _test_journey_navigation()
 	_simulate_duels()
@@ -2767,6 +2768,39 @@ func _test_journey_discovery() -> void:
 		var migrated := Journey.new()
 		migrated.restore(old_save, Difficulty.APPRENTICE)
 		check(migrated.completed.size() == entry[1], "seven-stage saves migrate to %d completed opponents" % entry[1])
+
+
+## Relaunching a saved game: leaving the title replays the journey, and the
+## footsteps run on to the current opponent at full speed rather than tracing
+## its road again at the normal pace (playtest, 24 November 2026).
+func _test_title_replay() -> void:
+	var game = load("res://main.tscn").instantiate()
+	var path := "user://title_replay_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
+	game.difficulty_progress_path = path
+	add_child(game)
+	game.set_physics_process(false)
+	var map = game.map_screen
+	map.set_process(false)
+	game.journey.completed.assign(range(3))
+	game.show_menu(true)
+	game.show_map()
+	var traced := false
+	var walk_end := -1.0
+	var clock := 0.0
+	while clock < 20.0 and map.appearing != 3:
+		map._process(0.05)
+		clock += 0.05
+		traced = traced or map.revealing >= 0
+		if walk_end < 0.0 and map._replay == "walk" and map.walk_pos >= map.walk.size() - 1:
+			walk_end = clock
+	check(map.appearing == 3 and map.buttons[3].visible and map.appear_elapsed <= 0.05,
+		"the current opponent springs up as the replay's footsteps reach it")
+	check(not traced and map.visible_path_points(3) == map._paths[3].size(),
+		"the current opponent's road is walked at full speed, not traced again")
+	check(map._replay == "" and walk_end >= 0.0 and clock - walk_end <= 0.1,
+		"no pause separates the fast walk from the current opponent's rise")
+	game.free()
+	DirAccess.remove_absolute(path)
 
 
 func _test_journey_rules() -> void:

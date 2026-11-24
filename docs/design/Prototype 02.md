@@ -201,8 +201,9 @@ right along the bridge (2.8 s) while gold footsteps leave the cottage door,
 cross the bridge and reach the hunter. Leaving the title after launch replays the journey:
 every opponent and road hides, the hunter springs out (the full rise on a new
 journey, a pop otherwise), then the footsteps run on along the beaten roads,
-faster and faster, each beaten opponent popping up as they reach it, and the
-current opponent rises at the normal pace, where the tension belongs. The
+faster and faster, each beaten opponent popping up as they reach it; they run
+on along the current opponent's road at the same pace and it springs out of the
+ground (gold ring, shock wave, island bits) as they arrive (24 November). The
 title has no waterfall (the forest's is enough); the map's ambience is silent
 on the title and fades in on the way. Esc on the map leads back to the title;
 the way back to the map then simply travels, without a replay.
@@ -577,6 +578,14 @@ the engine with the game's assets, led to the title island:
   island) and on how the opponents come back: a fast cascade, a walk with pops,
   the walk with a rising scale, all at once. **The walk was chosen**, with the
   medallion on the bridge near the screen's edge and gliding chevrons.
+
+### 24 November 2026 — the replay's last opponent
+
+- On relaunching a save, the fast walk stopped before the current opponent,
+  whose road was then traced at the normal pace (3.6 s): fast then slow broke
+  the impact. Four proposals ran in the real game, all walking the last road at
+  full speed: the usual rise at once, a big jump landing with a shake, a gold
+  beam from the sky, a camera punch-in. **The usual rise at once was chosen.**
 
 ## Playtest plan and completion criteria
 

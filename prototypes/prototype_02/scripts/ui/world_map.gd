@@ -91,10 +91,11 @@ var _design_size := LANDSCAPE_SIZE
 ## Leaving the title at launch replays the journey up to the current opponent: every
 ## opponent and road hides, the footsteps reach the hunter, then they run on
 ## along the beaten roads, faster and faster, each beaten opponent popping up
-## as they reach it; the current one rises at the normal pace.
+## as they reach it; they run on along the current one's road at the same pace
+## and it springs out of the ground as they arrive (playtest, 24 November 2026:
+## a slow trace after the fast run broke the impact).
 ## Only the first departure after the game starts replays it; Esc and back
-## simply travels. _replay: "" (none), "armed" (camera travelling), "walk",
-## "settle".
+## simply travels. _replay: "" (none), "armed" (camera travelling), "walk".
 var _replay := ""
 var _replay_due := false
 var _replay_clock := 0.0
@@ -621,7 +622,7 @@ func _walk_home() -> void:
 func _begin_replay() -> void:
 	home.shown = home.dots.size()
 	var current := _current_stage()
-	for stage in range(1, current):
+	for stage in range(1, current + 1):
 		for p in _paths[stage]:
 			walk.append(p)
 			walk_stage.append(stage)
@@ -629,26 +630,24 @@ func _begin_replay() -> void:
 	_walk_speed = WALK_START_SPEED
 	_replay_clock = 0.0
 	if current == 0:
-		_reveal_current(0)
+		_replay = ""
+		_rise_current(0)
 		return
 	_pop(0)
 	_replay = "walk"
 
 
-## The current opponent: the map's own trace and rise, at the normal pace.
-func _reveal_current(stage: int) -> void:
-	_replay = ""
-	if stage == 0:
-		if 0 not in discovered:
-			discovered.append(0)
-		appearing = 0
-		appear_elapsed = 0.0
-		_refresh_discovery()
-		Sfx.play("ui/map_opponent_appear")
-	else:
-		_pending.clear()
-		_pending.append(stage)
-		_begin_next_reveal()
+## The current opponent springs out of the ground at once, with its road,
+## as the footsteps reach it.
+func _rise_current(stage: int) -> void:
+	if stage not in discovered:
+		discovered.append(stage)
+	appearing = stage
+	appear_elapsed = 0.0
+	_refresh_discovery()
+	roads.queue_redraw()
+	Sfx.play("ui/map_opponent_appear")
+	_focus_latest()
 
 
 func _advance_replay(dt: float) -> void:
@@ -661,13 +660,12 @@ func _advance_replay(dt: float) -> void:
 			Sfx.play("ui/map_step")
 		# An opponent pops up as the footsteps reach it.
 		for i in range(before, int(walk_pos)):
-			if i == walk.size() - 1 or walk_stage[i + 1] != walk_stage[i]:
+			if i == walk.size() - 1:
+				_rise_current(walk_stage[i])
+			elif walk_stage[i + 1] != walk_stage[i]:
 				_pop(walk_stage[i])
 		if walk_pos >= walk.size():
-			_replay = "settle"
-			_replay_clock = 0.0
-	elif _replay == "settle" and _replay_clock > 0.35:
-		_reveal_current(_current_stage())
+			_replay = ""
 	# Popped opponents squash back to their size.
 	for stage: int in _popped.keys():
 		_popped[stage] += dt
