@@ -106,7 +106,8 @@ lands at 0.45 s with a jolt, then keeps moving: it floats, rocks drift, birds
 circle, smoke rises, and a creature on the D changes shape every 3.2 s along
 its chain of most likely outcomes. At 0.95 s a rope bridge unrolls from its
 shore towards the forest (`map_bridge.gd`'s `reach`) and the island medallion,
-the only control, appears on it near the screen's right edge with gold
+the only control, appears on it near the screen's right edge, 30 % larger than
+its minimum, breathing, two gold rings rippling out of it, bold gold
 chevrons gliding towards it (`scripts/ui/home_road.gd`, `HomeRoad`). A tap or
 a key finishes the animation.
 

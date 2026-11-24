@@ -83,8 +83,28 @@ func _dot(p: Vector2, tip: bool) -> void:
 	Shapes.circle(self, p, 2.3, GOLD if tip else DOT)
 
 
-## The way to the map: on the bridge, chevrons gliding towards it. It fades as
-## the camera leaves the title.
+## How much larger than its minimum the medallion stands on the title.
+const GROW := 1.3
+
+
+## True if `point`, in canvas coordinates, falls on the medallion.
+func medallion_hit(point: Vector2) -> bool:
+	var screen_scale := maxf(0.01, get_global_transform_with_canvas().get_scale().x)
+	var local := get_global_transform_with_canvas().affine_inverse() * point
+	var radius := _button_size() * GROW * 1.1
+	return local.distance_to(medallion_position()) < maxf(radius, TitleScreen.MEDALLION_RADIUS / screen_scale)
+
+
+## The medallion's base radius: at least 30 pixels across the screen, also
+## when a portrait screen shrinks the title.
+func _button_size() -> float:
+	return maxf(38.0, 30.0 / maxf(0.01, get_global_transform_with_canvas().get_scale().x))
+
+
+## The way to the map, made to read as the thing to press (playtest feedback,
+## 24 November 2026: it looked like a loading screen): a large medallion that
+## breathes, gold rings rippling out of it like a beacon, and gold chevrons
+## gliding along the deck towards it. It fades as the camera leaves the title.
 func _draw_medallion() -> void:
 	var title: TitleScreen = map.title
 	var age := title.medallion_age()
@@ -92,16 +112,19 @@ func _draw_medallion() -> void:
 	if age <= 0.0 or leave <= 0.0:
 		return
 	var at := medallion_position()
-	# At least 30 pixels across the screen, also when a portrait screen shrinks the title.
-	var size := maxf(38.0, 30.0 / maxf(0.01, get_global_transform_with_canvas().get_scale().x))
-	var r := size * minf(1.0, age / 0.25) * (1.0 + 0.25 * sin(minf(age / 0.35, 1.0) * PI) * exp(-age * 2.0)) * leave
+	var r := _button_size() * GROW * minf(1.0, age / 0.25) \
+		* (1.0 + 0.25 * sin(minf(age / 0.35, 1.0) * PI) * exp(-age * 2.0)) * leave
+	var hot: bool = map.on_title() and not title.animating() \
+		and medallion_hit(get_global_transform_with_canvas() * get_local_mouse_position())
+	var lit := minf(1.0, age / 0.4) * leave
 	for i in 4:
 		var u := fmod(clock * 0.5 + i * 0.25, 1.0)
 		var p: Vector2 = map.home_bridge.point_at(lerpf(0.05, 0.45, u)) + Vector2(0, -34)
 		if p.x > at.x - r - 10.0:
 			continue
-		var a := sin(u * PI) * 0.8 * leave * minf(1.0, age / 0.4)
-		Shapes.polyline(self, PackedVector2Array([p + Vector2(-6, -8), p, p + Vector2(-6, 8)]), Color(GOLD, a), 3.0)
-	var hot: bool = map.on_title() and not title.animating() \
-		and get_local_mouse_position().distance_to(at) < TitleScreen.MEDALLION_RADIUS / maxf(0.01, get_global_transform_with_canvas().get_scale().x)
-	Icons.island_medallion(self, at, r, clock, hot)
+		Shapes.polyline(self, PackedVector2Array([p + Vector2(-9, -12), p, p + Vector2(-9, 12)]), Color(GOLD, sin(u * PI) * lit), 4.5)
+	var big := r * (1.0 + 0.05 * sin(clock * 3.2)) * (1.08 if hot else 1.0)
+	for j in 2:
+		var u := fmod(clock / 1.6 + j * 0.5, 1.0)
+		Shapes.ring(self, at, big * (1.0 + 0.75 * u), 5.0 * (1.0 - u) + 1.0, Color(GOLD, 0.85 * (1.0 - u) * lit))
+	Icons.island_medallion(self, at, big, clock, hot)

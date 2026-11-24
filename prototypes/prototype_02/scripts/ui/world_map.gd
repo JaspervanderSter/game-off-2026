@@ -434,7 +434,7 @@ func _tap_at(point: Vector2) -> void:
 			title.play()
 		elif title.animating():
 			title.finish()
-		elif point.distance_to(home.get_global_transform_with_canvas() * home.medallion_position()) < TitleScreen.MEDALLION_RADIUS:
+		elif home.medallion_hit(point):
 			game.show_map()
 		return
 	var nearest := -1

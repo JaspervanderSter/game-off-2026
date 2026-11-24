@@ -196,7 +196,8 @@ the clouds in about half a second on the title jingle (`ui/title`), lands with
 a jolt, then keeps moving: it floats, rocks drift under it, birds circle, smoke
 rises. Once it has landed, a rope bridge unrolls from its shore towards the
 forest and the island medallion, the only control, appears on the bridge near
-the screen's right edge, gold chevrons gliding towards it. It leads the camera
+the screen's right edge: large, breathing, gold rings rippling out of it like a
+beacon, bold gold chevrons gliding towards it. It leads the camera
 right along the bridge (2.8 s) while gold footsteps leave the cottage door,
 cross the bridge and reach the hunter. Leaving the title after launch replays the journey:
 every opponent and road hides, the hunter springs out (the full rise on a new
@@ -586,6 +587,16 @@ the engine with the game's assets, led to the title island:
   the impact. Four proposals ran in the real game, all walking the last road at
   full speed: the usual rise at once, a big jump landing with a shake, a gold
   beam from the sky, a camera punch-in. **The usual rise at once was chosen.**
+
+### 24 November 2026 — the title's way to the map
+
+- A player read the title as a loading screen: the medallion on the bridge did
+  not look like something to press. Four proposals ran in the real game, all
+  keeping the island medallion (the icon reused by every way back to the map):
+  a pulsing beacon, a gold play badge on the medallion, a hand tapping it, a
+  play pill stretching along the bridge. **The pulse was chosen:** the
+  medallion 30 % larger, breathing, two gold rings rippling out of it, bolder
+  chevrons. Its tap area grows with it.
 
 ## Playtest plan and completion criteria
 
