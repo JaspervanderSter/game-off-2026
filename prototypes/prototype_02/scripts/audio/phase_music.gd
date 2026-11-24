@@ -18,14 +18,19 @@ const DEFAULTS := {
 const INFO_KEYS := ["description"]
 
 const TRACKS := {
-	"prep": preload("res://default/music/cartoon_magic.ogg"),
+	"prep": preload("res://default/music/loadout_loop.ogg"),
 	"battle": preload("res://default/music/marching_beat.ogg"),
 }
+## Tracks whose clock keeps running while silent: each return resumes where the
+## track would be had it kept playing, so preparations hear different passages.
+const CONTINUOUS := ["prep"]
 
 var players: Dictionary = {}
 var weights: Dictionary = {}
 var current := ""
 var _settings := {}
+## Per continuous track: [playback position, Time.get_ticks_msec()] at its last stop.
+var _stopped_at := {}
 ## Optional Windows workspace; absent on Web and inactive by default.
 var replacement: Node
 
@@ -99,7 +104,17 @@ func transition_to(id: String) -> void:
 		if replacement.handles_phase(id):
 			return
 	if id != "" and not players[id].playing:
-		players[id].play()
+		players[id].play(resume_position(id))
+
+
+## Where a stopped track restarts: zero, or for a continuous track its stop
+## position plus the time it spent silent, wrapped around its length.
+func resume_position(id: String) -> float:
+	if not _stopped_at.has(id):
+		return 0.0
+	var length := maxf(players[id].stream.get_length(), 0.01)
+	var silent := (Time.get_ticks_msec() - int(_stopped_at[id][1])) / 1000.0
+	return fposmod(float(_stopped_at[id][0]) + silent, length)
 
 
 func set_frenzy_level(level: int) -> void:
@@ -123,4 +138,6 @@ func advance_fades(dt: float) -> void:
 		# Smoothstep in amplitude: quiet starts and ends with no volume jumps.
 		player.volume_linear = weight * weight * (3.0 - 2.0 * weight) * full
 		if weight == 0.0 and target == 0.0 and player.playing:
+			if id in CONTINUOUS:
+				_stopped_at[id] = [player.get_playback_position(), Time.get_ticks_msec()]
 			player.stop()

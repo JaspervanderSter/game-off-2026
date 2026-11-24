@@ -1040,6 +1040,11 @@ func _test_phase_music() -> void:
 		"stop fade has an audible intermediate level")
 	music.advance_fades(music.fade_seconds())
 	check(not prep.playing and not combat.playing and is_zero_approx(prep.volume_linear), "stop fade ends in silence")
+	check(music._stopped_at.has("prep") and not music._stopped_at.has("battle"),
+		"only preparation music keeps its clock while silent")
+	music._stopped_at.prep = [10.0, Time.get_ticks_msec() - 5000]
+	check(absf(music.resume_position("prep") - 15.0) < 0.5 and is_zero_approx(music.resume_position("battle")),
+		"preparation resumes where it would be had it kept playing; battle restarts")
 	music.free()
 
 	var game = load("res://main.tscn").instantiate()

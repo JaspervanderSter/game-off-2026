@@ -454,7 +454,8 @@ weight, and the layout rules.
 only during duels. The menu and world map have no music; preparation music starts
 when a stage is selected:
 
-- Pack choice and preparation: `cartoon_magic.ogg`.
+- Pack choice and preparation: `loadout_loop.ogg`. Its clock keeps running while
+  it is silent, so each preparation resumes at a different passage.
 - Combat: `marching_beat.ogg`.
 - Resolution fades battle music to silence so heart-loss and coin sounds remain
   clear; the next preparation fades its track in. Game over remains silent.
