@@ -176,49 +176,14 @@ static func _druid() -> void:
 
 
 static func _swamp_witch(t: float) -> void:
-	_poly([24, 110, 30, 104, 36, 110, 42, 104, 48, 110, 54, 104, 60, 110, 66, 104, 72, 110, 76, 110, 64, 64, 36, 64], Color("2e4a45"))
-	_rect(72, 80, 8, 12, Color("7cd04a"))
-	_rect(74, 76, 4, 5, Color("7a5230"))
-	_circ(76, 72, 4 + sin(t * 3.0) * 0.6, Color(0.78, 1.0, 0.54, 0.55))
-	_stroke(_q(36, 70, 43, 63, 50, 70) + _q(50, 70, 57, 77, 64, 70), Color("5fa03a"), 4)
-	_circ(65, 69, 3, Color("5fa03a"))
-	_seg(37, 50, 35, 70, Color("1f2420"), 2.5)
-	_seg(63, 50, 66, 68, Color("1f2420"), 2.5)
-	_head(51, 14, Color("c8d9a2"))
-	_eyes(51)
-	_poly([50, 52, 59, 57, 50, 58], Color("a9bf80"))
-	_poly([38, 41, 62, 41, 57, 26, 68, 13, 52, 21, 44, 28], Color("25332f"))
-	_ell(50, 41, 23, 4, Color("1f2e2a"))
-	var cap := []
-	for i in 9:
-		var a := PI + PI * i / 8.0
-		cap.append_array([63 + cos(a) * 5, 38 + sin(a) * 4])
-	_poly(cap, Color("d04030"))
-	_circ(61, 36.5, 0.9, Color.WHITE)
-	_circ(65, 36, 0.9, Color.WHITE)
+	_retained_swamp_witch_0(t)
+	_retained_swamp_witch_1(t)
+	_retained_swamp_witch_2(t)
 
 
 static func _archdruid(t: float) -> void:
-	var pulse := 1.0 + sin(t * 1.6) * 0.03
-	_circ(50, 62, 46 * pulse, Color(0.85, 1.0, 0.69, 0.18))
-	_circ(50, 62, 36 * pulse, Color(0.85, 1.0, 0.69, 0.18))
-	_robe(Color("5b4632"), 16, 30, 60)
-	_ell(37, 64, 7, 4, Color("6fa046"))
-	_ell(60, 90, 6, 3, Color("6fa046"))
-	_ell(36, 100, 5, 3, Color("6fa046"))
-	_head(50, 14, Color("e8c49a"))
-	_poly(_q(37, 54, 50, 98, 63, 54), Color("b8c9a0"))
-	_eyes(49, Color("c6ff8a"), 2.4)
-	var antler := Color("eadbb8")
-	for side in [-1, 1]:
-		_seg(50 - 8 * side, 38, 50 - 16 * side, 18, antler, 3)
-		_seg(50 - 12 * side, 28, 50 - 23 * side, 25, antler, 3)
-		_seg(50 - 14 * side, 22, 50 - 11 * side, 12, antler, 3)
-	_ell(73, 56, 6, 8, Color("8a6a4a"))
-	_circ(71, 53, 2.3, Color.WHITE)
-	_circ(75.5, 53, 2.3, Color.WHITE)
-	_circ(71, 53, 1, INK)
-	_circ(75.5, 53, 1, INK)
+	_retained_archdruid_0(t)
+	_retained_archdruid_1(t)
 
 
 # --- Town ----------------------------------------------------------------------------
@@ -265,25 +230,9 @@ static func _thief() -> void:
 
 
 static func _court_mage(t: float) -> void:
-	_robe(Color("8e1f3a"))
-	_rect(27, 104, 46, 4, GOLD)
-	_seg(48, 64, 48, 104, GOLD, 2)
-	_seg(72, 90, 84, 66, Color("2a1e14"), 2.5)
-	var flicker := 1.0 + sin(t * 9.0) * 0.12
-	_circ(85, 62, 5 * flicker, Color("ff8a3a"))
-	_circ(85, 62, 2.4, Color("ffe08a"))
-	_circ(78, 56, 2.6, Color("9fd8ff"))
-	_circ(91, 54, 2, Color("9fd8ff"))
-	_head(51)
-	_eyes(50)
-	_seg(43, 46, 48, 47.5, INK, 1.2)
-	_seg(57, 46, 52, 47.5, INK, 1.2)
-	_poly([46, 59, 54, 59, 50, 68], Color("2a1e14"))
-	_ell(50, 41, 21, 4.5, Color("5e1226"))
-	_poly([38, 41, 62, 41, 50, 8], Color("8e1f3a"))
-	_poly([38, 41, 44, 41, 50, 8], Color("741830"))
-	_poly([39.5, 35, 60.5, 35, 62, 40, 38, 40], GOLD)
-	_poly([44, 32, 47, 26, 50, 30, 53, 26, 56, 32], Color("f2c94c"))
+	_retained_court_mage_0(t)
+	_retained_court_mage_1(t)
+	_retained_court_mage_2(t)
 
 
 static func _king() -> void:
@@ -305,18 +254,10 @@ static func _king() -> void:
 # --- School --------------------------------------------------------------------------
 
 static func _apprentice(t: float) -> void:
-	_robe(Color("6d6488"), 14, 26, 62)
-	_ell(30, 92, 7, 5, Color("6d6488"))
-	_seg(72, 92, 84, 74, Color("8b5a2b"), 2.5)
-	# The wand sputters: a spark, then a puff of grey smoke.
-	var sputter := fposmod(t * 0.8, 1.0)
-	_circ(86, 71, 3, Color(1.0, 0.82, 0.3, 0.9 * (1.0 - sputter)))
-	_circ(88 + sputter * 3, 66 - sputter * 6, 2 + sputter * 2, Color(0.53, 0.53, 0.53, 0.55 * sputter))
-	_head(51)
-	_eyes(53)
-	for f in [[42, 57], [44, 59], [58, 57]]:
-		_circ(f[0], f[1], 0.9, Color("b5704a"))
-	_difficulty_hat(Difficulty.APPRENTICE, t)
+	_retained_apprentice_0(t)
+	_retained_apprentice_1(t)
+	_retained_apprentice_2(t)
+	_retained_apprentice_3(t)
 
 
 static func _caretaker() -> void:
@@ -337,19 +278,204 @@ static func _caretaker() -> void:
 
 
 static func _adept(t: float) -> void:
+	_retained_adept_0(t)
+	_retained_adept_1(t)
+	_retained_adept_2(t)
+	_retained_adept_3(t)
+
+
+static func _teacher(t: float) -> void:
+	_retained_teacher_0(t)
+	_retained_teacher_1(t)
+	_retained_teacher_2(t)
+
+
+static func _archmage(t: float) -> void:
+	_retained_archmage_0(t)
+	_retained_archmage_1(t)
+	_retained_archmage_2(t)
+	_retained_archmage_3(t)
+
+
+## Retained map portraits keep static sections in their original depth order.
+static func build_retained(parent: Node2D, id: String, clock: Callable) -> Array[Node2D]:
+	var animated: Array[Node2D] = []
+	_retained_section(parent, clock, func(_t: float): _ell(50, 112, 28, 5, Color(0, 0, 0, 0.2)))
+	match id:
+		"hunter":
+			_retained_section(parent, clock, func(_t: float): _hunter())
+		"lumberjack":
+			_retained_section(parent, clock, func(_t: float): _lumberjack())
+		"druid":
+			_retained_section(parent, clock, func(_t: float): _druid())
+		"swamp_witch":
+			_retained_section(parent, clock, _retained_swamp_witch_0)
+			animated.append(_retained_section(parent, clock, _retained_swamp_witch_1))
+			_retained_section(parent, clock, _retained_swamp_witch_2)
+		"archdruid":
+			animated.append(_retained_section(parent, clock, _retained_archdruid_0))
+			_retained_section(parent, clock, _retained_archdruid_1)
+		"merchant":
+			_retained_section(parent, clock, func(_t: float): _merchant())
+		"innkeeper":
+			_retained_section(parent, clock, func(_t: float): _innkeeper())
+		"thief":
+			_retained_section(parent, clock, func(_t: float): _thief())
+		"court_mage":
+			_retained_section(parent, clock, _retained_court_mage_0)
+			animated.append(_retained_section(parent, clock, _retained_court_mage_1))
+			_retained_section(parent, clock, _retained_court_mage_2)
+		"king":
+			_retained_section(parent, clock, func(_t: float): _king())
+		"apprentice":
+			_retained_section(parent, clock, _retained_apprentice_0)
+			animated.append(_retained_section(parent, clock, _retained_apprentice_1))
+			_retained_section(parent, clock, _retained_apprentice_2)
+			animated.append(_retained_section(parent, clock, _retained_apprentice_3))
+		"caretaker":
+			_retained_section(parent, clock, func(_t: float): _caretaker())
+		"adept":
+			_retained_section(parent, clock, _retained_adept_0)
+			animated.append(_retained_section(parent, clock, _retained_adept_1))
+			_retained_section(parent, clock, _retained_adept_2)
+			animated.append(_retained_section(parent, clock, _retained_adept_3))
+		"transmutation_teacher":
+			_retained_section(parent, clock, _retained_teacher_0)
+			animated.append(_retained_section(parent, clock, _retained_teacher_1))
+			_retained_section(parent, clock, _retained_teacher_2)
+		"archmage":
+			_retained_section(parent, clock, _retained_archmage_0)
+			animated.append(_retained_section(parent, clock, _retained_archmage_1))
+			_retained_section(parent, clock, _retained_archmage_2)
+			animated.append(_retained_section(parent, clock, _retained_archmage_3))
+	return animated
+
+
+static func _retained_section(parent: Node2D, clock: Callable, painter: Callable) -> Node2D:
+	return preload("res://scripts/ui/retained_drawing.gd").make(parent, func(canvas: Node2D):
+		_ci = canvas
+		_p = Vector2.ZERO
+		_s = 27.0
+		painter.call(clock.call())
+		_ci = null
+	)
+
+static func _retained_swamp_witch_0(_t: float) -> void:
+	_poly([24, 110, 30, 104, 36, 110, 42, 104, 48, 110, 54, 104, 60, 110, 66, 104, 72, 110, 76, 110, 64, 64, 36, 64], Color("2e4a45"))
+	_rect(72, 80, 8, 12, Color("7cd04a"))
+	_rect(74, 76, 4, 5, Color("7a5230"))
+
+static func _retained_swamp_witch_1(t: float) -> void:
+	_circ(76, 72, 4 + sin(t * 3.0) * 0.6, Color(0.78, 1.0, 0.54, 0.55))
+
+static func _retained_swamp_witch_2(_t: float) -> void:
+	_stroke(_q(36, 70, 43, 63, 50, 70) + _q(50, 70, 57, 77, 64, 70), Color("5fa03a"), 4)
+	_circ(65, 69, 3, Color("5fa03a"))
+	_seg(37, 50, 35, 70, Color("1f2420"), 2.5)
+	_seg(63, 50, 66, 68, Color("1f2420"), 2.5)
+	_head(51, 14, Color("c8d9a2"))
+	_eyes(51)
+	_poly([50, 52, 59, 57, 50, 58], Color("a9bf80"))
+	_poly([38, 41, 62, 41, 57, 26, 68, 13, 52, 21, 44, 28], Color("25332f"))
+	_ell(50, 41, 23, 4, Color("1f2e2a"))
+	var cap := []
+	for i in 9:
+		var a := PI + PI * i / 8.0
+		cap.append_array([63 + cos(a) * 5, 38 + sin(a) * 4])
+	_poly(cap, Color("d04030"))
+	_circ(61, 36.5, 0.9, Color.WHITE)
+	_circ(65, 36, 0.9, Color.WHITE)
+
+static func _retained_archdruid_0(t: float) -> void:
+	var pulse := 1.0 + sin(t * 1.6) * 0.03
+	_circ(50, 62, 46 * pulse, Color(0.85, 1.0, 0.69, 0.18))
+	_circ(50, 62, 36 * pulse, Color(0.85, 1.0, 0.69, 0.18))
+
+static func _retained_archdruid_1(_t: float) -> void:
+	_robe(Color("5b4632"), 16, 30, 60)
+	_ell(37, 64, 7, 4, Color("6fa046"))
+	_ell(60, 90, 6, 3, Color("6fa046"))
+	_ell(36, 100, 5, 3, Color("6fa046"))
+	_head(50, 14, Color("e8c49a"))
+	_poly(_q(37, 54, 50, 98, 63, 54), Color("b8c9a0"))
+	_eyes(49, Color("c6ff8a"), 2.4)
+	var antler := Color("eadbb8")
+	for side in [-1, 1]:
+		_seg(50 - 8 * side, 38, 50 - 16 * side, 18, antler, 3)
+		_seg(50 - 12 * side, 28, 50 - 23 * side, 25, antler, 3)
+		_seg(50 - 14 * side, 22, 50 - 11 * side, 12, antler, 3)
+	_ell(73, 56, 6, 8, Color("8a6a4a"))
+	_circ(71, 53, 2.3, Color.WHITE)
+	_circ(75.5, 53, 2.3, Color.WHITE)
+	_circ(71, 53, 1, INK)
+	_circ(75.5, 53, 1, INK)
+
+static func _retained_court_mage_0(_t: float) -> void:
+	_robe(Color("8e1f3a"))
+	_rect(27, 104, 46, 4, GOLD)
+	_seg(48, 64, 48, 104, GOLD, 2)
+	_seg(72, 90, 84, 66, Color("2a1e14"), 2.5)
+
+static func _retained_court_mage_1(t: float) -> void:
+	var flicker := 1.0 + sin(t * 9.0) * 0.12
+	_circ(85, 62, 5 * flicker, Color("ff8a3a"))
+
+static func _retained_court_mage_2(_t: float) -> void:
+	_circ(85, 62, 2.4, Color("ffe08a"))
+	_circ(78, 56, 2.6, Color("9fd8ff"))
+	_circ(91, 54, 2, Color("9fd8ff"))
+	_head(51)
+	_eyes(50)
+	_seg(43, 46, 48, 47.5, INK, 1.2)
+	_seg(57, 46, 52, 47.5, INK, 1.2)
+	_poly([46, 59, 54, 59, 50, 68], Color("2a1e14"))
+	_ell(50, 41, 21, 4.5, Color("5e1226"))
+	_poly([38, 41, 62, 41, 50, 8], Color("8e1f3a"))
+	_poly([38, 41, 44, 41, 50, 8], Color("741830"))
+	_poly([39.5, 35, 60.5, 35, 62, 40, 38, 40], GOLD)
+	_poly([44, 32, 47, 26, 50, 30, 53, 26, 56, 32], Color("f2c94c"))
+
+static func _retained_apprentice_0(_t: float) -> void:
+	_robe(Color("6d6488"), 14, 26, 62)
+	_ell(30, 92, 7, 5, Color("6d6488"))
+	_seg(72, 92, 84, 74, Color("8b5a2b"), 2.5)
+
+static func _retained_apprentice_1(t: float) -> void:
+	# The wand sputters: a spark, then a puff of grey smoke.
+	var sputter := fposmod(t * 0.8, 1.0)
+	_circ(86, 71, 3, Color(1.0, 0.82, 0.3, 0.9 * (1.0 - sputter)))
+	_circ(88 + sputter * 3, 66 - sputter * 6, 2 + sputter * 2, Color(0.53, 0.53, 0.53, 0.55 * sputter))
+
+static func _retained_apprentice_2(_t: float) -> void:
+	_head(51)
+	_eyes(53)
+	for f in [[42, 57], [44, 59], [58, 57]]:
+		_circ(f[0], f[1], 0.9, Color("b5704a"))
+
+static func _retained_apprentice_3(t: float) -> void:
+	_difficulty_hat(Difficulty.APPRENTICE, t)
+
+static func _retained_adept_0(_t: float) -> void:
 	_robe(Color("2f5bc7"))
 	_rect(27, 104, 46, 4, GOLD)
+
+static func _retained_adept_1(t: float) -> void:
 	_circ(28, 74, 5 + sin(t * 2.0) * 0.8, Color(0.62, 0.78, 1.0, 0.5))
+
+static func _retained_adept_2(_t: float) -> void:
 	_rect(20, 80, 16, 12, Color("7a4a2a"))
 	_rect(22, 81, 12, 10, Color("f3eedc"))
 	_head(51)
 	_eyes(53)
+
+static func _retained_adept_3(t: float) -> void:
 	_difficulty_hat(Difficulty.ADEPT, t)
 
-
-static func _teacher(t: float) -> void:
+static func _retained_teacher_0(_t: float) -> void:
 	_robe(Color("1f7a74"))
 	_seg(70, 88, 82, 66, Color("2a1e14"), 2.5)
+
+static func _retained_teacher_1(t: float) -> void:
 	# A turning spiral at the wand's tip: the transformation she teaches.
 	var spiral := []
 	for i in 19:
@@ -357,6 +483,8 @@ static func _teacher(t: float) -> void:
 		var a := t * 2.5 + k * TAU * 1.6
 		spiral.append_array([84 + cos(a) * (1.0 + 5.0 * k), 61 + sin(a) * (1.0 + 5.0 * k)])
 	_stroke(spiral, Color("c89bff"), 1.8)
+
+static func _retained_teacher_2(_t: float) -> void:
 	_circ(90, 52, 1.6, Color("f2c94c"))
 	_circ(77, 55, 1.2, Color("f2c94c"))
 	_circ(62, 58, 6, Color("a7a7a7"))
@@ -372,10 +500,13 @@ static func _teacher(t: float) -> void:
 	_rect(40, 34, 20, 5, Color("123f3b"))
 	_stroke([47, 33.5, 53, 33.5, 53, 39.5, 47, 39.5, 47, 33.5], Color("c9ced6"), 1.4)
 
-
-static func _archmage(t: float) -> void:
+static func _retained_archmage_0(_t: float) -> void:
 	_seg(20, 110, 22, 44, Color("5a3a20"), 3.5)
+
+static func _retained_archmage_1(t: float) -> void:
 	_circ(22, 40, 6 + sin(t * 2.2) * 0.8, Color("c89bff"))
+
+static func _retained_archmage_2(_t: float) -> void:
 	_circ(20, 38, 2, Color("f3e8ff"))
 	_robe(Color("4a1e73"), 16, 28, 62)
 	_circ(60, 88, 1.6, Color("f2c94c"))
@@ -384,4 +515,6 @@ static func _archmage(t: float) -> void:
 	_head(51)
 	_poly(_q(37, 55, 50, 100, 63, 55), Color("f2f2ea"))
 	_eyes(51)
+
+static func _retained_archmage_3(t: float) -> void:
 	_difficulty_hat(Difficulty.ARCHMAGE, t)

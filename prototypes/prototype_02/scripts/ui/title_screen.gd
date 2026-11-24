@@ -46,6 +46,16 @@ const ISLAND_PROFILE := [Vector2(1.0, 0.0), Vector2(0.95, 0.32), Vector2(0.8, 0.
 const DUEL_UNIT := 26.0
 const LINE1_UNIT := 8.5
 
+const Retained := preload("res://scripts/ui/retained_drawing.gd")
+var _canvas: Node2D
+var _birds: Node2D
+var _body: Node2D
+var _letters: Array[Node2D] = []
+var _rocks: Array[Node2D] = []
+var _clouds: Array[Node2D] = []
+var _creature_layer: Node2D
+var _creature_id := ""
+
 var t := 0.0
 ## Waiting for the first input before playing (Web launch).
 var waiting := false
@@ -58,6 +68,8 @@ var _glyphs := {}
 
 func _ready() -> void:
 	_glyphs = glyph_pieces()
+	_build_retained()
+	_update_retained()
 
 
 ## Holds the title in the clouds, at its start, until play() is called.
@@ -67,7 +79,7 @@ func wait_for_start() -> void:
 	_fired.clear()
 	_parts.clear()
 	waiting = true
-	queue_redraw()
+	_update_retained()
 
 
 ## Plays the title from its start, with its jingle.
@@ -90,7 +102,7 @@ func finish() -> void:
 	_events()
 	_parts.clear()
 	_silent = false
-	queue_redraw()
+	_update_retained()
 
 
 func animating() -> bool:
@@ -123,7 +135,7 @@ func lift() -> float:
 func advance(dt: float) -> void:
 	if waiting:
 		_idle += dt
-		queue_redraw()
+		_update_retained()
 		return
 	t += dt
 	_events()
@@ -133,7 +145,7 @@ func advance(dt: float) -> void:
 		p.vel *= 1.0 - minf(1.0, p.get("drag", 0.0) * dt)
 		p.pos += p.vel * dt
 	_parts = _parts.filter(func(p): return p.age < p.life)
-	queue_redraw()
+	_update_retained()
 
 
 func _once(key: Variant, at: float) -> bool:
@@ -174,18 +186,62 @@ func _shake() -> Vector2:
 	return Vector2(sin(a * 90.0), cos(a * 70.0)) * 7.0 * (1.0 - a / 0.35)
 
 
-func _draw() -> void:
+func _build_retained() -> void:
+	_birds = Retained.make(self, _paint_birds)
+	for r in [7.0, 9.0, 5.0]:
+		_rocks.append(Retained.make(self, func(canvas: Node2D):
+			_canvas = canvas
+			_floating_rock(Vector2.ZERO, r)
+		))
+	_body = Retained.make(self, _paint_body)
+	for letter in LINE2:
+		_letters.append(Retained.make(self, func(canvas: Node2D): _paint_letter(canvas, letter)))
+	_creature_layer = Retained.make(self, func(canvas: Node2D): Icons.creature(canvas, _creature_id, Vector2.ZERO, 20.0))
+	for factor in [0.9, 1.1]:
+		_clouds.append(Retained.make(self, func(canvas: Node2D):
+			preload("res://scripts/ui/day_night_sky.gd").cloud(canvas, Vector2.ZERO, factor, CLOUD)
+		))
+	# The changing overlay must stay between the letters and foreground clouds.
+	var effects := Retained.make(self, _paint_effects)
+	move_child(effects, _creature_layer.get_index() + 1)
+	_effects = effects
+
+var _effects: Node2D
+
+func _update_retained() -> void:
+	if not is_instance_valid(_body):
+		return
 	var base := _shake()
-	var top := FRAME_ANCHOR.y + lift()
-	var clock := t + _idle # keeps the sky moving while the title waits
-	draw_set_transform(base)
-	# Birds circle far behind.
-	for i in 2:
-		var a := clock * 0.45 + i * 2.6
-		_bird(Vector2(640 + cos(a) * 470.0, 170 + sin(a) * 40.0 + i * 30.0), 1.0 - i * 0.25)
-	# Rocks drift under the island.
-	for r in [[Vector2(470, 585), 7.0, 0.0], [Vector2(812, 572), 9.0, 1.7], [Vector2(560, 640), 5.0, 3.1]]:
-		_floating_rock(r[0] + Vector2(0, lift() + sin(t * 1.1 + r[2]) * 6.0), r[1])
+	_body.position = base + Vector2(0, lift())
+	var xs := letter_centers(LINE2, 640, DUEL_UNIT, 0.9)
+	for i in _letters.size():
+		_letters[i].position = base + Vector2(xs[i], FRAME_ANCHOR.y + lift())
+		_letters[i].scale = _squash(t - LAND_AT, 0.18)
+	var positions := [Vector2(470, 585), Vector2(812, 572), Vector2(560, 640)]
+	var phases := [0.0, 1.7, 3.1]
+	for i in _rocks.size():
+		_rocks[i].position = base + positions[i] + Vector2(0, lift() + sin(t * 1.1 + phases[i]) * 6.0)
+	var clock := t + _idle
+	_clouds[0].position = Vector2(400 + sin(clock * 0.3) * 30.0, 640)
+	_clouds[1].position = Vector2(920 + sin(clock * 0.25 + 2.0) * 34.0, 690)
+	_creature_layer.visible = t > 0.9
+	var id := "rabbit"
+	var steps := _shift_steps()
+	for i in steps:
+		id = CreatureDB.outcomes(id)[0].id
+	if id != _creature_id:
+		_creature_id = id
+		_creature_layer.queue_redraw()
+	var age := t - 0.9 - steps * IDLE_SHIFT
+	var hop := sin(minf(age / 0.3, 1.0) * PI) * 10.0 if age < 0.4 else 0.0
+	_creature_layer.position = base + _perch() + Vector2(0, -19.0 - hop)
+	_creature_layer.scale = _squash(age, 0.35) if age < 0.4 else Vector2.ONE
+	_effects.queue_redraw()
+	_birds.queue_redraw()
+
+func _paint_body(canvas: Node2D) -> void:
+	_canvas = canvas
+	var top := FRAME_ANCHOR.y
 	# The rock, its dark right facet, its grass top.
 	var body := PackedVector2Array()
 	var facet := PackedVector2Array([Vector2(640 + ISLAND_HALF * 0.35, top)])
@@ -194,13 +250,13 @@ func _draw() -> void:
 		body.append(p)
 		if q.x >= 0.2:
 			facet.append(p)
-	draw_colored_polygon(body, EARTH)
-	draw_colored_polygon(facet, EARTH_DARK)
+	_canvas.draw_colored_polygon(body, EARTH)
+	_canvas.draw_colored_polygon(facet, EARTH_DARK)
 	var l := 640 - ISLAND_HALF
 	var r := 640 + ISLAND_HALF
-	draw_colored_polygon(PackedVector2Array([Vector2(l - 6, top + 2), Vector2(l + 6, top - 8), Vector2(r - 6, top - 8),
+	_canvas.draw_colored_polygon(PackedVector2Array([Vector2(l - 6, top + 2), Vector2(l + 6, top - 8), Vector2(r - 6, top - 8),
 		Vector2(r + 6, top + 2), Vector2(r - 4, top + 9), Vector2(l + 4, top + 9)]), GRASS.darkened(0.14))
-	draw_colored_polygon(PackedVector2Array([Vector2(l + 4, top - 3), Vector2(l + 10, top - 8), Vector2(r - 10, top - 8),
+	_canvas.draw_colored_polygon(PackedVector2Array([Vector2(l + 4, top - 3), Vector2(l + 10, top - 8), Vector2(r - 10, top - 8),
 		Vector2(r - 4, top - 3)]), GRASS)
 	# SHAPESHIFTERS carved in gold in the cliff.
 	var xs1 := letter_centers(LINE1, 640, LINE1_UNIT, 1.0)
@@ -212,31 +268,35 @@ func _draw() -> void:
 	_fir(Vector2(l + 26, top), 0.8)
 	_fir(Vector2(l + 54, top), 1.15)
 	_cottage(Vector2(r - 40, top))
-	var xs2 := letter_centers(LINE2, 640, DUEL_UNIT, 0.9)
-	var land := _squash(t - LAND_AT, 0.18)
+
+func _paint_letter(canvas: Node2D, letter: String) -> void:
+	_canvas = canvas
 	var d := DUEL_UNIT * 0.3
-	for k in LINE2.length():
-		draw_set_transform(base + Vector2(xs2[k], top), 0.0, land)
-		_glyph(LINE2[k], Vector2(d * 0.8, d * 0.45), DUEL_UNIT, EARTH_DARK)
-		_glyph(LINE2[k], Vector2(0, -d * 0.6), DUEL_UNIT, GRASS)
-		_glyph(LINE2[k], Vector2.ZERO, DUEL_UNIT, EARTH)
-	draw_set_transform(base)
-	if t > 0.9:
-		_creature()
+	_glyph(letter, Vector2(d * 0.8, d * 0.45), DUEL_UNIT, EARTH_DARK)
+	_glyph(letter, Vector2(0, -d * 0.6), DUEL_UNIT, GRASS)
+	_glyph(letter, Vector2.ZERO, DUEL_UNIT, EARTH)
+func _paint_birds(canvas: Node2D) -> void:
+	_canvas = canvas
+	_canvas.draw_set_transform(_shake())
+	var clock := t + _idle
+	for i in 2:
+		var a := clock * 0.45 + i * 2.6
+		_bird(Vector2(640 + cos(a) * 470.0, 170 + sin(a) * 40.0 + i * 30.0), 1.0 - i * 0.25)
+
+func _paint_effects(canvas: Node2D) -> void:
+	_canvas = canvas
+	var base := _shake()
+	_canvas.draw_set_transform(base)
+	_cottage_smoke(Vector2(926, FRAME_ANCHOR.y + lift()))
 	# Particles, then clouds drifting in front of the island's foot.
 	for p in _parts:
 		var k: float = 1.0 - p.age / p.life
 		if p.get("rock", false):
 			_floating_rock(p.pos, p.size)
 		elif p.get("star", false):
-			Icons.star(self, p.pos, p.size * k, Color(p.col, k))
+			Icons.star(_canvas, p.pos, p.size * k, Color(p.col, k))
 		else:
-			Shapes.circle(self, p.pos, p.size * (0.4 + 0.6 * k), Color(p.col, p.col.a * k))
-	draw_set_transform(Vector2.ZERO)
-	var sky := preload("res://scripts/ui/day_night_sky.gd")
-	sky.cloud(self, Vector2(400 + sin(clock * 0.3) * 30.0, 640), 0.9, CLOUD)
-	sky.cloud(self, Vector2(920 + sin(clock * 0.25 + 2.0) * 34.0, 690), 1.1, CLOUD)
-
+			Shapes.circle(_canvas, p.pos, p.size * (0.4 + 0.6 * k), Color(p.col, p.col.a * k))
 
 # --- The perched creature -----------------------------------------------------------
 
@@ -250,55 +310,40 @@ func _perch() -> Vector2:
 	return Vector2(xs[0] - 10.0, FRAME_ANCHOR.y + lift() - DUEL_UNIT * 5.0 - 8.0)
 
 
-## A rabbit, then its chain of most likely outcomes, hopping as it changes.
-func _creature() -> void:
-	var steps := _shift_steps()
-	var id := "rabbit"
-	for i in steps:
-		id = CreatureDB.outcomes(id)[0].id
-	var age := t - 0.9 - steps * IDLE_SHIFT
-	var scale := Vector2.ONE
-	var hop := 0.0
-	if age < 0.4:
-		scale = _squash(age, 0.35)
-		hop = sin(minf(age / 0.3, 1.0) * PI) * 10.0
-	Shapes.set_transform(self, _shake() + _perch() + Vector2(0, -19.0 - hop), 0.0, scale)
-	Icons.creature(self, id, Vector2.ZERO, 20.0)
-	Shapes.set_transform(self, _shake())
-
-
 # --- Props --------------------------------------------------------------------------
 
 func _floating_rock(p: Vector2, r: float) -> void:
-	draw_colored_polygon(PackedVector2Array([p + Vector2(-r, -r * 0.3), p + Vector2(r, -r * 0.3), p + Vector2(r * 0.3, r * 1.2)]), EARTH)
-	draw_colored_polygon(PackedVector2Array([p + Vector2(r * 0.2, -r * 0.3), p + Vector2(r, -r * 0.3), p + Vector2(r * 0.3, r * 1.2)]), EARTH_DARK)
-	draw_rect(Rect2(p + Vector2(-r, -r * 0.3 - 3), Vector2(r * 2.0, 3)), GRASS)
+	_canvas.draw_colored_polygon(PackedVector2Array([p + Vector2(-r, -r * 0.3), p + Vector2(r, -r * 0.3), p + Vector2(r * 0.3, r * 1.2)]), EARTH)
+	_canvas.draw_colored_polygon(PackedVector2Array([p + Vector2(r * 0.2, -r * 0.3), p + Vector2(r, -r * 0.3), p + Vector2(r * 0.3, r * 1.2)]), EARTH_DARK)
+	_canvas.draw_rect(Rect2(p + Vector2(-r, -r * 0.3 - 3), Vector2(r * 2.0, 3)), GRASS)
 
 
 func _bird(p: Vector2, s: float) -> void:
 	var flap := sin(t * 9.0 + p.x * 0.01) * 5.0 * s
-	draw_polyline(PackedVector2Array([p + Vector2(-9, -flap) * s, p + Vector2(0, 2) * s, p + Vector2(9, -flap) * s]), Color("3c3046"), 2.5 * s, true)
+	_canvas.draw_polyline(PackedVector2Array([p + Vector2(-9, -flap) * s, p + Vector2(0, 2) * s, p + Vector2(9, -flap) * s]), Color("3c3046"), 2.5 * s, true)
 
 
 func _fir(base: Vector2, s: float) -> void:
-	draw_rect(Rect2(base + Vector2(-3, -12) * s, Vector2(6, 12) * s), EARTH_DARK)
+	_canvas.draw_rect(Rect2(base + Vector2(-3, -12) * s, Vector2(6, 12) * s), EARTH_DARK)
 	for i in 3:
 		var y := -10.0 - i * 16.0
 		var w := 22.0 - i * 5.0
-		draw_colored_polygon(PackedVector2Array([base + Vector2(-w, y) * s, base + Vector2(w, y) * s, base + Vector2(0, y - 26) * s]),
+		_canvas.draw_colored_polygon(PackedVector2Array([base + Vector2(-w, y) * s, base + Vector2(w, y) * s, base + Vector2(0, y - 26) * s]),
 			Color("3f6b3a") if i % 2 == 0 else Color("4c7a43"))
 
 
 func _cottage(base: Vector2) -> void:
-	draw_rect(Rect2(base + Vector2(-20, -30), Vector2(40, 30)), Color("c9b58b"))
-	draw_rect(Rect2(base + Vector2(6, -30), Vector2(14, 30)), Color("b09a70"))
-	draw_colored_polygon(PackedVector2Array([base + Vector2(-26, -28), base + Vector2(0, -52), base + Vector2(26, -28)]), Color("805544"))
-	draw_rect(Rect2(base + Vector2(-6, -16), Vector2(10, 16)), EARTH_DARK)
-	draw_rect(Rect2(base + Vector2(10, -50), Vector2(6, 12)), Color("805544").darkened(0.2))
+	_canvas.draw_rect(Rect2(base + Vector2(-20, -30), Vector2(40, 30)), Color("c9b58b"))
+	_canvas.draw_rect(Rect2(base + Vector2(6, -30), Vector2(14, 30)), Color("b09a70"))
+	_canvas.draw_colored_polygon(PackedVector2Array([base + Vector2(-26, -28), base + Vector2(0, -52), base + Vector2(26, -28)]), Color("805544"))
+	_canvas.draw_rect(Rect2(base + Vector2(-6, -16), Vector2(10, 16)), EARTH_DARK)
+	_canvas.draw_rect(Rect2(base + Vector2(10, -50), Vector2(6, 12)), Color("805544").darkened(0.2))
+
+func _cottage_smoke(base: Vector2) -> void:
 	# A thread of smoke from the chimney.
 	for i in 3:
 		var k := fmod(t * 0.5 + i / 3.0, 1.0)
-		Shapes.circle(self, base + Vector2(13 + sin(k * 6.0 + i) * 6.0 + k * 14.0, -56 - k * 50.0), 4.0 + k * 6.0, Color(1, 1, 1, 0.55 * (1.0 - k)))
+		Shapes.circle(_canvas, base + Vector2(13 + sin(k * 6.0 + i) * 6.0 + k * 14.0, -56 - k * 50.0), 4.0 + k * 6.0, Color(1, 1, 1, 0.55 * (1.0 - k)))
 
 
 ## Squash and stretch `age` seconds after a landing, as an (x, y) scale.
@@ -369,4 +414,4 @@ func _glyph(c: String, at: Vector2, unit: float, col: Color) -> void:
 		var pts := PackedVector2Array()
 		for p in piece:
 			pts.append(origin + p * unit)
-		draw_colored_polygon(pts, col)
+		_canvas.draw_colored_polygon(pts, col)

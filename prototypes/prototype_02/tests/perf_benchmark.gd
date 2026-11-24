@@ -15,6 +15,8 @@ extends Node
 ##                      redraw and check the screen did not change (a cached
 ##                      layer that missed a change shows up as a difference)
 ##   --no-sound         no sound (the game's own option)
+##   --map-pan          title-to-map pans, removing components one at a time
+##   --map-pan-cache-only  pans with island draw commands retained instead of rebuilt
 
 const SPIKE_MS := 1000.0 / 60.0 # a frame missing the 60 Hz deadline
 const BIG_SPIKE_MS := 1000.0 / 30.0
@@ -163,6 +165,9 @@ func _drive_hover() -> void:
 # --- Scenarios ------------------------------------------------------------------
 
 func _run() -> void:
+	if "--map-pan" in OS.get_cmdline_user_args():
+		await _run_map_pan()
+		return
 	await _seconds(1.0)
 	scenario = "difficulty_menu"
 	await _seconds(3.0)
@@ -180,6 +185,44 @@ func _run() -> void:
 	scenario = "stress_6v6"
 	await _stress_fight()
 	scenario = "end"
+
+
+## Same title-to-map move with one component removed at a time. These are
+## rendering measurements, not balance simulations; no duels are played.
+func _run_map_pan() -> void:
+	var map: Node2D = game.map_screen
+	map.set_process_input(false)
+	game.web_title_pending = false
+	map.title.finish()
+	await _seconds(2.0)
+	var variants := ["baseline", "no_audio", "no_bridges", "no_islands", "no_sky", "baseline_repeat"]
+	if "--map-pan-cache-only" in OS.get_cmdline_user_args():
+		variants = ["baseline", "cached_islands", "baseline_repeat"]
+	for variant in variants:
+		Sfx.enabled = variant != "no_audio"
+		map.ambience.set_process(variant != "no_audio")
+		map.ambience.replaced = variant == "no_audio"
+		if variant == "no_audio":
+			map.ambience.cycle.stop()
+		for bridge in map.bridges:
+			bridge.visible = variant != "no_bridges"
+		map.home_bridge.visible = variant != "no_bridges"
+		for island in map.islands:
+			island.visible = variant != "no_islands"
+			island.set_process(variant != "cached_islands")
+		map.sky.visible = variant != "no_sky"
+		for attempt in 2:
+			scenario = "settle"
+			map.show_title(true, true)
+			map.title.finish()
+			await _seconds(0.6)
+			scenario = variant + "_title"
+			await _seconds(0.6)
+			scenario = variant + "_pan"
+			game.show_map()
+			await _seconds(map.PAN_TIME + 0.05)
+			scenario = variant + "_map"
+			await _seconds(0.6)
 
 
 func _play_duel() -> void:
@@ -314,6 +357,8 @@ func _report() -> void:
 		var s := _stats(list)
 		summary[name] = s
 		lines.append("%-16s %6d %7.2f %7.2f %7.2f %7.2f %7.2f %5d %5d %6.0f %6.0f %6d" % [name, s.frames, s.avg_ms, s.p50_ms, s.p95_ms, s.p99_ms, s.max_ms, s.over_16, s.over_33, s.avg_fps, s.max_draw_calls, s.audio_gaps])
+		if "--map-pan" in OS.get_cmdline_user_args() and name.ends_with("_pan"):
+			lines.append("  CPU process %.2f ms; render %.2f ms" % [s.avg_process_ms, s.avg_render_cpu_ms])
 	var all := _stats(frames)
 	summary["all"] = all
 	lines.append("%-16s %6d %7.2f %7.2f %7.2f %7.2f %7.2f %5d %5d %6.0f %6.0f %6d" % ["ALL", all.frames, all.avg_ms, all.p50_ms, all.p95_ms, all.p99_ms, all.max_ms, all.over_16, all.over_33, all.avg_fps, all.max_draw_calls, all.audio_gaps])

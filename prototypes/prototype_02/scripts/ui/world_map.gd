@@ -111,6 +111,9 @@ var _world_origin := Vector2.ZERO
 var islands: Array[Node2D] = []
 var bridges: Array[Node2D] = []
 var buttons: Array[Button] = [] # one icon-only opponent per stage
+var _figure_roots: Array[Node2D] = []
+var _figure_effects: Array[Node2D] = []
+var _road_key: Array = []
 var figures: Array[Control] = [] # each opponent's drawing, clipped at the ground while it rises
 var map_scale := 1.0
 var focus_stage := 0
@@ -169,9 +172,12 @@ func _ready() -> void:
 		buttons.append(button)
 		var figure := Control.new()
 		figure.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		figure.draw.connect(_draw_figure.bind(index, figure))
 		button.add_child(figure)
 		figures.append(figure)
+		var portrait := Node2D.new()
+		figure.add_child(portrait)
+		_figure_roots.append(portrait)
+		_figure_effects.append_array(OpponentArt.build_retained(portrait, OpponentDB.get_opponent(index).id, func(): return age))
 	home = HomeRoad.new()
 	home.map = self
 	home.z_index = 3
@@ -476,8 +482,15 @@ func _process(dt: float) -> void:
 		island.cloud_color = state.cloud
 	for index in buttons.size():
 		buttons[index].queue_redraw()
-		figures[index].queue_redraw()
-	roads.queue_redraw()
+		_update_figure(index)
+	for layer in _figure_effects:
+		layer.queue_redraw()
+	var road_key: Array = [revealing, reveal_elapsed < TRACE_DURATION]
+	for stage in range(1, buttons.size()):
+		road_key.append(visible_path_points(stage))
+	if _road_key != road_key:
+		_road_key = road_key
+		roads.queue_redraw()
 
 ## True while the camera looks, or is going, at the title island.
 func on_title() -> bool:
@@ -747,9 +760,11 @@ func _draw_stage(index: int, button: Button) -> void:
 ## Full-length opponents stand on the path spot; creatures remain on the board.
 ## A rising opponent starts below the ground line (its box ends there),
 ## stretches as it shoots up, hops slightly and lands with a short squash.
-func _draw_figure(index: int, figure: Control) -> void:
+func _update_figure(index: int) -> void:
 	var u := _appear_age(index)
 	var rise := _rise(u)
+	var portrait := _figure_roots[index]
+	portrait.visible = rise > 0.0
 	if rise <= 0.0:
 		return
 	var k := depth_scale(index)
@@ -763,10 +778,9 @@ func _draw_figure(index: int, figure: Control) -> void:
 		var w := u - RISE_START - RISE_TIME
 		stretch = -0.14 * exp(-6.0 * w) * sin(w * 18.0)
 	var squash := Vector2(1.0 / sqrt(1.0 + stretch), 1.0 + stretch)
-	Shapes.set_transform(figure, feet + Vector2(0, (1.0 - rise) * size * 2.4), 0.0, squash)
-	Icons.opponent(figure, OpponentDB.get_opponent(index).id,
-		Vector2(0, -size * 0.94 + sin(age * 1.8 + index) * 1.2), size, age)
-	Shapes.set_transform(figure, Vector2.ZERO)
+	portrait.scale = squash * k
+	portrait.position = feet + Vector2(0, (1.0 - rise) * size * 2.4) \
+		+ Vector2(0, (-size * 0.94 + sin(age * 1.8 + index) * 1.2) * squash.y)
 
 ## The ground opens under a rising opponent: a dark hole inside a widening gold
 ## ring; the hole closes once the opponent stands and the ring fades.

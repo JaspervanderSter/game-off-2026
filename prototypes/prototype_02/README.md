@@ -1105,9 +1105,64 @@ goes to the system temporary folder.
 node prototypes/prototype_02/tools/web_benchmark.mjs --rounds=3
 ```
 
+The focused map modes play no duels. `--map-pan` compares the same 2.8-second
+title-to-map move twice with all components, then without ambience/calls, bridges,
+islands, or sky, and finally with everything restored. `--map-pan-cache-only`
+compares the same visible scene while retaining the islands' existing draw
+commands instead of rebuilding them every frame. This diagnostic freezes their
+small animations too; it is not a production optimization. `--headless` runs the
+browser without a visible window. Store output outside `export/`, for example:
+
+```bash
+node prototypes/prototype_02/tools/web_benchmark.mjs --map-pan --headless --label=map-pan --out=work/map-pan
+node prototypes/prototype_02/tools/web_benchmark.mjs --map-pan-cache-only --headless --label=map-cache --out=work/map-cache
+```
+
+Map diagnosis (24 November 2026, local Edge/WebGL, RTX 4080 SUPER): the stuttering
+run averaged 24.88 ms (40 FPS) during the pan, 24.64 ms with map audio disabled,
+23.29 ms without bridges, and 17.27 ms with islands hidden. Restoring everything
+gave 24.93 ms, supporting the within-run comparison. The complete test averaged
+686 GPU buffer creations and deletions and 346 vertex-array creations and
+deletions per frame. These are per-frame geometry rebuilds, not growing node
+counts. The pan reached 555 draw calls while title and map were on screen together.
+
+A separate, lighter-load run hit the browser's 60 Hz frame ceiling throughout;
+its useful comparison is CPU process time, not FPS: 13.46 ms normally, 10.16 ms
+with the visible islands' draw commands retained, and 12.87 ms after restoring
+normal redraws. Do not compare absolute timings between runs or interpret these
+figures as measurements of a phone. This diagnosis motivated retained map layers.
+
+The production optimization retains the title's cliff, lettering and props,
+all island terrain/buildings, static portrait sections, sky shapes, bridge
+structure and path dots. Rigid motion uses node transforms; each DUEL letter
+has its own landing pivot. Smoke, water details, roots, particles and portrait
+effects remain separate, in their original drawing order. Island props rebuild
+only when their biome or spot layout changes; paths rebuild on layout/progress
+changes. The title bridge's rope still redraws when its attached endpoint moves,
+without recreating its nodes. Fixed bridges retain their drawing commands;
+crystal steps float using transforms. The sky gradient uses colour uniforms.
+
+A subsequent run of the same focused Edge/WebGL benchmark reached the 60 Hz
+ceiling: 16.68 ms average / 17.80 ms p95 during the complete pan, with zero audio
+underrun blocks throughout the run. GPU buffer creations/deletions fell from
+686.2 to 12.9 per frame (98% reduction), vertex-array creations/deletions from
+345.6 to 9.0; peak pan draw calls fell from 555 to 474. Absolute timings across
+runs depend on machine load; these results are not mobile measurements.
+
+To verify retained geometry and invalidation with real rendered frames:
+
+```bash
+godot --path prototypes/prototype_02 res://tests/capture.tscn -- --retained-map-only --check-redraw --no-sound --capture-dir=<temporary-folder>
+```
+
+This checks that 70 fixed layers keep their drawing commands while the title
+floats, verifies prop-layout invalidation, and captures the title, pan, full map,
+portrait map and portrait title. Forced redraw comparisons found no stale layers
+in any of the five views.
+
 How the game keeps frames cheap:
 
-- **No polygons rebuilt every frame.** Godot builds a GPU vertex buffer and vertex
+- **Combat primitives use a shared atlas.** Godot builds a GPU vertex buffer and vertex
   array for every `draw_circle`, `draw_arc`, `draw_polyline`, antialiased
   `draw_line` and polygon each time a canvas item redraws. Natively that is cheap;
   in a browser each call crosses the WebGL layer, and the Web build ran at 19 fps

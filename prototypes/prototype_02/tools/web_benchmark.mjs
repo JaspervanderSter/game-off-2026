@@ -6,6 +6,9 @@
 //   node tools/web_benchmark.mjs [--rounds=3] [--gpu=default|high] [--label=name]
 //        [--godot=<Godot console exe>] [--browser=<msedge/chrome exe>]
 //        [--out=<folder>] [--no-export] [--port=8765]
+//        [--map-pan | --map-pan-cache-only] [--headless]
+// Map modes measure the title-to-map camera move only, with component ablations
+// or retained island drawing commands. No duels or balance simulations run.
 //
 // Needs Node 22 or later and the Godot Web export templates. The browser runs
 // with background throttling off and autoplay on, so the sound plays as for a
@@ -100,7 +103,12 @@ function serve() {
     const file = path.resolve(web, name);
     if (!file.startsWith(web) || !fs.existsSync(file)) { res.writeHead(404); return res.end(); }
     let data = fs.readFileSync(file);
-    if (name === "index.html") data = Buffer.from(data.toString().replace('"args":[]', `"args":["--","--rounds=${rounds}"]`));
+    if (name === "index.html") {
+      const gameArgs = ["--", `--rounds=${rounds}`];
+      if (options["map-pan"]) gameArgs.push("--map-pan");
+      if (options["map-pan-cache-only"]) gameArgs.push("--map-pan", "--map-pan-cache-only");
+      data = Buffer.from(data.toString().replace('"args":[]', `"args":${JSON.stringify(gameArgs)}`));
+    }
     res.writeHead(200, { "Content-Type": types[path.extname(file)] ?? "application/octet-stream", "Cache-Control": "no-store" });
     res.end(data);
   });
@@ -130,6 +138,7 @@ async function run() {
     "--autoplay-policy=no-user-gesture-required", "--disable-background-timer-throttling", "--disable-renderer-backgrounding",
     "--disable-backgrounding-occluded-windows", "--window-size=1300,820", "--new-window", "about:blank"];
   if (options.gpu === "high") flags.unshift("--force_high_performance_gpu");
+  if (options.headless) flags.unshift("--headless=new");
   const browser = spawn(findBrowser(), flags, { stdio: "ignore" });
   try {
     let page;
@@ -159,7 +168,9 @@ async function run() {
     await send("Page.enable");
     await send("Page.addScriptToEvaluateOnNewDocument", { source: GL_COUNTER });
     await send("Page.navigate", { url: `http://127.0.0.1:${port}/index.html` });
-    console.log(`Playing ${rounds} round(s) in the browser ...`);
+    console.log(options["map-pan"] || options["map-pan-cache-only"]
+      ? "Measuring title-to-map transitions in the browser ..."
+      : `Playing ${rounds} round(s) in the browser ...`);
     const deadline = Date.now() + 15 * 60 * 1000;
     while (!done && Date.now() < deadline) await sleep(1000);
     if (!done) throw new Error("Timed out waiting for the benchmark report.");

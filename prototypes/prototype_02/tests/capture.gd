@@ -21,6 +21,10 @@ func _ready() -> void:
 	game =load("res://main.tscn").instantiate()
 	add_child(game)
 	await _frames(10)
+	if "--retained-map-only" in OS.get_cmdline_user_args():
+		await _capture_retained_map()
+		get_tree().quit()
+		return
 	if "--forest-only" in OS.get_cmdline_user_args():
 		await _capture_forest()
 		get_tree().quit()
@@ -535,6 +539,55 @@ func _frames(n: int) -> void:
 
 func _seconds(s: float) -> void:
 	await get_tree().create_timer(s).timeout
+
+
+## Checks real rendered frames: rigid animation must leave drawing commands intact.
+func _capture_retained_map() -> void:
+	var map: Node2D = game.map_screen
+	game.show_menu(true)
+	map.title.finish()
+	await _seconds(0.5)
+	var layers: Array[Node2D] = [map.title._body]
+	layers.append_array(map.title._letters)
+	layers.append_array(map.title._rocks)
+	layers.append_array(map.title._clouds)
+	layers.append_array(map.sky._clouds)
+	for island in map.islands:
+		for layer in island._layers.get_children():
+			if layer not in island.scenery._animated:
+				layers.append(layer)
+	var paints: Array[int] = []
+	for layer in layers:
+		paints.append(layer.paints)
+	var body_position: Vector2 = map.title._body.position
+	await _seconds(0.5)
+	for i in layers.size():
+		assert(layers[i].paints == paints[i], "Rigid map/title geometry was rebuilt during animation")
+	assert(map.title._body.position != body_position, "The retained title must keep floating")
+	print("retained geometry stable across animation: ", layers.size(), " layers")
+	await _shot("retained_title")
+	game.show_map()
+	await _seconds(1.2)
+	await _shot("retained_pan")
+	await _seconds(map.PAN_TIME)
+	game.journey.completed.assign(range(Journey.stage_count()))
+	map.discovered.assign(range(Journey.stage_count()))
+	map.revealing = -1
+	map._pending.clear()
+	map._refresh_discovery()
+	await _frames(4)
+	await _shot("retained_map")
+	var terrain: Node2D = map.islands[0]._layers.get_child(0)
+	map.islands[0].spots[0] += Vector2(1, 0)
+	await _frames(3)
+	assert(map.islands[0]._layers.get_child(0) != terrain, "A changed prop layout must invalidate island geometry")
+	map.islands[0].spots[0] -= Vector2(1, 0)
+	get_window().size = Vector2i(680, 1180)
+	await _frames(5)
+	await _shot("retained_portrait")
+	game.show_menu()
+	await _seconds(map.RETURN_TIME + 0.2)
+	await _shot("retained_portrait_title")
 
 
 func _shot(name: String) -> void:
