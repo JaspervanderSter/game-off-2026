@@ -25,7 +25,11 @@ func open(folder: String) -> void:
 func _scan(folder: String) -> void:
 	if not DirAccess.dir_exists_absolute(folder):
 		return
-	var names := DirAccess.get_files_at(folder)
+	var names: PackedStringArray = []
+	for file in DirAccess.get_files_at(folder):
+		var plain := file.trim_suffix(".remap").trim_suffix(".import")
+		if not plain in names:
+			names.append(plain)
 	var sidecars := []
 	for file in names:
 		if file.get_extension().to_lower() in ["ogg", "wav"]:
@@ -107,6 +111,9 @@ static func save_entry(entry: Dictionary) -> Error:
 	return OK
 
 static func stream_from(path: String) -> AudioStream:
+	if path.begins_with("res://"):
+		var packed := load(path) as AudioStream
+		return packed.duplicate() if packed != null else null
 	if path.get_extension().to_lower() == "wav":
 		return AudioStreamWAV.load_from_file(path)
 	return AudioStreamOggVorbis.load_from_file(path)

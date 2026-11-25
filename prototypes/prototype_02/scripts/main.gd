@@ -131,7 +131,7 @@ func _ready() -> void:
 	map_screen.game = self
 	map_screen.z_index = 30
 	add_child(map_screen)
-	if OS.has_feature("windows") and not OS.has_feature("web"):
+	if OS.has_feature("windows") or OS.has_feature("web"):
 		alternate_audio = load("res://scripts/audio/alternate_audio.gd").new()
 		alternate_audio.music = music
 		alternate_audio.map = map_screen
@@ -733,7 +733,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	if alternate_audio != null:
+	if alternate_audio != null and not OS.has_feature("web"):
 		if event.keycode == KEY_M and event.ctrl_pressed and event.shift_pressed:
 			alternate_audio.toggle_dialog()
 			get_viewport().set_input_as_handled()

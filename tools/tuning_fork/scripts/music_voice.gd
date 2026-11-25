@@ -13,9 +13,9 @@ func setting(key: String) -> Variant:
 	return settings.get(key, MusicCatalog.DEFAULTS[key])
 
 func configure(entry: Dictionary) -> bool:
-	if entry.is_empty() or entry.get("error", "") != "" or not FileAccess.file_exists(entry.audio):
+	if entry.is_empty() or entry.get("error", "") != "" or not (FileAccess.file_exists(entry.audio) or ResourceLoader.exists(entry.audio)):
 		return false
-	var fingerprint := FileAccess.get_sha256(entry.audio)
+	var fingerprint: String = entry.audio if entry.audio.begins_with("res://") else FileAccess.get_sha256(entry.audio)
 	var changed := fingerprint != loaded_signature
 	var next: AudioStream = stream
 	if changed:

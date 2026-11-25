@@ -1,5 +1,5 @@
 {
-	"description": "Windows-only alternate workspace. Paths are relative to custom/music/; SFX directory is relative to the game folder. Default and Web playback ignore this file.",
+	"description": "Designer workspace: editable on Windows and packed on Web. Paths are relative to custom/music/; SFX directory is relative to the game folder. Windows Default playback ignores this file; Web always uses it.",
 	"label": "Custom",
 	"prep": "loadout_loop.ogg",
 	"battle": "battle_loop.ogg",

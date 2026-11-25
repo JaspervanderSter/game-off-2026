@@ -44,3 +44,11 @@ and its project window.
   nothing played (no such event, no sound file, cooldown). It is read when the
   game starts and only in debug builds, so release exports never print. It
   serves to find which file a sound heard in the game comes from.
+
+## Release audio (25 November 2026)
+
+Shapeshifters Duel now includes the designer workspace in Web exports and
+plays it unconditionally, with no mode selector or saved desktop preference.
+Windows retains its editable workspace and saved Default/Custom choice; fresh
+Windows installs start in Custom. The shared music reader supports packed
+imported resources as well as editable files beside the executable.

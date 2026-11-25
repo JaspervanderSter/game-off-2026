@@ -49,8 +49,8 @@ baked recording as an alternative, with a game-owned selector deciding which
 source plays. A reference should document its duration and synchronization
 origin. Baking is specific to the generator and happens outside Tuning Fork.
 Shapeshifters Duel's Windows workspace supplies a full 160-second day/night
-ambience. Its default and Web behavior remain procedural and unchanged.
+ambience. Windows Default keeps the original audio. Web always plays the packed designer workspace with the same track settings as Windows Custom.
 
 Music files and settings of an active Windows workspace reload on game focus.
 Invalid settings or unreadable replacement audio retain the last valid voice.
-The game's current music system remains responsible for Web/default behavior.
+The game's current music system remains responsible for Windows Default behavior. The designer workspace controller also handles Web using imported resources.

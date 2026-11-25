@@ -1,5 +1,5 @@
 extends Node
-## Windows-only experiment. Default playback never reads this workspace.
+## Designer workspace: editable on Windows, packed and always active on Web.
 signal mode_changed
 static var save_path := "user://audio_mode.cfg"
 var active := false
@@ -17,11 +17,15 @@ var _map_input_was_enabled := false
 
 func _ready() -> void:
 	root = ProjectSettings.globalize_path("res://") if OS.has_feature("editor") else OS.get_executable_path().get_base_dir()
+	if OS.has_feature("web"):
+		root = "res://"
 	for role in ["prep", "battle", "ambience"]:
 		var voice := MusicVoice.new()
 		voice.volume_linear = 0.0
 		add_child(voice)
 		voices[role] = voice
+	if OS.has_feature("web"):
+		return
 	var layer := CanvasLayer.new()
 	layer.layer = 90
 	add_child(layer)
@@ -59,6 +63,9 @@ func apply_sfx() -> void:
 		Sfx.reload()
 
 func restore_mode() -> void:
+	if OS.has_feature("web"):
+		set_active(true)
+		return
 	var config := ConfigFile.new()
 	var mode := "custom" if not OS.has_feature("editor") else "default"
 	if config.load(save_path) == OK:
@@ -68,8 +75,11 @@ func restore_mode() -> void:
 	set_active(mode == "custom")
 
 func set_active(value: bool, persist := false) -> void:
-	# This guard also prevents a saved setting or caller enabling it in Web.
-	if not OS.has_feature("windows") or OS.has_feature("web"):
+	# Web always plays the packed designer workspace and has no mode selector.
+	if OS.has_feature("web"):
+		value = true
+		persist = false
+	elif not OS.has_feature("windows"):
 		return
 	if persist:
 		var config := ConfigFile.new()
@@ -151,7 +161,7 @@ func toggle_dialog() -> void:
 	create_tween().tween_property(_dialog, "modulate:a", 1.0, 0.15)
 
 func dialog_visible() -> bool:
-	return _dialog.visible
+	return _dialog != null and _dialog.visible
 
 func close_dialog() -> void:
 	if not _dialog.visible:

@@ -11,12 +11,27 @@ static func run(host: Node, check: Callable) -> void:
 	event.keycode = KEY_M
 	event.ctrl_pressed = true
 	event.shift_pressed = true
-	if not OS.has_feature("windows") or OS.has_feature("web"):
+	if OS.has_feature("web"):
+		check.call(game.alternate_audio != null and game.alternate_audio.active, "Web always starts in designer audio")
+		check.call(Sfx.overlay() == "res://custom/sfx", "Web uses packed designer SFX")
+		check.call(Sfx.files_of("combat/hit").size() == 3, "Web includes all designer hit variants")
+		check.call(not game.alternate_audio.dialog_visible(), "Web has no audio mode selector")
+		game.free()
+		return
+	if not OS.has_feature("windows"):
 		check.call(game.alternate_audio == null, "non-Windows build has no alternate audio controller")
 		game._input(event)
 		game.free()
 		return
 	var alternate: Node = game.alternate_audio
+	# Web reads the same tracks through imported resource paths, not disk files.
+	var packed_catalog := MusicCatalog.new()
+	packed_catalog.open("res://custom/music")
+	var packed_voice := MusicVoice.new()
+	host.add_child(packed_voice)
+	for role in ["loadout_loop.ogg", "battle_loop.ogg", "world_map_cycle.ogg"]:
+		check.call(packed_voice.configure(packed_catalog.find(role)), "designer track loads through its packed resource path: " + role)
+	packed_voice.free()
 	alternate.set_process(false)
 	check.call(alternate.active == not OS.has_feature("editor"), "only exported Windows starts in Custom without a saved preference")
 	game._input(event)

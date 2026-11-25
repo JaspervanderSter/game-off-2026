@@ -5,7 +5,8 @@ Editor runs start in **Default** when no preference exists. **Ctrl+Shift+M** ope
 Default / Custom dialog on Windows only; Escape closes it. Switching audio
 does not restart the duel. Selecting either mode saves it immediately in the user's
 `audio_mode.cfg`; subsequent launches restore that choice. Web exports
-have no selector and do not include the alternate tracks or SFX workspace.
+have no selector and always play the packed custom tracks and SFX workspace.
+They ignore saved desktop audio preferences.
 
 Open this game folder in Tuning Fork. It needs neither Godot nor game source.
 `tuning_fork.json` points the editor to the editable audio root. Both tabs open
@@ -57,9 +58,8 @@ The alternate mode replaces the procedural ambience with this recording. It
 aligns playback to the sky clock when entering the map and stops outside it.
 A replacement of a different length is fitted to the visual cycle by playback
 speed, so use a 160-second file to keep the intended musical speed and pitch.
-Default on Windows keeps the live procedural system. Web plays its own copy
-of this reference, `default/music/ambience/world_map_cycle.ogg`, because the
-live mix is too costly there; editing the custom copy does not change it.
+Default on Windows keeps the live procedural system. Web plays the packed `custom/music/world_map_cycle.ogg` with its sidecar settings.
+Re-export Web after editing custom audio; desktop hot reload needs no export.
 
 The reference is reproducible with `python tools/bake_map_cycle.py` from the
 repository, which writes both copies (Python, numpy, ffmpeg). It uses the existing generated OGG sounds,
