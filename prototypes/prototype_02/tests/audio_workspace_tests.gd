@@ -75,15 +75,17 @@ static func run(host: Node, check: Callable) -> void:
 	game.map_screen.sky.elapsed = 123.0
 	alternate.advance(2.0)
 	var ambience: MusicVoice = alternate.voices.ambience
-	check.call(is_equal_approx(ambience.stream.get_length(), 160.0), "baked ambience covers exactly one 160-second sky cycle")
-	check.call(absf(ambience.get_playback_position() - 123.0) < 0.1, "baked ambience starts at the visible sky time")
+	var cycle: float = game.map_screen.sky.cycle_seconds
+	var recording: float = ambience.stream.get_length()
+	check.call(is_equal_approx(ambience.pitch_scale, recording / cycle), "baked ambience of any length is fitted to one sky cycle")
+	check.call(absf(ambience.get_playback_position() - 123.0 / cycle * recording) < 0.1, "baked ambience starts at the visible sky time")
 	game.map_screen.hide()
 	alternate.advance(2.0)
 	check.call(not ambience.playing, "baked ambience stops while away from the map")
 	game.map_screen.sky.elapsed = 63.0
 	game.map_screen.show()
 	alternate.advance(2.0)
-	check.call(absf(ambience.get_playback_position() - 63.0) < 0.1, "return to the map resynchronizes the baked loop")
+	check.call(absf(ambience.get_playback_position() - 63.0 / cycle * recording) < 0.1, "return to the map resynchronizes the baked loop")
 	alternate.set_active(false)
 	alternate.advance(2.0)
 	check.call(not game.map_screen.ambience.replaced and not ambience.playing and Sfx.overlay() == "", "return to default restores procedural ambience and default SFX")

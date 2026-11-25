@@ -3,11 +3,11 @@
 	"group": "ui",
 	"loop": false,
 	"protected": false,
-	"volume_db": -12.0,
+	"volume_db": -3.0,
 	"volume_jitter_db": 1.0,
-	"pitch": 1.0,
+	"pitch": 1.01,
 	"pitch_jitter": 0.05,
-	"cooldown_ms": 200,
+	"cooldown_ms": 201,
 	"pick": "shuffle",
 	"shuffle_refill_after": 0
 }

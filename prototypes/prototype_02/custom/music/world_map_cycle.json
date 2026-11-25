@@ -1,11 +1,10 @@
 {
 	"description": "Complete baked reference of the procedural map ambience. Replace this file freely. 160 seconds: day at 0, golden mist at 40, dusk at 80, night at 120, day again at 160. Windows alternative only; synchronized to the visible sky clock, paused outside the map. Keep a full-cycle file to preserve the intended speed.",
-	"volume_db": -8.0,
+	"volume_db": 0.0,
 	"fade_seconds": 1.5,
 	"loop": true,
 	"playback_mode": "continuous",
 	"duck_db": -40.0,
 	"frenzy_speed_per_level": 0.0,
-	"segments": [],
-	"reference_cycle_seconds": 160.0
+	"segments": []
 }

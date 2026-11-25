@@ -5,6 +5,5 @@
 	"loop": true,
 	"playback_mode": "restart",
 	"duck_db": -40.0,
-	"frenzy_speed_per_level": 0.0,
-	"segments": []
+	"frenzy_speed_per_level": 0.0
 }

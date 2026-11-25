@@ -45,11 +45,13 @@ segments mode. All regions must fit inside the audio file.
 
 ### Complete world map reference
 
-`custom/music/world_map_cycle.ogg` is a complete baked mix of the existing
-procedural ambience. It is **160 seconds**, beginning in day, golden mist at
-40 s, dusk at 80 s, night at 120 s and day again at 160 s. These are the sky
-palette anchors; the transitions blend between them. Replace this entire
-recording freely: its individual birds, winds and timing are not constraints.
+`custom/music/world_map_cycle.ogg` holds the sound designer's world map
+recording (delivered 25 November 2026, about 143 seconds). The sky cycle is
+**160 seconds**, beginning in day, golden mist at 40 s, dusk at 80 s, night at
+120 s and day again at 160 s. These are the sky palette anchors; the
+transitions blend between them. The original baked mix of the procedural
+ambience was the first content of this file. Replace this entire recording
+freely: its individual birds, winds and timing are not constraints.
 
 The alternate mode replaces the procedural ambience with this recording. It
 aligns playback to the sky clock when entering the map and stops outside it.
