@@ -1760,6 +1760,9 @@ func _test_cursors() -> void:
 		var hot := Vector2i(Cursors.hotspot(shape))
 		check(img.get_size() == Vector2i(32, 32) and img.get_pixelv(hot).a > 0.0,
 			"cursor %d is 32 pixels square and clicks on a drawn pixel" % shape)
+		var screen := Cursors.screen_image(shape)
+		check(screen.get_size() == Vector2i(64, 64) and screen.get_pixelv(Vector2i(Cursors.screen_hotspot(shape))) == img.get_pixelv(hot),
+			"cursor %d shows each pixel doubled, clicking on the same pixel" % shape)
 		seen[img.get_data()] = true
 	check(seen.size() == 6, "the six cursors are six different images")
 

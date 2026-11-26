@@ -1,11 +1,13 @@
 class_name Cursors
 extends RefCounted
 ## The game's six mouse cursors, 32x32 pixel art validated on 26 November 2026
-## (docs/design/Art Direction.md, "Mouse cursors"). They replace six of the system cursor shapes, so
-## any Control keeps working through its usual cursor shape, and a platform
-## that refuses custom images falls back to the matching system cursor. The
-## Web export hands them to the browser as CSS cursors, kept at 32 pixels so
-## browsers accept them everywhere on the page.
+## (docs/design/Art Direction.md, "Mouse cursors"), shown with each pixel
+## doubled (64x64) so they read at a glance. They replace six of the system
+## cursor shapes, so any Control keeps working through its usual cursor shape,
+## and a platform that refuses custom images falls back to the matching system
+## cursor. The Web export hands them to the browser as CSS cursors; Chromium
+## browsers show the system cursor instead where a cursor over 32 pixels would
+## overlap their own interface, at the very edge of the page.
 ##
 ##   NORMAL       the wand at rest, everywhere nothing reacts
 ##   CLICK        the wand lit with sparks, over anything that reacts to a click
@@ -26,6 +28,8 @@ const UNAVAILABLE := Input.CURSOR_FORBIDDEN
 const SHAPES: Array[int] = [NORMAL, CLICK, GRAB, HOLD, CAST, UNAVAILABLE]
 
 const SIZE := 32
+## Screen pixels per drawn pixel (playtest, 26 November 2026: 32 was too small).
+const SCALE := 2
 const OUTLINE := Color("1b1026")
 ## The wand's star, where the wand cursors click.
 const TIP := Vector2i(7, 7)
@@ -57,7 +61,7 @@ const SIDES: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1),
 ## Replaces the system cursor shapes with the game's cursors.
 static func install() -> void:
 	for shape in SHAPES:
-		Input.set_custom_mouse_cursor(ImageTexture.create_from_image(image(shape)), shape, hotspot(shape))
+		Input.set_custom_mouse_cursor(ImageTexture.create_from_image(screen_image(shape)), shape, screen_hotspot(shape))
 
 
 ## Shows `shape` wherever no Control sets its own cursor (Godot only acts on a change).
@@ -65,8 +69,21 @@ static func show(shape: int) -> void:
 	Input.set_default_cursor_shape(shape)
 
 
+## The drawn pixel the cursor clicks with.
 static func hotspot(shape: int) -> Vector2:
 	return Vector2(PALM) if shape == GRAB or shape == HOLD else Vector2(TIP)
+
+
+## The cursor as installed: each drawn pixel a SCALE-pixel square.
+static func screen_image(shape: int) -> Image:
+	var img := image(shape)
+	img.resize(SIZE * SCALE, SIZE * SCALE, Image.INTERPOLATE_NEAREST)
+	return img
+
+
+## The middle of the hotspot's square in screen_image.
+static func screen_hotspot(shape: int) -> Vector2:
+	return hotspot(shape) * SCALE + Vector2.ONE * (SCALE / 2.0)
 
 
 static func image(shape: int) -> Image:
