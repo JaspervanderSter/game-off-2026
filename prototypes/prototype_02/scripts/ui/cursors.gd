@@ -1,8 +1,8 @@
 class_name Cursors
 extends RefCounted
 ## The game's six mouse cursors, 32x32 pixel art validated on 26 November 2026
-## (docs/design/Art Direction.md, "Mouse cursors"), shown with each pixel
-## doubled (64x64) so they read at a glance. They replace six of the system
+## (docs/design/Art Direction.md, "Mouse cursors"), shown at the game's own
+## scale so they keep their size next to the board (see fit). They replace six of the system
 ## cursor shapes, so any Control keeps working through its usual cursor shape,
 ## and a platform that refuses custom images falls back to the matching system
 ## cursor. The Web export hands them to the browser as CSS cursors; Chromium
@@ -28,8 +28,15 @@ const UNAVAILABLE := Input.CURSOR_FORBIDDEN
 const SHAPES: Array[int] = [NORMAL, CLICK, GRAB, HOLD, CAST, UNAVAILABLE]
 
 const SIZE := 32
-## Screen pixels per drawn pixel (playtest, 26 November 2026: 32 was too small).
-const SCALE := 2
+## Cursor size on screen per unit of game scale (the game shown at its
+## 1280x720 design size): the size that looked natural in full screen at
+## 2560x1440, a 64-pixel cursor at game scale 2 (playtest, 26 November 2026).
+const SIZE_PER_SCALE := 32.0
+## Sizes come in 16-pixel steps, from 32 (smaller hides the art) to 128 (the
+## largest cursor browsers accept).
+const STEP := 16
+const MIN_SIZE := 32
+const MAX_SIZE := 128
 const OUTLINE := Color("1b1026")
 ## The wand's star, where the wand cursors click.
 const TIP := Vector2i(7, 7)
@@ -58,10 +65,33 @@ const WANDS := {
 const SIDES: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
 
-## Replaces the system cursor shapes with the game's cursors.
-static func install() -> void:
+static var _installed_size := 0
+
+
+## Replaces the system cursor shapes with the game's cursors, sized for a
+## window of `window_size` pixels on a screen of `screen_scale` (see size_for).
+## Called again whenever the window changes size; it only rebuilds the
+## cursors when their size steps.
+static func fit(window_size: Vector2, screen_scale: float) -> void:
+	var size := size_for(window_size, screen_scale)
+	if size == _installed_size:
+		return
+	_installed_size = size
 	for shape in SHAPES:
-		Input.set_custom_mouse_cursor(ImageTexture.create_from_image(screen_image(shape)), shape, screen_hotspot(shape))
+		Input.set_custom_mouse_cursor(ImageTexture.create_from_image(screen_image(shape, size)), shape,
+			screen_hotspot(shape, size))
+
+
+## The cursor size, in screen pixels, that keeps the cursor's size against the
+## game. The game is scaled to fit its 1280x720 design size in the window.
+## Cursor images are measured in the screen's logical pixels (CSS pixels on the
+## Web), while a high-density screen gives the window in physical pixels:
+## `screen_scale` (DisplayServer.screen_get_scale, 1 on Windows) converts.
+static func size_for(window_size: Vector2, screen_scale: float) -> int:
+	var design := Vector2(ProjectSettings.get_setting("display/window/size/viewport_width", 1280),
+		ProjectSettings.get_setting("display/window/size/viewport_height", 720))
+	var game_scale := minf(window_size.x / design.x, window_size.y / design.y) / maxf(screen_scale, 0.01)
+	return clampi(roundi(SIZE_PER_SCALE * game_scale / STEP) * STEP, MIN_SIZE, MAX_SIZE)
 
 
 ## Shows `shape` wherever no Control sets its own cursor (Godot only acts on a change).
@@ -74,16 +104,17 @@ static func hotspot(shape: int) -> Vector2:
 	return Vector2(PALM) if shape == GRAB or shape == HOLD else Vector2(TIP)
 
 
-## The cursor as installed: each drawn pixel a SCALE-pixel square.
-static func screen_image(shape: int) -> Image:
+## The cursor as installed, `size` pixels square, its pixels kept sharp.
+static func screen_image(shape: int, size: int) -> Image:
 	var img := image(shape)
-	img.resize(SIZE * SCALE, SIZE * SCALE, Image.INTERPOLATE_NEAREST)
+	img.resize(size, size, Image.INTERPOLATE_NEAREST)
 	return img
 
 
-## The middle of the hotspot's square in screen_image.
-static func screen_hotspot(shape: int) -> Vector2:
-	return hotspot(shape) * SCALE + Vector2.ONE * (SCALE / 2.0)
+## The middle of the hotspot's pixel in a `size`-pixel screen_image.
+static func screen_hotspot(shape: int, size: int) -> Vector2:
+	var k := float(size) / SIZE
+	return (hotspot(shape) + Vector2(0.5, 0.5)) * k
 
 
 static func image(shape: int) -> Image:

@@ -97,7 +97,8 @@ var _web_title_callback: JavaScriptObject
 
 func _ready() -> void:
 	rng.randomize()
-	Cursors.install()
+	get_window().size_changed.connect(_fit_cursors)
+	_fit_cursors()
 	Shapes.warm_up() # builds the shape atlas now rather than on the first frame
 	music = PhaseMusic.new()
 	add_child(music)
@@ -148,6 +149,11 @@ func _ready() -> void:
 			web_title_pending = true
 			_web_title_callback = JavaScriptBridge.create_callback(_start_web_title)
 			_register_web_title.call_deferred(loader)
+
+
+## Keeps the cursors at the game's scale as the window or full screen changes.
+func _fit_cursors() -> void:
+	Cursors.fit(Vector2(get_window().size), DisplayServer.screen_get_scale())
 
 
 ## Register after the first frame, so the HTML Play button only appears once

@@ -42,7 +42,7 @@ These are the current speaker's preferences, recorded for discussion rather than
 - There is **one spell**, so the cast cursor is the same on allies and enemies; only its effect differs. Before the swamp witch introduces the hex, enemies keep the wand at rest: the cursor introduces the hex along with the rule.
 - Both hands click at the palm and the wands at the star, so grabbing does not make the pointer jump.
 - Cursors are static: on the Web, every cursor change regenerates a browser cursor, so animation stays on the board.
-- They are drawn on 32 pixels and shown with each pixel doubled, 64×64 on screen (playtest, 26 November 2026: at 32 they were too small to read). Chromium browsers refuse cursors over 32 pixels where they would overlap the browser's own interface, so at the very edge of the page the system cursor briefly takes over.
+- They are drawn on 32 pixels and follow the game's scale, so they keep their size next to the board whatever the window (playtest, 26 November 2026: a fixed size looked too big in the 960×540 itch.io page and right in full screen at 2560×1440). The reference is a 64-pixel cursor for the game shown at 2560×1440 (twice its 1280×720 design size); sizes step by 16 pixels from 32 to 128 and are counted in the screen's logical pixels, so high-density screens and browsers get the same apparent size. Chromium browsers refuse cursors over 32 pixels where they would overlap the browser's own interface, so at the very edge of the page the system cursor briefly takes over.
 - Empty board cells in combat (a fizzle) and the title's skip-by-click while it animates keep the wand at rest; only real targets light it.
 
 ## Remaining open decisions

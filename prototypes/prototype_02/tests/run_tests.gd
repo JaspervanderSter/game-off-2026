@@ -1760,11 +1760,20 @@ func _test_cursors() -> void:
 		var hot := Vector2i(Cursors.hotspot(shape))
 		check(img.get_size() == Vector2i(32, 32) and img.get_pixelv(hot).a > 0.0,
 			"cursor %d is 32 pixels square and clicks on a drawn pixel" % shape)
-		var screen := Cursors.screen_image(shape)
-		check(screen.get_size() == Vector2i(64, 64) and screen.get_pixelv(Vector2i(Cursors.screen_hotspot(shape))) == img.get_pixelv(hot),
-			"cursor %d shows each pixel doubled, clicking on the same pixel" % shape)
+		for size in [32, 48, 64, 128]:
+			var screen := Cursors.screen_image(shape, size)
+			check(screen.get_size() == Vector2i(size, size)
+				and screen.get_pixelv(Vector2i(Cursors.screen_hotspot(shape, size))) == img.get_pixelv(hot),
+				"cursor %d at %d pixels clicks on the same drawn pixel" % [shape, size])
 		seen[img.get_data()] = true
 	check(seen.size() == 6, "the six cursors are six different images")
+	# The cursor keeps its size against the game, calibrated on full screen at 2560x1440.
+	check(Cursors.size_for(Vector2(2560, 1440), 1.0) == 64, "full screen at 2560x1440 shows 64-pixel cursors")
+	check(Cursors.size_for(Vector2(1920, 1080), 1.0) == 48, "full screen at 1920x1080 shows 48-pixel cursors")
+	check(Cursors.size_for(Vector2(960, 540), 1.0) == 32, "the 960x540 Web page keeps the smallest cursors")
+	check(Cursors.size_for(Vector2(1920, 1080), 2.0) == 32, "a high-density screen counts in logical pixels")
+	check(Cursors.size_for(Vector2(1440, 1440), 1.0) == 32, "a narrow window scales the cursor like the fitted game")
+	check(Cursors.size_for(Vector2(7680, 4320), 1.0) == 128, "cursors never exceed what browsers accept")
 
 	var game = load("res://main.tscn").instantiate()
 	add_child(game)
