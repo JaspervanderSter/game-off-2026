@@ -46,6 +46,7 @@ func _ready() -> void:
 	_test_bard_song()
 	_test_overlapping_blizzards()
 	_test_combat_click_casts()
+	_test_cursors()
 	_test_blizzard_and_recharge_upgrade()
 	_test_ai_strategy()
 	_test_opponent_ai_profile()
@@ -1748,6 +1749,83 @@ func _test_overlapping_blizzards() -> void:
 	check(victim.statuses.has("chilled") and is_equal_approx(victim.statuses.chilled.v, 0.5),
 		"overlapping blizzards still chill once at full strength")
 	b.free()
+
+
+## The six cursors exist, and each kind of clickable zone shows the cursor that
+## says what a click does there (docs/design/Art Direction.md).
+func _test_cursors() -> void:
+	var seen := {}
+	for shape in Cursors.SHAPES:
+		var img := Cursors.image(shape)
+		var hot := Vector2i(Cursors.hotspot(shape))
+		check(img.get_size() == Vector2i(32, 32) and img.get_pixelv(hot).a > 0.0,
+			"cursor %d is 32 pixels square and clicks on a drawn pixel" % shape)
+		seen[img.get_data()] = true
+	check(seen.size() == 6, "the six cursors are six different images")
+
+	var game = load("res://main.tscn").instantiate()
+	add_child(game)
+	var map = game.map_screen
+	map.show_islands(true)
+	var stage: Vector2 = map.buttons[0].get_global_transform_with_canvas() * (map.buttons[0].size * 0.5)
+	check(game.cursor_at(stage) == Cursors.CLICK, "an open encounter on the map lights the wand")
+	check(game.cursor_at(Vector2(-50, -50)) == Cursors.NORMAL, "empty map keeps the wand at rest")
+	map.show_title(false, true)
+	map.title.finish()
+	check(game.cursor_at(map.home.get_global_transform_with_canvas() * map.home.medallion_position()) == Cursors.CLICK,
+		"the title's medallion lights the wand")
+	game.choose_difficulty(Difficulty.APPRENTICE)
+	check(game.cursor_at(Hud.pack_rect(0).get_center()) == Cursors.CLICK, "a starting pack lights the wand")
+	game.choose_pack(0)
+	var state: WizardState = game.player
+	state.gold = 20
+	state.offers = ["peasant", "", "cleric"]
+	check(game.cursor_at(Hud.offer_rect(0).get_center()) == Cursors.GRAB, "an affordable offer opens the hand")
+	check(game.cursor_at(Hud.offer_rect(1).get_center()) == Cursors.NORMAL, "an empty stall keeps the wand at rest")
+	check(game.cursor_at(Rules.FIGHT_CENTER) == Cursors.CLICK, "the fight button lights the wand")
+	check(game.cursor_at(Vector2(4, 4)) == Cursors.NORMAL, "the empty corner keeps the wand at rest")
+	var owned: OwnedCreature = state.fielded()[0] if not state.fielded().is_empty() else state.benched()[0]
+	var owned_pos: Vector2 = Rules.BOARD_POS + Rules.cell_center(owned.cell) if owned.is_fielded() \
+		else Rules.reserve_slot_rect(owned.slot).get_center()
+	check(game.cursor_at(owned_pos) == Cursors.GRAB, "an owned creature opens the hand")
+	game._left_press(Hud.offer_rect(0).get_center())
+	check(game.cursor_at(Vector2(4, 4)) == Cursors.HOLD, "a dragged offer closes the hand anywhere")
+	game._left_release(Vector2(4, 4))
+	state.gold = 0
+	check(game.cursor_at(Hud.offer_rect(2).get_center()) == Cursors.CLICK, "an unaffordable offer only lights the wand")
+	game.enemy_preparing = false
+	game.enemy_moves.clear()
+	game.enemy_action.clear()
+	if game.enemy.field_count() == 0:
+		game.enemy.add_creature("peasant")
+	game.start_combat()
+	var b: Battle = game.battle
+	var ally: Unit = b.living(0)[0]
+	var foe: Unit = b.living(1)[0]
+	ally.immune_t = 0.0
+	foe.immune_t = 0.0
+	b.spells[0].charges = 1
+	check(game.cursor_at(Rules.BOARD_POS + ally.position) == Cursors.CAST, "a charged wand casts on an ally")
+	check(game.cursor_at(Rules.BOARD_POS + foe.position) == Cursors.CAST, "the same cast cursor shows on an enemy")
+	b.spells[0].charges = 0
+	check(game.cursor_at(Rules.BOARD_POS + ally.position) == Cursors.UNAVAILABLE, "an empty wand greys the cast")
+	check(game.cursor_at(Vector2(4, 4)) == Cursors.NORMAL, "off the board the wand rests during combat")
+	game.queue_free()
+	# Before the swamp witch's hex, enemies do not react to the wand.
+	game = load("res://main.tscn").instantiate()
+	var hex_progress := "user://hex_cursor_test_%d.cfg" % OS.get_process_id()
+	game.difficulty_progress_path = hex_progress
+	add_child(game)
+	game.journey.completed.assign(range(Journey.stage_count()))
+	game.choose_stage(1)
+	game.choose_pack(0)
+	game._advance_enemy_preparation(1.0)
+	game.start_combat()
+	game.battle.spells[0].charges = 2
+	foe = game.battle.living(1)[0]
+	check(game.cursor_at(Rules.BOARD_POS + foe.position) == Cursors.NORMAL, "before the hex, enemies keep the wand at rest")
+	game.queue_free()
+	DirAccess.remove_absolute(hex_progress)
 
 
 func _test_combat_click_casts() -> void:

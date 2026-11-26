@@ -443,11 +443,36 @@ func _tap_at(point: Vector2) -> void:
 		elif home.medallion_hit(point):
 			game.show_map()
 		return
+	var stage := _stage_at(point)
+	if stage >= 0:
+		_activate(stage)
+
+
+## The cursor for the mouse at `point` (Cursors), from the same hit tests as
+## _tap_at: lit over the medallion and the encounters that answer a tap, and
+## everywhere while the title waits for its first click.
+func cursor_at(point: Vector2) -> int:
+	if on_title():
+		if title.waiting:
+			return Cursors.CLICK
+		if title.animating():
+			return Cursors.NORMAL # a click only hurries the title along
+		return Cursors.CLICK if home.medallion_hit(point) else Cursors.NORMAL
+	return Cursors.CLICK if _stage_at(point) >= 0 else Cursors.NORMAL
+
+
+## Whether the encounter's button answers a tap.
+func _stage_tappable(index: int) -> bool:
+	return not on_title() and buttons[index].visible and not buttons[index].disabled
+
+
+## The tappable encounter under `point` whose centre is nearest, or -1.
+func _stage_at(point: Vector2) -> int:
 	var nearest := -1
 	var nearest_distance := INF
 	for index in buttons.size():
 		var button := buttons[index]
-		if button.disabled or not button.visible:
+		if not _stage_tappable(index):
 			continue
 		var local := button.get_global_transform_with_canvas().affine_inverse() * point
 		if Rect2(Vector2.ZERO, button.size).has_point(local):
@@ -456,12 +481,16 @@ func _tap_at(point: Vector2) -> void:
 			if distance < nearest_distance:
 				nearest_distance = distance
 				nearest = index
-	if nearest >= 0:
-		_activate(nearest)
+	return nearest
 
 func _process(dt: float) -> void:
 	if not is_visible_in_tree():
 		return
+	# The buttons' own cursor wins over the map's (Cursors.show): lit only
+	# while their encounter answers a tap.
+	for index in buttons.size():
+		buttons[index].mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND \
+			if _stage_tappable(index) else Control.CURSOR_ARROW
 	age += dt
 	menu_blend = move_toward(menu_blend, menu_target, dt / (PAN_TIME if menu_target < menu_blend else RETURN_TIME))
 	if _replay == "armed":

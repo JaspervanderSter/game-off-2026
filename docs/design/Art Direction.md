@@ -26,6 +26,24 @@ Fantasy characters transforming into animals inspired by Super Auto Pets could c
 
 These are the current speaker's preferences, recorded for discussion rather than presented as previously agreed meeting decisions.
 
+## Mouse cursors
+
+**Confirmed direction (26 November 2026).** Every clickable zone tells the player what a click does through the cursor, without text. Six 32×32 pixel-art cursors, in the game's palette (brown wand, purple spell star, gold):
+
+| Cursor | Look | Shown |
+| --- | --- | --- |
+| Normal | the wand at rest, its star dim | everywhere nothing reacts |
+| Clickable | the wand lit, with gold sparks | buttons, map encounters, title medallion, packs, upgrades, reroll, fight, restart, abandon; shop offers the player cannot afford (they answer with a sound) |
+| Grab | an open hand in a purple sleeve | over an affordable shop offer or an owned creature during preparation |
+| Hold | the same hand closed | while a creature is dragged |
+| Cast | the wand casting, with a dashed aiming ring | in combat, over a creature the spell can reach now |
+| Unavailable | the wand greyed | in combat, over a valid target while the wand has no charge or the creature is still immune |
+
+- There is **one spell**, so the cast cursor is the same on allies and enemies; only its effect differs. Before the swamp witch introduces the hex, enemies keep the wand at rest: the cursor introduces the hex along with the rule.
+- Both hands click at the palm and the wands at the star, so grabbing does not make the pointer jump.
+- Cursors are static: on the Web, every cursor change regenerates a browser cursor, so animation stays on the board. They stay at 32 pixels, which browsers accept everywhere on the page.
+- Empty board cells in combat (a fizzle) and the title's skip-by-click while it animates keep the wand at rest; only real targets light it.
+
 ## Remaining open decisions
 
 - Character style, silhouettes, palette and visual references.

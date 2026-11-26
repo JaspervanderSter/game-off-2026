@@ -97,6 +97,7 @@ var _web_title_callback: JavaScriptObject
 
 func _ready() -> void:
 	rng.randomize()
+	Cursors.install()
 	Shapes.warm_up() # builds the shape atlas now rather than on the first frame
 	music = PhaseMusic.new()
 	add_child(music)
@@ -846,67 +847,118 @@ func _unhandled_input(event: InputEvent) -> void:
 			choose_difficulty(event.keycode - KEY_1)
 
 
-func _left_press(pos: Vector2) -> void:
+## What a left press at `pos` acts on during the duel, as [kind, index], or
+## ["", -1]. The click and the mouse cursor both read it, so every zone that
+## reacts to a click shows a cursor that says so. Casts on the combat board are
+## the exception, read by _cast_at and _cast_cursor.
+func _press_target(pos: Vector2) -> Array:
 	if can_abandon() and pos.distance_to(Hud.ABANDON_POS) < Hud.ABANDON_RADIUS:
-		ask_abandon()
-		return
+		return ["abandon", -1]
 	match phase:
 		Phase.DIFFICULTY:
 			for i in Difficulty.COUNT:
 				if Hud.difficulty_rect(i).has_point(pos):
-					choose_difficulty(i)
-					return
+					return ["difficulty", i]
 		Phase.PACK:
 			for i in offered_packs.size():
 				if Hud.pack_rect(i).has_point(pos):
-					choose_pack(i)
-					return
+					return ["pack", i]
 		Phase.PREP:
 			for i in Rules.WAND_UPGRADES.size():
 				if ruleset.allows_upgrade(Rules.WAND_UPGRADES[i]) and Hud.upgrade_rect(i, ruleset).has_point(pos):
-					var id := Rules.WAND_UPGRADES[i]
-					if player.buy_upgrade(id):
-						Sfx.play("ui/purchase_confirmed")
-					elif not player.upgrade_maxed(id) and player.gold < player.upgrade_cost(id):
-						Sfx.play("ui/insufficient_gold")
-					else:
-						Sfx.play("ui/fail")
-					return
+					return ["upgrade", i]
 			if ruleset.has(Ruleset.TRADE) and Hud.reroll_rect().has_point(pos):
-				var before := player.offers.duplicate()
-				if player.reroll(rng):
-					hud.begin_reroll_flip(before)
-					Sfx.play("ui/purchase_confirmed")
-				elif player.gold < Rules.REROLL_COST:
-					Sfx.play("ui/insufficient_gold")
-				else:
-					Sfx.play("ui/fail")
-				return
+				return ["reroll", -1]
 			if pos.distance_to(Rules.FIGHT_CENTER) < Rules.FIGHT_RADIUS:
-				start_combat()
-				return
+				return ["fight", -1]
 			for i in Rules.SHOP_SIZE:
 				if Hud.offer_rect(i).has_point(pos):
-					if player.offers[i] == "":
-						Sfx.play("ui/fail")
-					elif player.gold < CreatureDB.get_form(player.offers[i]).price:
-						Sfx.play("ui/insufficient_gold")
-					else:
-						shop_drag_index = i
-						shop_drag_origin = pos
-						shop_drag_position = pos
-						shop_drag_active = false
-						drag = OwnedCreature.new(player.offers[i])
-					return
-			drag = _owned_at(pos)
-			if drag != null:
-				Sfx.play("ui/click")
-		Phase.COMBAT:
-			_cast_at(pos)
+					return ["offer", i]
+			if _owned_at(pos) != null:
+				return ["creature", -1]
 		Phase.OVER:
 			if pos.distance_to(Hud.RESTART_POS) < 46:
-				Sfx.play("ui/click")
-				leave_duel()
+				return ["restart", -1]
+	return ["", -1]
+
+
+func _left_press(pos: Vector2) -> void:
+	var target := _press_target(pos)
+	var index: int = target[1]
+	match target[0]:
+		"abandon":
+			ask_abandon()
+		"difficulty":
+			choose_difficulty(index)
+		"pack":
+			choose_pack(index)
+		"upgrade":
+			var id := Rules.WAND_UPGRADES[index]
+			if player.buy_upgrade(id):
+				Sfx.play("ui/purchase_confirmed")
+			elif not player.upgrade_maxed(id) and player.gold < player.upgrade_cost(id):
+				Sfx.play("ui/insufficient_gold")
+			else:
+				Sfx.play("ui/fail")
+		"reroll":
+			var before := player.offers.duplicate()
+			if player.reroll(rng):
+				hud.begin_reroll_flip(before)
+				Sfx.play("ui/purchase_confirmed")
+			elif player.gold < Rules.REROLL_COST:
+				Sfx.play("ui/insufficient_gold")
+			else:
+				Sfx.play("ui/fail")
+		"fight":
+			start_combat()
+		"offer":
+			if player.offers[index] == "":
+				Sfx.play("ui/fail")
+			elif player.gold < CreatureDB.get_form(player.offers[index]).price:
+				Sfx.play("ui/insufficient_gold")
+			else:
+				shop_drag_index = index
+				shop_drag_origin = pos
+				shop_drag_position = pos
+				shop_drag_active = false
+				drag = OwnedCreature.new(player.offers[index])
+		"creature":
+			drag = _owned_at(pos)
+			Sfx.play("ui/click")
+		"restart":
+			Sfx.play("ui/click")
+			leave_duel()
+		_:
+			if phase == Phase.COMBAT:
+				_cast_at(pos)
+
+
+## The cursor for the mouse at `pos` (Cursors): the map's on the map, else the
+## duel's, read from the same targets as the click (_press_target).
+func cursor_at(pos: Vector2) -> int:
+	if web_title_pending or transition.active():
+		return Cursors.NORMAL
+	if map_screen.visible:
+		return map_screen.cursor_at(pos)
+	if abandon_asked:
+		var on_answer := pos.distance_to(Hud.CONFIRM_YES) < Hud.CONFIRM_RADIUS \
+			or pos.distance_to(Hud.CONFIRM_NO) < Hud.CONFIRM_RADIUS
+		return Cursors.CLICK if on_answer else Cursors.NORMAL
+	if drag != null or shop_drag_index >= 0:
+		return Cursors.HOLD
+	var target := _press_target(pos)
+	match target[0]:
+		"":
+			return _cast_cursor(pos) if phase == Phase.COMBAT else Cursors.NORMAL
+		"creature":
+			return Cursors.GRAB
+		"offer":
+			var form: String = player.offers[target[1]]
+			if form == "":
+				return Cursors.NORMAL
+			# An offer the player cannot afford only answers with a sound.
+			return Cursors.GRAB if player.gold >= CreatureDB.get_form(form).price else Cursors.CLICK
+	return Cursors.CLICK
 
 
 func _left_release(pos: Vector2) -> void:
@@ -1019,6 +1071,19 @@ func _cast_at(pos: Vector2) -> void:
 		Sfx.play("ui/fail")
 
 
+## The combat cursor at `pos`: casting over a creature the spell reaches now,
+## greyed over one it will reach once charged or no longer immune, as the
+## creature's own reticle shows (Unit). The rest of the board keeps the wand at
+## rest, enemies included until the swamp witch introduces the hex.
+func _cast_cursor(pos: Vector2) -> int:
+	if battle == null or not Rect2(Rules.BOARD_POS, Rules.BOARD_SIZE).has_point(pos) or not player.can_cast():
+		return Cursors.NORMAL
+	var u := battle.unit_at(pos - Rules.BOARD_POS)
+	if u == null or not u.alive or not battle.casting_enabled or battle.finished or not battle.can_target(0, u):
+		return Cursors.NORMAL
+	return Cursors.CAST if battle.spells[0].can_cast() and u.immune_t <= 0.0 else Cursors.UNAVAILABLE
+
+
 # --- Hover ---------------------------------------------------------------------------
 
 func _process(dt: float) -> void:
@@ -1029,6 +1094,8 @@ func _process(dt: float) -> void:
 		spotlight.advance(dt)
 	field_full_flash = maxf(0.0, field_full_flash - dt)
 	reroll_sense_time = reroll_sense_time + dt if reroll_sensible() else 0.0
+	# Viewport coordinates, like the clicks' event positions.
+	Cursors.show(cursor_at(get_viewport().get_mouse_position()))
 	var mouse := get_global_mouse_position()
 	hover_info = {}
 	if abandon_asked:
