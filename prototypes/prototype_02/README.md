@@ -1197,7 +1197,15 @@ from 7 to 0 at full speed. What remains at 3x: the HUD's first draw in the
 first duel (about 18 ms) and the map's first frame after a duel. The engine
 also waits for the GPU once per frame: Emscripten's swap reads
 `getParameter(SCISSOR_TEST)`, a synchronous command-buffer finish, so GPU time
-adds to main-thread time (2-8 ms per map frame here). Do not set
+adds to main-thread time (2-8 ms per map frame here).
+
+The Web audio buffer was then doubled: `audio/driver/output_latency.web=80` in
+`project.godot`. Godot rounds latency x mix rate to the nearest power of two,
+so the default 50 ms gave 2048 frames (42.7 ms) and anything under about 70 ms
+still does; 80 ms gives 4096 frames (85.3 ms at 48 kHz, 92.9 ms at 44.1 kHz).
+The same journey then played without a single silent block at 3x (worst frame
+36 ms) and at 4x (worst frame 49 ms), at the cost of about 43 ms more delay before a sound is heard
+(reported output latency 101 -> 143 ms). Desktop builds are unaffected. Do not set
 `Engine.max_fps` to emulate a slower display on Web: Godot then busy-waits on
 the main thread and makes the audio crackle by itself.
 
