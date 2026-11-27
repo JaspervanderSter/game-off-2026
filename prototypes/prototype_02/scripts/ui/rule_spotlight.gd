@@ -87,6 +87,22 @@ func prepare_mask(canvas: CanvasItem) -> void:
 	canvas.material = _mask_material
 	update_mask(canvas)
 
+## Draws the mask once, fully transparent, under `parent` (visible while the
+## game loads), so its shader compiles then rather than when the first
+## spotlight opens: compiling it there stalled the Web build for 25 ms.
+## Call after prepare_mask.
+func warm_up(parent: Node) -> void:
+	var node := Node2D.new()
+	node.name = "SpotlightWarmUp"
+	var material: ShaderMaterial = _mask_material.duplicate()
+	material.set_shader_parameter("focus", Vector2(640, 360))
+	material.set_shader_parameter("radii", Vector2(100, 70))
+	material.set_shader_parameter("strength", 0.0)
+	node.material = material
+	node.draw.connect(draw_mask.bind(node))
+	parent.add_child(node)
+	RenderingServer.frame_post_draw.connect(node.queue_free, CONNECT_ONE_SHOT)
+
 func update_mask(canvas: CanvasItem) -> void:
 	canvas.visible = active()
 	if not active():

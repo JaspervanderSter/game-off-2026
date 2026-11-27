@@ -1176,6 +1176,31 @@ floats, verifies prop-layout invalidation, and captures the title, pan, full map
 portrait map and portrait title. Forced redraw comparisons found no stale layers
 in any of the five views.
 
+Journey audio stalls (27 November 2026). Music crackled on an older laptop. A
+scripted journey (Web preset with its loading screen, the title, the map, the
+first three duels with real browser clicks) measured every frame against the Web
+audio ring buffer: 2048 frames, 42.7 ms at 48 kHz, mixed on the main thread, so
+any frame longer than that plays silence. The run used Edge on Intel UHD, a
+60 Hz display and the CPU slowed 3x to stand in for the older laptop. Silence
+came from a few heavy frames, almost all at screen changes:
+
+| Cause | Before | Fix |
+|---|---|---|
+| Entering a duel composed the board's terrain on the CPU (48 tile loads and conversions), every duel | 54-83 ms in the swap frame, 13-35 blocks | `Terrain.board_texture` caches each environment's board, `Terrain.warm_up` composes them while loading, each distinct tile is loaded once per board |
+| Returning to the map did the duel reset, the window aspect change, the map layout, the repaint of every map drawing (shown nodes always redraw) and the ambience seek in one frame | 55-63 ms, 9-13 blocks | `ScreenTransition.play(..., settle)` spreads the swap over two covered frames (`new_duel(false)` then `show_map`); the layout is rebuilt only when the screen size changed; the ambience starts on the map's second frame |
+| The first tutorial spotlight compiled its mask shader | 25 ms | `RuleSpotlight.warm_up` draws the mask once, transparent, while loading |
+| On the title the silent map ambience restarted (seeking a 2.7 MB Vorbis stream) every frame | 3-6 ms per title frame | a voice with no target or weight is not started |
+
+Audio silence on the same journey fell from 127 blocks (10 episodes, longest
+frame 111 ms) to 19 blocks (4 short episodes, longest frame 35 ms) at 3x, and
+from 7 to 0 at full speed. What remains at 3x: the HUD's first draw in the
+first duel (about 18 ms) and the map's first frame after a duel. The engine
+also waits for the GPU once per frame: Emscripten's swap reads
+`getParameter(SCISSOR_TEST)`, a synchronous command-buffer finish, so GPU time
+adds to main-thread time (2-8 ms per map frame here). Do not set
+`Engine.max_fps` to emulate a slower display on Web: Godot then busy-waits on
+the main thread and makes the audio crackle by itself.
+
 How the game keeps frames cheap:
 
 - **Tutorial dimming retains one shared mesh.** The old spotlight generated 48

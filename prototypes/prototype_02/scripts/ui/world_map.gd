@@ -209,9 +209,20 @@ func _activate(index: int) -> void:
 		game.enter_stage(index)
 
 func focus_first() -> void:
-	_sync_discovery()
-	_layout()
+	prepare_islands()
 	_focus_latest()
+
+## Discovery and layout, which work while the map is hidden. The layout is
+## pure geometry: rebuilt only when the screen size changed since the last one.
+func prepare_islands() -> void:
+	_sync_discovery()
+	if get_viewport_rect().size != _layout_size:
+		_layout()
+	else:
+		_refresh_discovery()
+		if revealing >= 0:
+			_emitted_points = visible_path_points(revealing)
+		roads.queue_redraw()
 
 func _focus_latest() -> void:
 	var target := 0

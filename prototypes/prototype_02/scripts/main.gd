@@ -106,6 +106,7 @@ func _ready() -> void:
 	board_view.game = self
 	board_view.position = Rules.BOARD_POS
 	add_child(board_view)
+	Terrain.warm_up(board_view.terrain_seed) # composed while loading, not as a duel opens
 	fx = FxLayer.new()
 	fx.position = Rules.BOARD_POS
 	fx.z_index = 10
@@ -114,6 +115,7 @@ func _ready() -> void:
 	hud.game = self
 	hud.z_index = 20
 	add_child(hud)
+	spotlight.warm_up(self) # the hud stays hidden until a duel
 	var top := CanvasLayer.new()
 	top.layer = 10
 	add_child(top)
@@ -194,6 +196,17 @@ func show_map() -> void:
 	Sfx.play("ui/click")
 
 
+## What show_map can do while the map is still hidden, a frame before it
+## appears: the map's first frame repaints every map drawing, so the duel's
+## teardown, the window aspect and the map layout happen in the frame before.
+func _prepare_map() -> void:
+	music.transition_to("")
+	get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	board_view.hide()
+	hud.hide()
+	map_screen.prepare_islands()
+
+
 func choose_stage(index: int) -> void:
 	if phase != Phase.DIFFICULTY or not journey.available(index):
 		return
@@ -205,7 +218,8 @@ func choose_stage(index: int) -> void:
 	_start_duel()
 
 
-func new_duel() -> void:
+## `show` false leaves the map hidden, ready for show_map (see leave_duel).
+func new_duel(show := true) -> void:
 	if battle != null:
 		battle.queue_free()
 		battle = null
@@ -234,7 +248,10 @@ func new_duel() -> void:
 	hud.begin_difficulty_unlock(-1)
 	newly_unlocked_difficulty = -1
 	if map_screen != null:
-		show_map()
+		if show:
+			show_map()
+		else:
+			_prepare_map()
 
 
 ## True while a reroll makes sense with the stall in place and nothing dragged:
@@ -291,7 +308,9 @@ func enter_stage(index: int) -> void:
 
 
 ## Back to the map after a duel (or leaving a replay): the transition covers
-## the screen from the board and uncovers it on the opponent's spot.
+## the screen from the board and uncovers it on the opponent's spot. The swap
+## takes two covered frames (the duel reset, then the map), since one frame
+## doing both stalled the Web build's audio on slower laptops.
 func leave_duel() -> void:
 	if transition.active():
 		return
@@ -300,7 +319,7 @@ func leave_duel() -> void:
 	if stage >= 0:
 		var button: Control = map_screen.buttons[stage]
 		at = button.get_global_transform_with_canvas() * (button.size * 0.5)
-	transition.play(Rules.BOARD_POS + Rules.BOARD_SIZE * 0.5, at, new_duel, map_screen.sky.colors().cloud)
+	transition.play(Rules.BOARD_POS + Rules.BOARD_SIZE * 0.5, at, new_duel.bind(false), map_screen.sky.colors().cloud, show_map)
 
 
 ## Direct difficulty entry retained for rule tests and developer tooling.

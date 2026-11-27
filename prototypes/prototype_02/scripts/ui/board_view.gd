@@ -46,6 +46,8 @@ func _ready() -> void:
 
 ## Shows another environment's terrain.
 func set_environment(id: String) -> void:
+	if id == environment and _terrain != null:
+		return
 	environment = id
 	_terrain = null
 	get_node("Background").queue_redraw()
@@ -131,7 +133,7 @@ func _draw_board(ci: CanvasItem) -> void:
 	ci.draw_rect(frame, Color(0.35, 0.22, 0.14))
 	ci.draw_rect(frame.grow(-4), Color(0.45, 0.3, 0.18))
 	if _terrain == null:
-		_terrain = ImageTexture.create_from_image(Terrain.board_image(environment, terrain_seed))
+		_terrain = Terrain.board_texture(environment, terrain_seed)
 	Terrain.draw_board(ci, _terrain, environment)
 
 

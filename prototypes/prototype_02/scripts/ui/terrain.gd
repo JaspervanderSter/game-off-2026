@@ -15,8 +15,8 @@ extends RefCounted
 ## The tiles are scenery only: they never affect the rules.
 ##
 ## Tiles are imported as Image resources, not textures: the board is composed
-## once into a single image (see board_image) and drawn with one call per half,
-## each half multiplied by its team tint. tools/make_terrain_tiles.gd draws the
+## once into a single image (see board_image, cached by board_texture) and
+## drawn with one call per half, each half multiplied by its team tint. tools/make_terrain_tiles.gd draws the
 ## generated tiles; hand-painted ones can join them.
 
 const TILE_DIR := "res://tiles"
@@ -42,6 +42,7 @@ const ENVIRONMENTS := {
 }
 
 static var _catalogue := {} # environment -> {family -> {kind -> [paths]}}
+static var _boards := {} # "environment:seed" -> composed board texture
 
 
 ## {family: {kind: [tile paths]}} found in the environment's folder.
@@ -117,13 +118,33 @@ static func board_image(environment: String, seed: int) -> Image:
 	var board := Image.create_empty(size.x, size.y, false, Image.FORMAT_RGBA8)
 	var cell := int(Rules.CELL)
 	var grid := layout(environment, seed)
+	var loaded := {} # path -> Image: a board repeats a dozen drawings over 48 cells
 	for y in grid.size():
 		for x in grid[y].size():
-			var tile := _tile_image(grid[y][x])
+			var path: String = grid[y][x]
+			if not loaded.has(path):
+				loaded[path] = _tile_image(path)
+			var tile: Image = loaded[path]
 			if tile == null:
 				continue
 			board.blit_rect(tile, Rect2i(Vector2i.ZERO, Vector2i(cell, cell)), Vector2i(x, y) * cell)
 	return board
+
+
+## The board as a texture, composed once per environment and seed. Composing
+## takes tens of milliseconds on Web, enough to break up the music in the
+## frame that opens a duel, so warm_up composes every board while loading.
+static func board_texture(environment: String, seed: int) -> Texture2D:
+	var key := "%s:%d" % [environment, seed]
+	if not _boards.has(key):
+		_boards[key] = ImageTexture.create_from_image(board_image(environment, seed))
+	return _boards[key]
+
+
+## Composes every environment's board now rather than when a duel opens.
+static func warm_up(seed: int) -> void:
+	for environment: String in ENVIRONMENTS:
+		board_texture(environment, seed)
 
 
 ## Draws an environment's board on `ci` with its top-left corner at the origin:

@@ -100,6 +100,8 @@ static func run(host: Node, check: Callable) -> void:
 	game.map_screen.sky.elapsed = 63.0
 	game.map_screen.show()
 	alternate.advance(2.0)
+	check.call(not ambience.playing, "baked ambience waits for the map's second frame (the first repaints the map)")
+	alternate.advance(2.0)
 	check.call(absf(ambience.get_playback_position() - 63.0 / cycle * recording) < 0.1, "return to the map resynchronizes the baked loop")
 	alternate.set_active(false)
 	alternate.advance(2.0)

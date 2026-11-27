@@ -134,13 +134,19 @@ func advance(dt: float) -> void:
 		voices.battle.target = 1.0 if phase == "battle" else 0.0
 		var ambience: MusicVoice = voices.ambience
 		ambience.target = 1.0 if map.ambience_heard() else 0.0
-		if shown and ambience.stream != null:
+		# Waits for the map's second frame: its first repaints the whole map,
+		# and seeking the ambience in that frame too stalled the Web build.
+		if shown and _map_was_visible and ambience.stream != null:
 			var duration: float = map.sky.cycle_seconds
 			ambience.pitch_scale = ambience.stream.get_length() / maxf(duration, 0.01)
 			var position: float = map.sky.elapsed / maxf(duration, 0.01) * ambience.stream.get_length()
 			var drift := absf(ambience.get_playback_position() - position)
-			if not _map_was_visible or not ambience.playing:
-				ambience.start(false, position)
+			# A silent ambience (the title) stays stopped: MusicVoice stops a
+			# voice with no weight, and restarting it every frame seeks the
+			# stream each time (a measured Web stall).
+			if not ambience.playing:
+				if ambience.target > 0.0 or ambience.weight > 0.0:
+					ambience.start(false, position)
 			elif minf(drift, absf(ambience.stream.get_length() - drift)) > 0.12:
 				ambience.seek(position)
 		_map_was_visible = shown

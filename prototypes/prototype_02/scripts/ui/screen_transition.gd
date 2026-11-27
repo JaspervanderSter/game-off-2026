@@ -27,6 +27,7 @@ var to := Vector2.ZERO
 var cloud := Color("d1dccf") # the sky's cloud colour when the transition began
 var _swap := Callable()
 var _swapped := false
+var _settle := Callable()
 var _cloud_mesh: ArrayMesh
 var _curtain: Node2D
 var _bank: ColorRect
@@ -47,13 +48,16 @@ func _ready() -> void:
 
 ## Covers the screen with clouds, calls `swap` once covered, then parts them.
 ## `cover_at` and `reveal_at` (the opponent, the board) record where the
-## transition starts and ends.
-func play(cover_at: Vector2, reveal_at: Vector2, swap: Callable, cloud_colour := Color("d1dccf")) -> void:
+## transition starts and ends. `settle`, when given, runs one frame after
+## `swap`, still covered (or with it, when the transition ends first): a swap
+## split in two keeps each frame short enough for the Web build's audio.
+func play(cover_at: Vector2, reveal_at: Vector2, swap: Callable, cloud_colour := Color("d1dccf"), settle := Callable()) -> void:
 	from = cover_at
 	to = reveal_at
 	cloud = cloud_colour.lerp(Color(0.96, 0.97, 0.97), 0.45)
 	_swap = swap
 	_swapped = false
+	_settle = settle
 	t = 0.0
 	_blocker.size = get_viewport_rect().size
 	_blocker.visible = true
@@ -69,14 +73,24 @@ func _process(dt: float) -> void:
 	if t < 0.0:
 		return
 	t += dt
+	if _swapped:
+		_run_settle()
 	if t >= COVER and not _swapped:
 		_swapped = true
 		_swap.call()
 		Sfx.play("ui/clouds")
 	if t >= COVER + HOLD + REVEAL:
+		_run_settle()
 		t = -1.0
 		_blocker.visible = false
 	_update_curtain()
+
+
+func _run_settle() -> void:
+	if _settle.is_valid():
+		var settle := _settle
+		_settle = Callable()
+		settle.call()
 
 
 ## 0 open to 1 fully covered, then back to 0.
