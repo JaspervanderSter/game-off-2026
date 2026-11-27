@@ -85,6 +85,29 @@ const SKY_PARALLAX := 4.0 # stars and clouds drift less than the islands
 ## (map coordinates); the title's 1280 x 720 frame fills the screen.
 const TITLE_OFFSET := Vector2(-680, -26)
 const TITLE_FRAME := Vector2(1280, 720)
+## The title frame's content: the island with its letters and rocks, and the
+## medallion on the bridge. With MapCameraTuning's title fill at 1 it fills
+## the screen instead of the whole frame (small screens).
+const TITLE_CONTENT := Rect2(280, 200, 970, 420)
+## The islands' camera (MapCameraTuning): on small screens it zooms in on the
+## next opponent, follows the footsteps and the roads' traces, can be dragged,
+## and comes back after a few idle seconds. At zoom 1 it frames the whole map.
+var cam_center := Vector2.ZERO # map coordinates
+var cam_zoom := 1.0
+var _cam_velocity := Vector2.ZERO
+var _cam_snap := true
+var _panned := false # the player moved the camera
+var _pan_idle := 0.0
+var _drag_last := Vector2.ZERO
+## The player's own zoom (wheel, pinch), kept like a pan until the idle return;
+## 0 when none.
+var _zoom_override := 0.0
+var _touches := {} # finger index -> position
+var _pinch_distance := 1.0
+var _pinch_middle := Vector2.ZERO
+const WHEEL_ZOOM_STEP := 1.15
+## The camera aims slightly above an opponent's spot, at its figure.
+const CAMERA_AIM := Vector2(0, -24)
 var _title_anchor := Vector2.ZERO
 var _home_land := Vector2.ZERO
 var _design_size := LANDSCAPE_SIZE
@@ -186,6 +209,7 @@ func _ready() -> void:
 	ambience = MapAmbience.new()
 	ambience.map = self
 	add_child(ambience)
+	_update_camera(0.0)
 	_apply_pan()
 
 func _button(parent: Node, rect: Rect2) -> Button:
@@ -378,6 +402,7 @@ func _layout() -> void:
 		figures[index].size = Vector2(target_size.x, target_size.y * 0.5 + RISE_TOP)
 	_rebuild_paths()
 	_place_title()
+	_cam_snap = true
 	if revealing >= 0:
 		_emitted_points = visible_path_points(revealing)
 	_refresh_discovery()
@@ -397,6 +422,17 @@ func _input(event: InputEvent) -> void:
 	if game.web_title_pending:
 		get_viewport().set_input_as_handled()
 		return
+	# The hidden camera panel takes its own touches and clicks.
+	var panel: Control = game.camera_panel
+	if panel != null and panel.visible and (event is InputEventMouse or event is InputEventScreenTouch \
+			or event is InputEventScreenDrag) and panel.get_global_rect().has_point(event.position):
+		return
+	# A three-finger tap opens the camera panel on a phone.
+	if event is InputEventScreenTouch and event.pressed and event.index == 2 and panel != null:
+		panel.toggle()
+		_clear_touch()
+		get_viewport().set_input_as_handled()
+		return
 	# Swipes cancel selection without moving the map, including over encounters.
 	# Godot's emulated mouse events use device -1; ignore those to avoid a second tap.
 	if (event is InputEventMouseButton or event is InputEventMouseMotion) and event.device == -1:
@@ -408,6 +444,7 @@ func _input(event: InputEvent) -> void:
 		if event.pressed:
 			_mouse_active = true
 			_mouse_start = event.position
+			_drag_last = event.position
 			_mouse_dragged = false
 		elif _mouse_active:
 			_mouse_active = false
@@ -415,29 +452,117 @@ func _input(event: InputEvent) -> void:
 				_tap_at(event.position)
 		get_viewport().set_input_as_handled()
 		return
+	# The wheel (and a touchpad's pinch) zooms the islands around the cursor.
+	if event is InputEventMouseButton and event.pressed \
+			and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		var notches: float = event.factor if event.factor > 0.0 else 1.0
+		var step := pow(WHEEL_ZOOM_STEP, notches)
+		_zoom_camera(step if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / step, event.position)
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMagnifyGesture:
+		_zoom_camera(event.factor, event.position)
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseMotion and _mouse_active:
 		if event.position.distance_to(_mouse_start) > 12.0 * map_scale:
 			_mouse_dragged = true
+		if _mouse_dragged:
+			_drag_camera(event.position)
 	if event is InputEventScreenTouch:
+		if event.pressed:
+			_touches[event.index] = event.position
+		else:
+			_touches.erase(event.index)
 		if event.pressed and _touch_index == -1:
 			_touch_index = event.index
 			_touch_start = event.position
+			_drag_last = event.position
 			_touch_dragged = false
+		elif event.pressed and _touches.size() == 2:
+			# A second finger: a pinch, never a tap.
+			_touch_dragged = true
+			_begin_pinch()
 		elif not event.pressed and event.index == _touch_index:
 			_touch_index = -1
 			if not _touch_dragged and not event.canceled:
 				_tap_at(event.position)
+			elif not _touches.is_empty():
+				# The pinch ends: the finger left on the screen drags on.
+				_touch_index = _touches.keys()[0]
+				_drag_last = _touches[_touch_index]
+		elif not event.pressed and _touches.size() == 1 and _touches.has(_touch_index):
+			_drag_last = _touches[_touch_index]
 		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventScreenDrag:
-		if event.index == _touch_index:
+		if _touches.has(event.index):
+			_touches[event.index] = event.position
+		if _touches.size() >= 2:
+			_pinch()
+		elif event.index == _touch_index:
 			var distance: Vector2 = event.position - _touch_start
 			if distance.length() > 12.0 * map_scale:
 				_touch_dragged = true
+			if _touch_dragged:
+				_drag_camera(event.position)
 		get_viewport().set_input_as_handled()
 		return
 
+## Whether the player may move the islands' camera now.
+func _camera_free() -> bool:
+	return not on_title() and menu_blend <= 0.0
+
+## A drag on the islands moves the camera, when it is zoomed in; it stays
+## where the player left it for MapCameraTuning's idle seconds.
+func _drag_camera(point: Vector2) -> void:
+	var delta := point - _drag_last
+	_drag_last = point
+	if not _camera_free() or not bool(MapCameraTuning.value("pan")) or cam_zoom <= 1.01:
+		return
+	cam_center = _clamp_camera(cam_center - delta / maxf(map_scale * cam_zoom, 0.001), cam_zoom)
+	_cam_velocity = Vector2.ZERO
+	_panned = true
+	_pan_idle = 0.0
+
+## Zooms the islands by `factor` around the screen `point`, which stays over
+## the same spot of the map, between the whole map and MapCameraTuning's max.
+func _zoom_camera(factor: float, point: Vector2) -> void:
+	if not _camera_free() or not bool(MapCameraTuning.value("gestures")):
+		return
+	var old := cam_zoom
+	var new := clampf(old * factor, 1.0, maxf(1.0, float(MapCameraTuning.value("max_zoom"))))
+	var offset := point - get_viewport_rect().size * 0.5
+	var spot := cam_center + offset / maxf(map_scale * old, 0.001)
+	cam_zoom = new
+	_zoom_override = new
+	cam_center = _clamp_camera(spot - offset / maxf(map_scale * new, 0.001), new)
+	_cam_velocity = Vector2.ZERO
+	_panned = true
+	_pan_idle = 0.0
+
+func _pinch_points() -> Array:
+	var keys := _touches.keys()
+	return [_touches[keys[0]], _touches[keys[1]]]
+
+func _begin_pinch() -> void:
+	var points := _pinch_points()
+	_pinch_distance = maxf(1.0, points[0].distance_to(points[1]))
+	_pinch_middle = (points[0] + points[1]) * 0.5
+
+## Two fingers: their spread zooms, their middle pans.
+func _pinch() -> void:
+	var points := _pinch_points()
+	var distance := maxf(1.0, points[0].distance_to(points[1]))
+	var middle: Vector2 = (points[0] + points[1]) * 0.5
+	_zoom_camera(distance / _pinch_distance, middle)
+	_drag_last = _pinch_middle
+	_drag_camera(middle)
+	_pinch_distance = distance
+	_pinch_middle = middle
+
 func _clear_touch() -> void:
+	_touches.clear()
 	_touch_index = -1
 	_touch_dragged = false
 	_mouse_active = false
@@ -516,6 +641,7 @@ func _process(dt: float) -> void:
 		advance_discovery(dt)
 	if get_viewport_rect().size != _layout_size:
 		_layout()
+	_update_camera(dt)
 	_apply_pan()
 	var state: Dictionary = sky.colors()
 	for island in islands:
@@ -550,6 +676,8 @@ func show_title(restart := false, instant := false, wait := false) -> void:
 	if instant:
 		menu_blend = 1.0
 	_end_replay()
+	_panned = false
+	_zoom_override = 0.0
 	if restart:
 		# The game starts: the next departure walks the journey again.
 		_replay_due = true
@@ -575,20 +703,112 @@ func show_islands(instant := false) -> void:
 	elif _replay == "":
 		home.shown = home.dots.size()
 	_replay_due = false
+	_panned = false
+	_zoom_override = 0.0
+	_cam_snap = true
+	_update_camera(0.0)
+	_cam_snap = true # again on the first frame, once discovery has synced
 	_apply_pan()
 
 
-## The camera: from the title island's frame, filling the screen, to the whole
-## map, eased, the zoom on a log scale; the sky follows with parallax.
+## What the islands' camera looks at: the footsteps while the journey replays,
+## the tip of a road being traced, then the opponent it reveals; otherwise the
+## latest opponent on the map, the next one to play.
+func _camera_target() -> Vector2:
+	if _replay == "walk" and walk.size() > 0:
+		return walk[clampi(int(walk_pos), 0, walk.size() - 1)]
+	if revealing >= 0 and _paths.has(revealing) and reveal_elapsed < TRACE_DURATION:
+		var points: PackedVector2Array = _paths[revealing]
+		return points[clampi(visible_path_points(revealing) - 1, 0, points.size() - 1)]
+	if revealing >= 0:
+		return stage_position(revealing) + CAMERA_AIM
+	if _replay == "armed":
+		return stage_position(0) + CAMERA_AIM
+	var latest := 0
+	for index in discovered:
+		latest = maxi(latest, index)
+	return stage_position(latest) + CAMERA_AIM
+
+
+## Keeps the zoomed view inside the map's design frame (the whole map at zoom
+## 1, which it then centres exactly).
+func _clamp_camera(center: Vector2, zoom: float) -> Vector2:
+	var half := get_viewport_rect().size / (2.0 * maxf(map_scale * zoom, 0.001))
+	var result := center
+	for axis in 2:
+		if half[axis] * 2.0 >= _design_size[axis]:
+			result[axis] = _design_size[axis] * 0.5
+		else:
+			result[axis] = clampf(center[axis], half[axis], _design_size[axis] - half[axis])
+	return result
+
+
+## Moves the islands' camera towards its target, with a smooth damp or a lerp
+## (MapCameraTuning), unless the player panned it less than the idle time ago.
+func _update_camera(dt: float) -> void:
+	if _touch_index != -1 or _mouse_active:
+		_pan_idle = 0.0
+	elif _panned:
+		_pan_idle += dt
+		if _pan_idle >= float(MapCameraTuning.value("idle_return")):
+			_panned = false
+	if not _panned:
+		_zoom_override = 0.0
+	var zoom_target := _zoom_override if _zoom_override > 0.0 else MapCameraTuning.map_zoom()
+	if menu_blend > 0.0 and on_title() and not _cam_snap:
+		return # back up to the title: the travel leaves from where the camera was
+	var target := _clamp_camera(_camera_target(), zoom_target)
+	if _cam_snap or menu_blend > 0.0:
+		# The title's travel eases the camera itself: it lands on the target.
+		_cam_snap = false
+		cam_zoom = zoom_target
+		cam_center = target
+		_cam_velocity = Vector2.ZERO
+		return
+	var time := maxf(0.05, float(MapCameraTuning.value("follow_time")))
+	# ~95 % of the way in `time`: 3 time constants for the lerp; a critically
+	# damped spring needs about 2.4 smooth times.
+	var k := 1.0 - exp(-3.0 * dt / time)
+	cam_zoom = lerpf(cam_zoom, zoom_target, k)
+	if _panned:
+		cam_center = _clamp_camera(cam_center, cam_zoom)
+		return
+	target = _clamp_camera(_camera_target(), cam_zoom)
+	if int(MapCameraTuning.value("follow")) == MapCameraTuning.Follow.LERP:
+		cam_center = cam_center.lerp(target, k)
+		_cam_velocity = Vector2.ZERO
+	else:
+		cam_center = _smooth_damp(cam_center, target, time / 2.4, dt)
+	cam_center = _clamp_camera(cam_center, cam_zoom)
+
+
+## A critically damped spring towards `target` (Game Programming Gems 4, as in
+## Unity's SmoothDamp).
+func _smooth_damp(current: Vector2, target: Vector2, smooth_time: float, dt: float) -> Vector2:
+	var omega := 2.0 / maxf(smooth_time, 0.0001)
+	var x := omega * dt
+	var decay := 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
+	var change := current - target
+	var temp := (_cam_velocity + omega * change) * dt
+	_cam_velocity = (_cam_velocity - omega * temp) * decay
+	return target + (change + temp) * decay
+
+
+## The camera: from the title island's frame, filling the screen, to the
+## islands' camera, eased, the zoom on a log scale; the sky follows with parallax.
 func _apply_pan() -> void:
 	if title == null:
 		return
 	var screen := get_viewport_rect().size
 	var e := smoothstep(0.0, 1.0, 1.0 - menu_blend)
-	var title_zoom := minf(screen.x / TITLE_FRAME.x, screen.y / TITLE_FRAME.y) / maxf(map_scale, 0.001)
-	var title_center := _title_anchor + TITLE_FRAME * 0.5 - TitleScreen.FRAME_ANCHOR
-	var center := title_center.lerp(_design_size * 0.5, e)
-	var zoom := exp(lerpf(log(title_zoom), 0.0, e))
+	var fill := MapCameraTuning.title_fill()
+	var frame_zoom := minf(screen.x / TITLE_FRAME.x, screen.y / TITLE_FRAME.y)
+	var content_zoom := minf(screen.x / TITLE_CONTENT.size.x, screen.y / TITLE_CONTENT.size.y)
+	var title_zoom := exp(lerpf(log(frame_zoom), log(content_zoom), fill)) / maxf(map_scale, 0.001)
+	var frame_center := (TITLE_FRAME * 0.5).lerp(TITLE_CONTENT.get_center(), fill)
+	var title_center := _title_anchor + frame_center - TitleScreen.FRAME_ANCHOR
+	var center := title_center.lerp(cam_center, e)
+	var zoom := exp(lerpf(log(title_zoom), log(maxf(cam_zoom, 0.001)), e))
 	world.position = screen * 0.5 - center * map_scale * zoom
 	world.scale = Vector2.ONE * map_scale * zoom
 	title.visible = menu_blend > 0.0

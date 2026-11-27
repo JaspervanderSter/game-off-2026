@@ -12,6 +12,8 @@ func _ready() -> void:
 	PackDeck.save_path = "user://pack_decks_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
 	# Nor do they read or change the player's art style.
 	ArtStyle.save_path = "user://art_style_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
+	# Nor the map camera's tuning: the tests see its defaults on a desktop.
+	MapCameraTuning.persist = false
 	ArtStyle.reload()
 	# Audio mode checks must never read or overwrite the player's preference.
 	preload("res://scripts/audio/alternate_audio.gd").save_path = "user://audio_mode_test_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
@@ -66,6 +68,7 @@ func _ready() -> void:
 	_test_journey_health()
 	_test_journey_discovery()
 	_test_title_replay()
+	_test_map_camera()
 	await _test_progress_reset_shortcuts()
 	await _test_journey_navigation()
 	_simulate_duels()
@@ -2539,7 +2542,15 @@ func _test_journey_navigation() -> void:
 	wheel.pressed = true
 	Input.parse_input_event(wheel)
 	await get_tree().process_frame
-	check(map.world.transform == initial_transform, "mouse wheel does not move the fitted map")
+	map._apply_pan()
+	check(map.cam_zoom > 1.1 and map.world.scale.x > initial_transform.get_scale().x,
+		"the mouse wheel zooms the islands in")
+	# Once the idle seconds pass, the whole map comes back.
+	map._update_camera(10.0)
+	map._update_camera(10.0)
+	map._apply_pan()
+	check(map.world.transform.is_equal_approx(initial_transform), "the wheel's zoom ends after the idle return")
+	initial_transform = map.world.transform
 	var touch := InputEventScreenTouch.new()
 	touch.index = 0
 	touch.position = Vector2(640, 400)
@@ -2895,6 +2906,86 @@ func _test_title_replay() -> void:
 	check(map._replay == "" and walk_end >= 0.0 and clock - walk_end <= 0.1,
 		"no pause separates the fast walk from the current opponent's rise")
 	game.free()
+	DirAccess.remove_absolute(path)
+
+
+## The zoomed islands' camera of small screens (MapCameraTuning), forced on.
+func _test_map_camera() -> void:
+	MapCameraTuning.values = MapCameraTuning.DEFAULTS.duplicate()
+	check(not MapCameraTuning.active() and MapCameraTuning.map_zoom() == 1.0 and MapCameraTuning.title_fill() == 0.0,
+		"a desktop keeps the whole map and the title's whole frame by default")
+	MapCameraTuning.values.scope = MapCameraTuning.Scope.ALWAYS
+	var game = load("res://main.tscn").instantiate()
+	var path := "user://map_camera_%d_%d.cfg" % [OS.get_process_id(), Time.get_ticks_usec()]
+	game.difficulty_progress_path = path
+	add_child(game)
+	game.set_physics_process(false)
+	var map = game.map_screen
+	map.set_process(false)
+	game.journey.completed.assign(range(2))
+	game.show_menu(true)
+	game.show_map()
+	var clock := 0.0
+	while clock < 20.0 and (map._replay != "" or map.menu_blend > 0.0):
+		map._process(0.05)
+		clock += 0.05
+	for i in 60:
+		map._process(0.05)
+	var screen: Vector2 = map.get_viewport_rect().size
+	var on_screen: Vector2 = map.world.get_global_transform_with_canvas() * (map.stage_position(2) + map.CAMERA_AIM)
+	check(is_equal_approx(map.cam_zoom, MapCameraTuning.DEFAULTS.map_zoom)
+		and is_equal_approx(map.world.scale.x, map.map_scale * map.cam_zoom),
+		"the islands' camera zooms in on small screens")
+	var target: Vector2 = map._clamp_camera(map.stage_position(2) + map.CAMERA_AIM, map.cam_zoom)
+	check(map.cam_center.distance_to(target) < 2.0 and Rect2(Vector2.ZERO, screen).has_point(on_screen),
+		"the camera settles on the next opponent, inside the map")
+	var before: Vector2 = map.cam_center
+	map._drag_last = Vector2(600, 400)
+	map._drag_camera(Vector2(500, 400))
+	check(map._panned and map.cam_center.x > before.x, "a drag pans the zoomed camera")
+	var panned: Vector2 = map.cam_center
+	map._process(2.0)
+	check(map.cam_center == panned, "the camera stays where the player left it while idle time runs")
+	for i in 80:
+		map._process(0.05)
+	check(not map._panned and map.cam_center.distance_to(before) < 2.0,
+		"after the idle seconds the camera returns to the next opponent")
+	MapCameraTuning.values.follow = MapCameraTuning.Follow.LERP
+	map._drag_last = Vector2(600, 400)
+	map._drag_camera(Vector2(700, 300))
+	for i in 160:
+		map._process(0.05)
+	check(map.cam_center.distance_to(before) < 2.0, "the lerp follow also returns the camera")
+	# Two fingers spreading apart zoom in around their middle, without a tap.
+	var fingers := [Vector2(500, 360), Vector2(700, 360)]
+	for i in 2:
+		var down := InputEventScreenTouch.new()
+		down.index = i
+		down.position = fingers[i]
+		down.pressed = true
+		map._input(down)
+	var spread := InputEventScreenDrag.new()
+	spread.index = 1
+	spread.position = Vector2(900, 360)
+	map._input(spread)
+	check(map._zoom_override > MapCameraTuning.DEFAULTS.map_zoom and map._touch_dragged,
+		"a pinch zooms the islands in and never taps an opponent")
+	for i in 2:
+		var up := InputEventScreenTouch.new()
+		up.index = i
+		up.position = spread.position if i == 1 else fingers[0]
+		map._input(up)
+	check(game.phase == game.Phase.DIFFICULTY and map._touches.is_empty(), "lifting the pinch's fingers launches nothing")
+	for i in 160:
+		map._process(0.05)
+	check(absf(map.cam_zoom - MapCameraTuning.DEFAULTS.map_zoom) < 0.01, "the pinch's zoom ends after the idle return")
+	game.show_menu()
+	for i in 80:
+		map._process(0.05)
+	var medallion: Vector2 = map.title.get_global_transform_with_canvas() * map.title.medallion_center()
+	check(Rect2(Vector2.ZERO, screen).has_point(medallion), "the filled title keeps its medallion on screen")
+	game.free()
+	MapCameraTuning.values = MapCameraTuning.DEFAULTS.duplicate()
 	DirAccess.remove_absolute(path)
 
 

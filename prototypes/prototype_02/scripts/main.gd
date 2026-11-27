@@ -89,6 +89,8 @@ var switch_flash: SwitchFlash
 ## The cloud transition between the map and a duel, on its own canvas layer.
 var transition: ScreenTransition
 var fps_counter: Control
+## Hidden map camera tuning (MapCameraTuning): Ctrl+Shift+C or a three-finger tap.
+var camera_panel: Control
 var alternate_audio: Node
 ## The HTML loading screen owns the one Web launch click and white transition.
 var web_title_pending := false
@@ -123,6 +125,8 @@ func _ready() -> void:
 	top.add_child(switch_flash)
 	fps_counter = preload("res://scripts/ui/fps_counter.gd").new()
 	top.add_child(fps_counter)
+	camera_panel = preload("res://scripts/ui/map_camera_panel.gd").new()
+	top.add_child(camera_panel)
 	var transition_layer := CanvasLayer.new()
 	transition_layer.layer = 9
 	add_child(transition_layer)
@@ -778,6 +782,10 @@ func _input(event: InputEvent) -> void:
 		return
 	if event.keycode == KEY_F8 and event.shift_pressed:
 		fps_counter.visible = not fps_counter.visible
+		get_viewport().set_input_as_handled()
+		return
+	if event.keycode == KEY_C and event.ctrl_pressed and event.shift_pressed:
+		camera_panel.toggle()
 		get_viewport().set_input_as_handled()
 		return
 	if event.keycode == KEY_P and event.ctrl_pressed and event.shift_pressed:

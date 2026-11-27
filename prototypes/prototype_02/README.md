@@ -50,6 +50,9 @@ shell with its sources. Ordinary Web exports need no additional step. See
 | Start combat | Round sword-and-wand button under the board, right of the bench once the shop exists (or Space) |
 | Toggle fullscreen | Alt+Enter |
 | Toggle performance counter | Shift+F8 (click the game first in a browser) |
+| Zoom the map | Pinch with two fingers, mouse wheel or touchpad pinch, around the fingers or cursor |
+| Pan the zoomed map | Drag; after a few idle seconds the camera returns to the next opponent and its usual zoom |
+| Tune the map camera | Ctrl+Shift+C, or a three-finger tap on the map or title (hidden developer panel, saved on the device) |
 | Shapeshift | Left-click (or tap) any living creature during combat, friend or foe |
 | Inspect | Hover a creature: its three possible outcomes with their chances, plus stat bars. In combat, a reticle previews the cast: cyan blessing circle on your creatures, violet hex fangs on enemies, grey when no charge is ready or the target is immune |
 

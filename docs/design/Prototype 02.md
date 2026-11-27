@@ -123,7 +123,8 @@ round counts are not fixed or guaranteed by this decision.
   it must never build, shorten, fade in or hide a bridge.
 - The entire map is visible on **one screen, without scrolling**. Fit it to both
   landscape and portrait layouts. This supersedes the earlier vertically
-  scrolling roadmap idea for the current design baseline.
+  scrolling roadmap idea for the current design baseline. On phones the
+  camera zooms in on the next opponent instead (decision log, 27 November 2026).
 - Remove the upper UI banner. The map communicates through its islands, bridges,
   discovered opponent icons, the gold ring under beaten opponents and animation. No textual labels or
   textual tooltips; numbers are allowed where they express game values.
@@ -598,6 +599,26 @@ the engine with the game's assets, led to the title island:
   play pill stretching along the bridge. **The pulse was chosen:** the
   medallion 30 % larger, breathing, two gold rings rippling out of it, bolder
   chevrons. Its tap area grows with it.
+
+### 27 November 2026 — the map camera on phones
+
+- On a small phone screen the whole map, and the title's whole frame, read too
+  small. On mobile devices (a mobile browser, a mobile build or a touch
+  screen) the islands' camera now zooms in (x2 by default, against the
+  whole-map framing) on the next opponent. It follows the replay's footsteps
+  and the tip of a road being traced, eased by a smooth damp (or a lerp). The
+  player may drag to pan; after 5 idle seconds the camera returns to the next
+  opponent. The title frames its island and medallion more tightly (title
+  fill 0.6), always keeping the medallion on screen.
+- Desktop keeps the one-screen map of "World-map composition and connections".
+- On every device the player may zoom the islands, from the whole map up to
+  x4: two-finger pinch on phones, mouse wheel or touchpad pinch on the Web and
+  Windows, centred on the fingers or cursor. Like a pan, it lasts until the
+  idle return, which restores the usual zoom.
+- Every value is still being tuned on a real phone in a hidden developer panel
+  (Ctrl+Shift+C or a three-finger tap): zoom scope, map zoom, follow mode and
+  time, pan, pinch and wheel zoom, max zoom, idle return, title fill. The chosen values become the defaults
+  in `MapCameraTuning`.
 
 ## Playtest plan and completion criteria
 
