@@ -175,7 +175,8 @@ try {
 	foreach ($push in @(@($windowsOut, $WindowsChannel), @($webOut, $WebChannel))) {
 		$pushLog = Join-Path $logDir "butler-$($push[1]).log"
 		$code = Invoke-Logged $butlerExe @("push", $push[0], "$($Target):$($push[1])", "--userversion", $userVersion) $pushLog
-		Get-Content -LiteralPath $pushLog -Tail 3
+		# butler redraws a progress bar in place; show only its plain lines.
+		Get-Content -LiteralPath $pushLog | Where-Object { $_ -and $_ -notmatch '[▐▌%]' } | Select-Object -Last 4
 		if ($code -ne 0) { throw "butler push to $($push[1]) failed. See $pushLog (run 'butler login' if it asks for a key)." }
 	}
 	Set-Content -LiteralPath $stateFile -Value $commit -Encoding ascii
