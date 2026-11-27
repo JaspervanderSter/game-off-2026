@@ -121,9 +121,12 @@ Current implementation defaults, available for playtest revision:
   deer stalemated every round, so the boss has none.
 - Magical opponents demonstrate at most one cast per round, after six seconds:
   an allied transformation before hexes, an enemy transformation afterwards.
-- Normal damage and creature deaths remain visible, but damage cannot kill the
-  player's last creature. The safety net applies only in forest encounters;
-  timeout remains a draw. It prevents defeat without requiring a successful cast.
+- **Revised after playtest (27 November 2026):** the forest no longer has a
+  safety net. Damage was capped so that the player's last creature kept 1 HP
+  until the 60-second timeout made the round a draw. Players and the user saw
+  a creature that took hits for nearly a minute without dying as a bug, and the
+  rule was too far from the base rules. Forest damage is now lethal as
+  everywhere else: the player can lose a forest round and a forest duel.
 - Hide the empty bench before the shop and disable its invisible drop targets.
   Show it with shopping, or if reserves already exist.
 - An animated wand and target ring invite an allied cast from the druid, then an

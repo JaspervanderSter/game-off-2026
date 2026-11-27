@@ -20,7 +20,8 @@ var ai_overrides := {}
 var rules := Ruleset.new()
 ## False for journey opponents without magic: they never cast.
 var magic := true
-## Forest-only guided encounters: fixed enemy army and a last-creature safety net.
+## Forest-only guided encounters: fixed enemy army and demonstrated casts.
+## Damage stays lethal: the player can lose a forest round or duel.
 var learning_duel := false
 var ai_rerolls := 0
 var ai_whims := {} # form id -> taste drawn once per duel by whimsical AI levels

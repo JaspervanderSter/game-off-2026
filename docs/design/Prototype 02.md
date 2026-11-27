@@ -463,11 +463,12 @@ creatures with transformation potential remain an exploratory hypothesis.
 
 **Later playtest revision:** the forest order is now Hunter, Druid, Lumberjack,
 Swamp witch, Archdruid, bringing transformations before the shop. The entire
-island is an easy, protected introduction, with a dedicated passive enemy
+island is an easy introduction, with a dedicated passive enemy
 behaviour. Its only human forms are Archer, Shield Guardian and Spearman; its
 only animal forms are Rabbit, Wolf and Deer, including transformation outcomes.
-See [[Journey and Opponents]] for the current openings, safety net and explicit
-forest practice graph. This supersedes the original forest order below.
+The last-creature safety net added then was removed on 27 November 2026: forest
+damage is lethal and the player can lose there. See [[Journey and Opponents]]
+for the current openings and explicit forest practice graph. This supersedes the original forest order below.
 
 The user decided that the journey map teaches the existing rules gradually through
 fifteen opponents, five per zone (forest, town, school of magic). Opponents are

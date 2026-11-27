@@ -3566,7 +3566,7 @@ func _test_forest_lessons() -> void:
 			check(offer == "" or offer in Ruleset.FOREST_HUMANS, "forest offers stay inside the thematic roster")
 		game._advance_enemy_preparation(1.0)
 		game.start_combat()
-		check(game.battle.learning_duel, "forest battles enable the learning safety net")
+		check(game.battle.learning_duel, "forest battles are guided learning duels")
 		# Observe an ordinary opening without shopping or casting. This is a
 		# bounded lesson smoke test, not a balance or win-rate investigation.
 		for tick in 3700: # a little past Rules.COMBAT_TIMEOUT
@@ -3574,13 +3574,12 @@ func _test_forest_lessons() -> void:
 			if game.battle.finished:
 				break
 		# Difficulty rises gently: the first three lessons fall to the opening
-		# alone; later ones expect purchases, but the safety net still holds.
+		# alone; later ones expect purchases and may beat the bare opening.
 		if index <= 2:
 			check(game.battle.finished and game.battle.result.winner == 0,
 				"forest %d can be won without buying or casting" % index)
 		else:
-			check(game.battle.finished and game.battle.result.winner != 1,
-				"forest %d never beats the player's opening" % index)
+			check(game.battle.finished, "forest %d rounds end" % index)
 		if index > 0:
 			check(OpponentDB.learning_army(index).size() > OpponentDB.learning_army(index - 1).size(),
 				"forest %d fields more creatures than the previous lesson" % index)
@@ -3608,9 +3607,6 @@ func _test_forest_lessons() -> void:
 	var foe := battle.spawn(1, "wolf", Vector2(100, 100))
 	battle.damage(foe, first, 10000, "dot", true)
 	battle.damage(foe, last, 10000, "dot", true)
-	check(not first.alive and last.alive and last.hp == 1.0,
-		"creatures can fall but poison cannot kill the learner's last creature")
-	battle.learning_duel = false
-	battle.damage(foe, last, 10000, "dot", true)
-	check(not last.alive, "ordinary battles retain lethal damage")
+	check(not first.alive and not last.alive,
+		"forest damage stays lethal, even for the learner's last creature")
 	battle.free()

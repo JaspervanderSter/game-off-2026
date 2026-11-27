@@ -250,10 +250,6 @@ func damage(src: Unit, dst: Unit, amount: float, kind: String, pierce := false) 
 		return false
 	var reduction := 0.0 if pierce else dst.armour() / 100.0
 	var dealt := amount * frenzy_multiplier() * (1.0 - reduction)
-	# Let creatures fall normally, but keep the learner's last creature alive.
-	# This applies to every damage source, including poison and reflected damage.
-	if learning_duel and dst.team == 0 and living(0).size() == 1:
-		dealt = minf(dealt, maxf(0.0, dst.hp - 1.0))
 	damage_taken[dst.team] += clampf(dealt, 0.0, dst.hp)
 	dst.hp -= dealt
 	dst.last_hurt = time
