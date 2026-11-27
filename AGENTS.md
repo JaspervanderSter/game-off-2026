@@ -16,6 +16,11 @@ Use the scripts' default output paths so each run refreshes its build in place.
 Pass `-Godot` if needed to locate the editor. Leave `-Out` unset unless the user
 explicitly requests a different destination.
 
+`tools/release_itch.ps1` builds both Shapeshifters Duel exports (Windows and
+Web, into `export/ShapeshiftersDuel-Web/`) and uploads them to itch.io with
+butler; see "Automatic itch.io release" in `README.md`. Run it only when the
+user asks for an itch.io release.
+
 Keep only `export/ShapeshiftersDuel/`, `export/TuningFork/`, their respective
 `ShapeshiftersDuel-Windows.zip` and `TuningFork-Windows.zip` archives, and any
 requested Web exports under `export/`. Upload the canonical archives when
